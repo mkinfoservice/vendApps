@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(tee:*)",
+      "Bash(/tmp/order2.json:*)",
+      "Bash(__NEW_LINE_648cdf5c20dcad8d__ echo \"Criando Pedido 2 - Ipanema...\")",
+      "Bash(__NEW_LINE_648cdf5c20dcad8d__ cat)",
+      "Bash(/tmp/order3.json:*)",
+      "Bash(__NEW_LINE_648cdf5c20dcad8d__ echo \"Criando Pedido 3 - Botafogo...\")",
+      "Bash(/tmp/order4.json:*)",
+      "Bash(__NEW_LINE_648cdf5c20dcad8d__ echo \"Criando Pedido 4 - Centro...\")",
+      "Bash(/tmp/order5.json:*)",
+      "Bash(__NEW_LINE_4505f4966c0965c8__ echo \"Criando Pedido 5 - Leblon...\")",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWUiOiJhZG1pbiIsImh0dHA6Ly9zY2hlbWFzLm1pY3Jvc29mdC5jb20vd3MvMjAwOC8wNi9pZGVudGl0eS9jbGFpbXMvcm9sZSI6ImFkbWluIiwianRpIjoiZDA5MDFhM2UtMTQ0Yy00Y2E4LTk3NzAtYjI4NGYzMTA4ZThhIiwiZXhwIjoxNzcxMjA3NzQyLCJpc3MiOiJQZXRzaG9wLkFwaSIsImF1ZCI6IlBldHNob3AuQWRtaW4ifQ.DrE1QIqhLO_NzPKy-2ysFLrvILwKp0U5vNoc_FIN274\")",
+      "Bash(__NEW_LINE_97771d1ebbe0ac46__ echo \"🚀 Mudando Pedido 1 \\(Copacabana\\) para PRONTO_PARA_ENTREGA...\")",
+      "Bash(__NEW_LINE_97771d1ebbe0ac46__ echo \"\")",
+      "Bash(__NEW_LINE_a47db82d6dc1f711__ echo \"Mudando todos os pedidos para EM_PREPARO primeiro...\")",
+      "Bash(__NEW_LINE_a47db82d6dc1f711__ for orderNum in \"PS-20260215-883046\" \"PS-20260215-285382\" \"PS-20260215-579720\" \"PS-20260215-402673\" \"PS-20260215-562776\")",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(__NEW_LINE_a47db82d6dc1f711__ echo \"\")",
+      "Bash(__NEW_LINE_7777620cb2252a03__ echo \"🔍 Verificando detalhes completos do Pedido 1...\")",
+      "Bash(python3:*)",
+      "Bash(dotnet build:*)",
+      "Bash(cmd.exe /c:*)",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''D:\\\\DEV\\\\petshop'' -Recurse -Filter ''*.tsx'' | Select-Object -First 20 FullName\")",
+      "Bash(powershell.exe -Command \"Get-ChildItem ''D:\\\\DEV\\\\petshop\\\\frontend\\\\petshop-web\\\\src'' -Recurse -Filter ''*.tsx'' | Select-Object FullName\")"
+    ]
+  }
+}

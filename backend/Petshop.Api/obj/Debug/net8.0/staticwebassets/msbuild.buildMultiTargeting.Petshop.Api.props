@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\Petshop.Api.props" />
+</Project>

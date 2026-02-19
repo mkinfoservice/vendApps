@@ -1,0 +1,80 @@
+@baseUrl = http://localhost:5082
+
+### 1) Listar produtos (pegar um productId real)
+GET {{baseUrl}}/catalog/products
+Accept: application/json
+
+### 2) Criar pedido PIX
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mayk",
+  "phone": "21999999999",
+  "cep": "21343333",
+  "address": "Av. Teste 123",
+  "paymentMethodStr": "PIX",
+  "coupon": null,
+  "items": [
+    { "productId": "47e63cc3-7f94-459e-ad6e-2d5461e1bde6", "qty": 2 }
+  ]
+}
+
+### 3) Criar pedido CASH com troco (cashGivenCents alto)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mayk",
+  "phone": "21999999999",
+  "cep": "21343333",
+  "address": "Av. Teste 123",
+  "paymentMethodStr": "CASH",
+  "cashGivenCents": 100000,
+  "coupon": null,
+  "items": [
+    { "productId": "47e63cc3-7f94-459e-ad6e-2d5461e1bde6", "qty": 5 }
+  ]
+}
+
+### 4) Criar pedido CASH insuficiente (deve dar 400)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mayk",
+  "phone": "21999999999",
+  "cep": "21343333",
+  "address": "Av. Teste 123",
+  "paymentMethodStr": "CASH",
+  "cashGivenCents": 100,
+  "coupon": null,
+  "items": [
+    { "productId": "47e63cc3-7f94-459e-ad6e-2d5461e1bde6", "qty": 1 }
+  ]
+}
+
+### 5) Criar pedido CASH (troque o productId por um real do catálogo)
+POST {{baseUrl}}/orders
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Mayk",
+  "phone": "21992329239",
+  "cep": "21792999",
+  "address": "Av Sta Cruz 3572",
+  "paymentMethodStr": "CASH",
+  "cashGivenCents": 50000,
+  "coupon": null,
+  "items": [
+    { "productId": "47e63cc3-7f94-459e-ad6e-2d5461e1bde6", "qty": 2 }
+  ]
+}
+
+### 5) Buscar pedido por orderNumber (troque pelo que voltar no teste 2/3)
+GET {{baseUrl}}/orders/PS-20260129-975926
+Accept: application/json
