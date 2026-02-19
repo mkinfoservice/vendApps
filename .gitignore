@@ -1,18 +1,129 @@
-# .NET
+############################################
+# PETSHOP DELIVERY - FULL STACK GITIGNORE #
+############################################
+
+############################
+# .NET / ASP.NET Core
+############################
 bin/
 obj/
+out/
+publish/
+TestResults/
+*.user
+*.suo
+*.userprefs
+*.csproj.user
+*.dbmdl
+*.jfm
+*.opendb
+*.VC.db
+*.VC.opendb
 
-# Node
+# Rider / JetBrains
+.idea/
+
+############################
+# Logs
+############################
+*.log
+logs/
+log/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################
+# Node / React / Vite
+############################
 node_modules/
 dist/
+build/
 .vite/
+.cache/
+.eslintcache
 
+############################
+# Vite specific
+############################
+vite.config.ts.timestamp-*
+vite.config.js.timestamp-*
+
+############################
+# Tailwind cache
+############################
+.tailwindcss/
+
+############################
+# Environment Variables
+############################
+.env
+.env.*
+!.env.example
+
+############################
 # VS Code
-.vscode/
+############################
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
 
-# Logs
-*.log
+############################
+# Visual Studio
+############################
+.vs/
 
-# OS
+############################
+# OS Files
+############################
 .DS_Store
 Thumbs.db
+desktop.ini
+
+############################
+# Docker
+############################
+docker-compose.override.yml
+docker-compose.debug.yml
+*.dockerfile.swp
+
+############################
+# Docker volumes / local db dumps
+############################
+docker-data/
+postgres-data/
+*.bak
+*.backup
+*.sql
+*.dump
+
+############################
+# Coverage / Reports
+############################
+coverage/
+coverage-report/
+*.coverage
+*.coveragexml
+
+############################
+# Temporary files
+############################
+*.tmp
+*.temp
+*.swp
+*.cache
+
+############################
+# Package managers
+############################
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+############################
+# Mac / Linux misc
+############################
+*.sw?
