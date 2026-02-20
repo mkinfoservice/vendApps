@@ -115,9 +115,15 @@ public class RoutesController : ControllerBase
 
             return Ok(response);
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("⚠️ Validação ao criar rota: {Message}", ex.Message);
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "🔥 Erro inesperado ao criar rota para entregador={DelivererId}", request.DelivererId);
+            return StatusCode(500, "Erro interno ao criar rota.");
         }
     }
 
@@ -146,10 +152,15 @@ public class RoutesController : ControllerBase
 
             return Ok(preview);
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("⚠️ Validação ao gerar preview de rotas: {Message}", ex.Message);
+            return BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Erro ao gerar preview de rotas");
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "🔥 Erro inesperado ao gerar preview de rotas");
+            return StatusCode(500, "Erro interno ao gerar preview de rotas.");
         }
     }
 
@@ -595,7 +606,7 @@ public class RoutesController : ControllerBase
 
         if (route is null) return NotFound("Rota não encontrada.");
 
-        var result = _transitions.MarkSkipped(route, stopId, req?.Reason);
+        var result = await _transitions.MarkSkippedAsync(route, stopId, req?.Reason, ct);
         if (!result.Success)
             return BadRequest(result.Error);
 

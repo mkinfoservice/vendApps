@@ -112,7 +112,39 @@ public class RouteStopTransitionService
     }
 
     /// <summary>
-    /// Marca stop como ignorada (pulada), avança próxima.
+    /// Marca stop como ignorada (pulada), reverte pedido para PRONTO_PARA_ENTREGA e avança próxima.
+    /// </summary>
+    public async Task<StopTransitionResult> MarkSkippedAsync(Route route, Guid stopId, string? reason, CancellationToken ct = default)
+    {
+        if (route.Status != RouteStatus.EmAndamento)
+            return StopTransitionResult.Fail("Rota precisa estar EmAndamento para ignorar paradas.");
+
+        var stop = route.Stops.FirstOrDefault(s => s.Id == stopId);
+        if (stop is null)
+            return StopTransitionResult.Fail("Parada não encontrada.");
+
+        if (IsFinalStopStatus(stop.Status))
+            return StopTransitionResult.Fail($"Parada já está finalizada ({stop.Status}).");
+
+        stop.Status = RouteStopStatus.Ignorada;
+        if (!string.IsNullOrWhiteSpace(reason))
+            stop.FailureReason = reason.Trim();
+
+        // Reverte pedido para PRONTO_PARA_ENTREGA (consistente com MarkFailed e CancelRoute)
+        var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == stop.OrderId, ct);
+        if (order != null && order.Status == OrderStatus.SAIU_PARA_ENTREGA)
+            order.Status = OrderStatus.PRONTO_PARA_ENTREGA;
+
+        AdvanceNextStop(route);
+        var allDone = CheckRouteCompletion(route);
+
+        _logger.LogInformation("⏭️ Stop {StopId} ignorada na rota {RouteNumber}", stopId, route.RouteNumber);
+        return StopTransitionResult.Ok(stop, allDone);
+    }
+
+    /// <summary>
+    /// Versão síncrona mantida para compatibilidade — prefira MarkSkippedAsync.
+    /// Não reverte o pedido (sem acesso ao DbContext de forma sync).
     /// </summary>
     public StopTransitionResult MarkSkipped(Route route, Guid stopId, string? reason)
     {

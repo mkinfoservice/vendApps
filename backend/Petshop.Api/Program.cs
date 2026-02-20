@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Diagnostics;
 using Petshop.Api.Services;
 using Microsoft.OpenApi.Models;
 using Petshop.Api.Services.Geocoding;
@@ -155,6 +157,32 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 var app = builder.Build();
+
+// ===============================
+// Global Exception Handler (previne 500 silencioso)
+// ===============================
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+        if (exceptionFeature != null)
+        {
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(exceptionFeature.Error,
+                "🔥 UNHANDLED EXCEPTION | {Method} {Path} | {Message}",
+                context.Request.Method,
+                context.Request.Path,
+                exceptionFeature.Error.Message);
+        }
+
+        var response = new { error = "Erro interno do servidor. Tente novamente mais tarde." };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    });
+});
 
 // ===============================
 // Dev-only Middleware

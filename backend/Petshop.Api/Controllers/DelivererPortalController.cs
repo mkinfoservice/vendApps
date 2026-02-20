@@ -236,7 +236,7 @@ public class DelivererPortalController : ControllerBase
         var route = await GetRouteForDeliverer(routeId, ct);
         if (route is null) return NotFound("Rota não encontrada ou não pertence a este entregador.");
 
-        var result = _transitions.MarkSkipped(route, stopId, req?.Reason);
+        var result = await _transitions.MarkSkippedAsync(route, stopId, req?.Reason, ct);
         if (!result.Success)
             return BadRequest(result.Error);
 

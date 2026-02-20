@@ -1,71 +1,97 @@
 import { useState } from "react";
+import { X } from "lucide-react";
 
-const PRESET_REASONS = [
+const FAIL_REASONS = [
   "Cliente ausente",
-  "Endereco nao encontrado",
-  "Area de risco",
+  "Endereço não encontrado",
+  "Área de risco",
   "Recusou receber",
 ];
 
+const SKIP_REASONS = [
+  "Passarei depois",
+  "Cliente pediu para pular",
+  "Problema com acesso",
+  "Outro motivo",
+];
+
 type Props = {
-  title: string;
-  actionLabel: string;
-  actionColor: string;
+  type: "fail" | "skip";
   onConfirm: (reason: string) => void;
   onCancel: () => void;
   loading?: boolean;
 };
 
-export function ReasonModal({
-  title,
-  actionLabel,
-  actionColor,
-  onConfirm,
-  onCancel,
-  loading,
-}: Props) {
+export function ReasonModal({ type, onConfirm, onCancel, loading }: Props) {
   const [selected, setSelected] = useState<string | null>(null);
   const [custom, setCustom] = useState("");
+
+  const isFail = type === "fail";
+  const presets = isFail ? FAIL_REASONS : SKIP_REASONS;
+  const title = isFail ? "Motivo da falha" : "Motivo para pular";
+  const actionLabel = isFail ? "Confirmar Falha" : "Confirmar Pular";
+  const actionStyle = isFail
+    ? { backgroundColor: "#ef4444" }
+    : { backgroundColor: "#f59e0b" };
 
   const reason = selected === "__custom" ? custom.trim() : (selected ?? "");
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center">
-      <div className="w-full max-w-md bg-zinc-900 rounded-t-2xl sm:rounded-2xl p-5 space-y-4 animate-in slide-in-from-bottom">
-        <div className="text-lg font-bold">{title}</div>
+      <div
+        className="w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4"
+        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-base" style={{ color: "var(--text)" }}>{title}</span>
+          <button
+            onClick={onCancel}
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:opacity-70"
+            style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
+          >
+            <X size={16} />
+          </button>
+        </div>
 
+        {/* Options */}
         <div className="space-y-2">
-          {PRESET_REASONS.map((r) => (
+          {presets.map((r) => (
             <button
               key={r}
-              onClick={() => {
-                setSelected(r);
-                setCustom("");
+              onClick={() => { setSelected(r); setCustom(""); }}
+              className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all"
+              style={{
+                backgroundColor: selected === r ? "rgba(124,92,248,0.15)" : "var(--surface-2)",
+                border: `1px solid ${selected === r ? "#7c5cf8" : "var(--border)"}`,
+                color: selected === r ? "#9b7efa" : "var(--text)",
               }}
-              className={`w-full text-left px-4 py-3 rounded-xl text-sm border transition-colors ${
-                selected === r
-                  ? "border-white bg-zinc-800 text-white"
-                  : "border-zinc-700 bg-zinc-900 text-zinc-300"
-              }`}
             >
               {r}
             </button>
           ))}
 
+          {/* Custom option */}
           <button
             onClick={() => setSelected("__custom")}
-            className={`w-full text-left px-4 py-3 rounded-xl text-sm border transition-colors ${
-              selected === "__custom"
-                ? "border-white bg-zinc-800 text-white"
-                : "border-zinc-700 bg-zinc-900 text-zinc-300"
-            }`}
+            className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all"
+            style={{
+              backgroundColor: selected === "__custom" ? "rgba(124,92,248,0.15)" : "var(--surface-2)",
+              border: `1px solid ${selected === "__custom" ? "#7c5cf8" : "var(--border)"}`,
+              color: selected === "__custom" ? "#9b7efa" : "var(--text-muted)",
+            }}
           >
             Outro motivo...
           </button>
 
           {selected === "__custom" && (
             <textarea
-              className="w-full h-20 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white resize-none"
+              className="w-full h-20 rounded-xl border px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[#7c5cf8]/40"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+              }}
               placeholder="Descreva o motivo..."
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
@@ -74,18 +100,25 @@ export function ReasonModal({
           )}
         </div>
 
+        {/* Actions */}
         <div className="flex gap-3">
           <button
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 h-11 rounded-xl border border-zinc-700 text-zinc-300 text-sm font-semibold"
+            className="flex-1 h-11 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+            style={{
+              backgroundColor: "var(--surface-2)",
+              border: "1px solid var(--border)",
+              color: "var(--text-muted)",
+            }}
           >
             Cancelar
           </button>
           <button
             onClick={() => reason && onConfirm(reason)}
             disabled={!reason || loading}
-            className={`flex-1 h-11 rounded-xl text-white text-sm font-bold disabled:opacity-50 ${actionColor}`}
+            className="flex-1 h-11 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-50"
+            style={actionStyle}
           >
             {loading ? "..." : actionLabel}
           </button>

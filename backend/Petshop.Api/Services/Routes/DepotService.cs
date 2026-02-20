@@ -19,16 +19,16 @@ public class DepotService
     /// </summary>
     public (double lat, double lon) GetDepotCoordinates()
     {
-        var lat = _config.GetValue<double>("Geocoding:Depot:Latitude");
-        var lon = _config.GetValue<double>("Geocoding:Depot:Longitude");
+        var lat = _config.GetValue<double?>("Geocoding:Depot:Latitude");
+        var lon = _config.GetValue<double?>("Geocoding:Depot:Longitude");
 
-        if (lat == 0 || lon == 0)
+        if (lat is null || lon is null)
         {
-            _logger.LogWarning("📍 Depot não configurado corretamente em appsettings.json (Geocoding:Depot)");
+            _logger.LogWarning("📍 Depot não configurado em appsettings.json (Geocoding:Depot:Latitude / Longitude ausentes)");
             throw new InvalidOperationException("Depot não configurado. Verifique appsettings.json -> Geocoding:Depot");
         }
 
-        return (lat, lon);
+        return (lat.Value, lon.Value);
     }
 
     /// <summary>

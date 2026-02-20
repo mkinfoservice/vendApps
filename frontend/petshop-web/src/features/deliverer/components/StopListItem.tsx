@@ -6,73 +6,85 @@ type Props = {
   isNext: boolean;
 };
 
-const statusConfig: Record<
+const STATUS_CONFIG: Record<
   string,
-  { icon: typeof Check; color: string; bg: string; label: string }
+  { Icon: typeof Check; iconColor: string; iconBg: string; badge: string; label: string }
 > = {
   Entregue: {
-    icon: Check,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/20",
+    Icon: Check,
+    iconColor: "text-emerald-400",
+    iconBg: "bg-emerald-500/20",
+    badge: "bg-emerald-500/20 text-emerald-400",
     label: "Entregue",
   },
   Falhou: {
-    icon: X,
-    color: "text-red-400",
-    bg: "bg-red-500/20",
+    Icon: X,
+    iconColor: "text-red-400",
+    iconBg: "bg-red-500/20",
+    badge: "bg-red-500/20 text-red-400",
     label: "Falhou",
   },
   Ignorada: {
-    icon: SkipForward,
-    color: "text-zinc-400",
-    bg: "bg-zinc-500/20",
+    Icon: SkipForward,
+    iconColor: "text-zinc-400",
+    iconBg: "bg-zinc-700/40",
+    badge: "bg-zinc-700/40 text-zinc-400",
     label: "Pulada",
   },
   Proxima: {
-    icon: ArrowRight,
-    color: "text-amber-400",
-    bg: "bg-amber-500/20",
+    Icon: ArrowRight,
+    iconColor: "text-[#9b7efa]",
+    iconBg: "bg-[#7c5cf8]/20",
+    badge: "bg-[#7c5cf8]/20 text-[#9b7efa]",
     label: "Agora",
   },
   Pendente: {
-    icon: Clock,
-    color: "text-zinc-500",
-    bg: "bg-zinc-800",
+    Icon: Clock,
+    iconColor: "text-zinc-500",
+    iconBg: "bg-zinc-700/30",
+    badge: "bg-zinc-700/30 text-zinc-500",
     label: "Pendente",
   },
 };
 
 export function StopListItem({ stop, isNext }: Props) {
-  const cfg = statusConfig[stop.status] ?? statusConfig.Pendente;
-  const Icon = cfg.icon;
+  const cfg = STATUS_CONFIG[stop.status] ?? STATUS_CONFIG.Pendente;
+  const Icon = cfg.Icon;
 
   return (
     <div
-      className={`flex items-start gap-3 px-3 py-2.5 rounded-xl ${
-        isNext ? "bg-amber-500/10 border border-amber-500/30" : ""
-      }`}
+      className="flex items-start gap-3 px-4 py-3"
+      style={
+        isNext
+          ? { backgroundColor: "rgba(124,92,248,0.08)", borderLeft: "3px solid #7c5cf8" }
+          : undefined
+      }
     >
+      {/* Status icon */}
       <div
-        className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${cfg.bg}`}
+        className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${cfg.iconBg}`}
       >
-        <Icon size={14} className={cfg.color} />
+        <Icon size={13} className={cfg.iconColor} />
       </div>
 
+      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-500">#{stop.sequence}</span>
-          <span className="font-semibold text-sm truncate">
+          <span className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>
+            #{stop.sequence}
+          </span>
+          <span className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
             {stop.customerName}
           </span>
-          <span className={`text-xs font-medium ml-auto shrink-0 ${cfg.color}`}>
+          <span className={`text-[11px] font-semibold ml-auto shrink-0 px-2 py-0.5 rounded-full ${cfg.badge}`}>
             {cfg.label}
           </span>
         </div>
-        <div className="text-xs text-zinc-500 truncate">{stop.address}</div>
+        <div className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
+          {stop.address}
+        </div>
         {stop.failureReason && (
-          <div className="text-xs text-red-400 mt-0.5">
-            {stop.failureReason}
-          </div>
+          <div className="text-xs mt-0.5 text-red-400">{stop.failureReason}</div>
         )}
       </div>
     </div>

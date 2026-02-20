@@ -39,26 +39,26 @@ public class DeliveryManagementService
     )
     {
         if (orderIds is null || orderIds.Count == 0)
-            throw new Exception("Nenhum pedido informado.");
+            throw new InvalidOperationException("Nenhum pedido informado.");
 
         var deliverer = await _db.Deliverers.FirstOrDefaultAsync(d => d.Id == delivererId, ct);
-        if (deliverer is null) throw new Exception("Entregador não encontrado.");
-        if (!deliverer.IsActive) throw new Exception("Entregador está inativo.");
+        if (deliverer is null) throw new InvalidOperationException("Entregador não encontrado.");
+        if (!deliverer.IsActive) throw new InvalidOperationException("Entregador está inativo.");
 
         var orders = await _db.Orders
             .Where(o => orderIds.Contains(o.Id))
             .ToListAsync(ct);
 
         if (orders.Count == 0)
-            throw new Exception("Nenhum pedido válido encontrado.");
+            throw new InvalidOperationException("Nenhum pedido válido encontrado.");
 
         if (orders.Count != orderIds.Distinct().Count())
-            throw new Exception("Um ou mais pedidos não foram encontrados no banco.");
+            throw new InvalidOperationException("Um ou mais pedidos não foram encontrados no banco.");
 
         foreach (var o in orders)
         {
             if (o.Status != OrderStatus.PRONTO_PARA_ENTREGA)
-                throw new Exception($"Pedido {o.PublicId} não está pronto para entrega.");
+                throw new InvalidOperationException($"Pedido {o.PublicId} não está pronto para entrega.");
         }
 
         // ✅ VALIDAÇÕES DE ROTEAMENTO BIDIRECIONAL
@@ -92,7 +92,7 @@ public class DeliveryManagementService
         }
 
         if (validOrders.Count == 0)
-            throw new Exception("Nenhum pedido válido para criar rota após validações.");
+            throw new InvalidOperationException("Nenhum pedido válido para criar rota após validações.");
 
         // Filtrar por RouteSide (A ou B) se fornecido
         if (!string.IsNullOrWhiteSpace(routeSide))
@@ -100,7 +100,7 @@ public class DeliveryManagementService
             var (sidedOrders, sideWarnings) = _routeSideValidator.FilterByRouteSide(validOrders, routeSide);
 
             if (sidedOrders.Count == 0)
-                throw new Exception($"Nenhum pedido classificado como Rota {routeSide} encontrado.");
+                throw new InvalidOperationException($"Nenhum pedido classificado como Rota {routeSide} encontrado.");
 
             validOrders = sidedOrders;
 
@@ -130,10 +130,14 @@ public class DeliveryManagementService
             optimized = await _optimizer.OptimizeWithMatrixAsync(validOrders, ct);
         }
 
+        // Usa microssegundos + random para minimizar colisões mesmo com múltiplas rotas/dia
+        var now = DateTime.UtcNow;
+        var routeNumber = $"RT-{now:yyyyMMdd}-{now:HHmmss}-{Random.Shared.Next(10, 99)}";
+
         var route = new Petshop.Api.Entities.Delivery.Route
         {
             Id = Guid.NewGuid(),
-            RouteNumber = $"RT-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(100, 999)}",
+            RouteNumber = routeNumber,
             DelivererId = deliverer.Id,
             Status = RouteStatus.Criada,
             CreatedAtUtc = DateTime.UtcNow

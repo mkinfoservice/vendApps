@@ -2,11 +2,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import Checkout from "./pages/Checkout";
 
+import Dashboard from "./pages/admin/Dashboard";
 import OrdersList from "./pages/admin/OrdersList";
 import OrderDetail from "./pages/admin/OrderDetail";
 
 import RoutesList from "./pages/admin/RoutesList";
 import RouteDetail from "./pages/admin/RouteDetail";
+import Financeiro from "./pages/admin/Financeiro";
 
 import AdminLogin from "./pages/admin/Login";
 import { AdminGuard } from "@/features/admin/auth/Guard";
@@ -28,6 +30,16 @@ export function AppRoutes() {
 
         {/* Admin Login */}
         <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* Admin - Dashboard */}
+        <Route
+          path="/admin"
+          element={
+            <AdminGuard>
+              <Dashboard />
+            </AdminGuard>
+          }
+        />
 
         {/* Admin - Pedidos */}
         <Route
@@ -59,6 +71,15 @@ export function AppRoutes() {
         />
 
         <Route
+          path="/admin/routes/planner"
+          element={
+            <AdminGuard>
+              <RoutePlanner />
+            </AdminGuard>
+          }
+        />
+
+        <Route
           path="/admin/routes/:routeId"
           element={
             <AdminGuard>
@@ -66,14 +87,16 @@ export function AppRoutes() {
             </AdminGuard>
           }
         />
+
+        {/* Admin - Financeiro */}
         <Route
-  path="/admin/routes/planner"
-  element={
-    <AdminGuard>
-      <RoutePlanner />
-    </AdminGuard>
-  }
-/>
+          path="/admin/financeiro"
+          element={
+            <AdminGuard>
+              <Financeiro />
+            </AdminGuard>
+          }
+        />
 
         {/* Entregador */}
         <Route path="/deliverer/login" element={<DelivererLogin />} />

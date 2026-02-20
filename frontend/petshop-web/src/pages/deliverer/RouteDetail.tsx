@@ -93,43 +93,51 @@ export default function DelivererRouteDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-dvh bg-zinc-950 text-zinc-50 flex items-center justify-center">
-        Carregando...
+      <div className="min-h-dvh flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
+        <div className="text-sm" style={{ color: "var(--text-muted)" }}>Carregando...</div>
       </div>
     );
   }
 
   if (!route) {
     return (
-      <div className="min-h-dvh bg-zinc-950 text-zinc-50 flex items-center justify-center">
-        Rota nao encontrada
+      <div className="min-h-dvh flex items-center justify-center" style={{ backgroundColor: "var(--bg)" }}>
+        <div className="text-sm" style={{ color: "var(--text-muted)" }}>Rota não encontrada.</div>
       </div>
     );
   }
 
-  const isNotStarted =
-    route.status === "Criada" || route.status === "Atribuida";
+  const isNotStarted = route.status === "Criada" || route.status === "Atribuida";
   const isCompleted = route.status === "Concluida";
+  const progress = route.progress.total > 0
+    ? Math.round((route.progress.done / route.progress.total) * 100)
+    : 0;
 
   return (
-    <div className="min-h-dvh bg-zinc-950 text-zinc-50 pb-8">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 px-4 py-3">
+    <div className="min-h-dvh pb-8" style={{ backgroundColor: "var(--bg)" }}>
+      {/* Sticky header */}
+      <div
+        className="sticky top-0 z-10 border-b px-4 py-3 backdrop-blur-sm"
+        style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/deliverer")}
-            className="p-1 rounded-lg hover:bg-zinc-800"
+            className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:opacity-80"
+            style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
           </button>
           <div className="flex-1 min-w-0">
-            <div className="font-bold truncate">{route.routeNumber}</div>
-            <div className="text-xs text-zinc-400">
-              {route.progress.done}/{route.progress.total} entregas
+            <div className="font-bold text-sm truncate" style={{ color: "var(--text)" }}>
+              {route.routeNumber}
+            </div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {route.progress.done}/{route.progress.total} entregas · {progress}%
             </div>
           </div>
           <span
-            className={`px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${
               route.status === "EmAndamento"
                 ? "bg-blue-500/20 text-blue-400"
                 : route.status === "Concluida"
@@ -140,53 +148,49 @@ export default function DelivererRouteDetail() {
             {route.status === "EmAndamento"
               ? "Em Andamento"
               : route.status === "Concluida"
-              ? "Concluida"
+              ? "Concluída"
               : "Aguardando"}
           </span>
         </div>
-
         {/* Progress bar */}
-        <div className="mt-2 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+        <div className="mt-2.5 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--surface-2)" }}>
           <div
-            className="h-full bg-emerald-500 rounded-full transition-all"
+            className="h-full rounded-full transition-all"
             style={{
-              width: `${
-                route.progress.total > 0
-                  ? (route.progress.done / route.progress.total) * 100
-                  : 0
-              }%`,
+              width: `${progress}%`,
+              backgroundColor: progress === 100 ? "#10b981" : "#7c5cf8",
             }}
           />
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-4 max-w-lg mx-auto space-y-4">
+        {/* Error */}
         {error && (
-          <div className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+          <div className="rounded-xl border border-red-800 bg-red-950/30 px-4 py-2.5 text-sm text-red-300">
             {error}
           </div>
         )}
 
-        {/* Iniciar rota */}
+        {/* Start route */}
         {isNotStarted && (
           <button
             onClick={handleStart}
             disabled={loading}
-            className="w-full h-14 rounded-2xl bg-blue-600 text-white font-bold text-base flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full h-14 rounded-2xl font-bold text-base text-white flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%)" }}
           >
             <Play size={20} />
             Iniciar Rota
           </button>
         )}
 
-        {/* Rota concluida */}
+        {/* Completed */}
         {isCompleted && (
-          <div className="text-center py-8 space-y-3">
+          <div className="text-center py-10 space-y-3">
             <PartyPopper size={48} className="mx-auto text-emerald-400" />
-            <div className="text-xl font-bold text-emerald-400">
-              Rota Concluida!
-            </div>
-            <div className="text-sm text-zinc-400">
+            <div className="text-xl font-bold text-emerald-400">Rota Concluída!</div>
+            <div className="text-sm" style={{ color: "var(--text-muted)" }}>
               Todas as entregas foram processadas.
             </div>
           </div>
@@ -204,12 +208,18 @@ export default function DelivererRouteDetail() {
           />
         )}
 
-        {/* Lista de paradas */}
-        <div>
-          <div className="text-sm font-semibold text-zinc-400 mb-2">
+        {/* Stop list */}
+        <div
+          className="rounded-2xl border overflow-hidden"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="px-4 py-3 text-xs font-bold uppercase tracking-widest border-b"
+            style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
+          >
             Paradas ({route.progress.done}/{route.progress.total})
           </div>
-          <div className="space-y-1">
+          <div className="divide-y" style={{ borderColor: "var(--border)" }}>
             {route.stops.map((stop) => (
               <StopListItem
                 key={stop.stopId}
@@ -224,9 +234,7 @@ export default function DelivererRouteDetail() {
       {/* Modals */}
       {modal === "fail" && (
         <ReasonModal
-          title="Motivo da falha"
-          actionLabel="Confirmar Falha"
-          actionColor="bg-red-600"
+          type="fail"
           onConfirm={handleFail}
           onCancel={() => setModal(null)}
           loading={loading}
@@ -234,9 +242,7 @@ export default function DelivererRouteDetail() {
       )}
       {modal === "skip" && (
         <ReasonModal
-          title="Motivo para pular"
-          actionLabel="Confirmar Pular"
-          actionColor="bg-amber-600"
+          type="skip"
           onConfirm={handleSkip}
           onCancel={() => setModal(null)}
           loading={loading}

@@ -666,7 +666,7 @@ public class OrdersController : ControllerBase
     [Consumes("application/json")]
     [ProducesResponseType(typeof(CreateOrderResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CreateOrderResponse>> Create([FromBody] CreateOrderRequest req)
+    public async Task<ActionResult<CreateOrderResponse>> Create([FromBody] CreateOrderRequest req, CancellationToken ct = default)
     {
         if (req.Items is null || req.Items.Count == 0)
             return BadRequest("Carrinho vazio.");
@@ -677,7 +677,7 @@ public class OrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Cep))
             return BadRequest("CEP do endereço é obrigatório.");
         if (string.IsNullOrWhiteSpace(req.Address))
-            return BadRequest("Endereço do cliente incompletos.");
+            return BadRequest("Endereço do cliente incompleto.");
         if (string.IsNullOrWhiteSpace(req.PaymentMethodStr))
             return BadRequest("Método de pagamento é obrigatório.");
 
@@ -699,7 +699,7 @@ public class OrdersController : ControllerBase
         {
             if (item.Qty <= 0) return BadRequest("Quantidade inválida.");
 
-            var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId);
+            var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, ct);
             if (product is null) return BadRequest($"Produto não encontrado: {item.ProductId}");
 
             order.Items.Add(new OrderItem
@@ -739,7 +739,7 @@ public class OrdersController : ControllerBase
         }
 
         _db.Orders.Add(order);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return Ok(new CreateOrderResponse
         {
