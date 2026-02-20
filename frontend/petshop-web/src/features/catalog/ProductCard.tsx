@@ -1,6 +1,4 @@
 import { Plus, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/features/cart/cart";
 
 type Product = {
@@ -18,35 +16,35 @@ function formatBRL(cents: number) {
 export function ProductCard({ p }: { p: Product }) {
   const cart = useCart();
   const item = cart.items.find((x) => x.product.id === p.id);
-
-  // fallback seguro
   const img = p.imageUrl || "https://picsum.photos/seed/pet/800/600";
 
   return (
-    <div className="rounded-3xl border border-zinc-800 bg-zinc-950/40 overflow-hidden shadow-sm">
-      {/* Imagem (altura fixa) */}
-      <div className="relative h-[180px] w-full bg-zinc-900">
-        <img
-          src={img}
-          alt={p.name}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-        {/* overlay suave para legibilidade */}
+    <div
+      className="rounded-3xl border overflow-hidden shadow-sm"
+      style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
+    >
+      {/* Imagem */}
+      <div className="relative h-[180px] w-full" style={{ backgroundColor: "var(--surface-2)" }}>
+        <img src={img} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
 
         {/* categoria */}
         <div className="absolute left-3 top-3">
-          <Badge className="bg-black/60 text-white border-0">
-            <Tag className="h-3.5 w-3.5 mr-1" />
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white bg-black/60 border border-white/10">
+            <Tag className="h-3.5 w-3.5" />
             {p.category?.name ?? "Categoria"}
-          </Badge>
+          </span>
         </div>
 
         {/* badge carrinho */}
         {item?.qty ? (
           <div className="absolute right-3 top-3">
-            <Badge className="bg-white text-black border-0">No carrinho: {item.qty}</Badge>
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold text-white"
+              style={{ backgroundColor: "#7c5cf8" }}
+            >
+              No carrinho: {item.qty}
+            </span>
           </div>
         ) : null}
       </div>
@@ -54,20 +52,21 @@ export function ProductCard({ p }: { p: Product }) {
       {/* Conteúdo */}
       <div className="p-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-black text-zinc-50 line-clamp-2">{p.name}</div>
-          <div className="mt-2 text-lg font-black text-zinc-50 tabular-nums">
+          <div className="text-sm font-black text-[var(--text)] line-clamp-2">{p.name}</div>
+          <div className="mt-2 text-lg font-black text-[var(--text)] tabular-nums">
             {formatBRL(p.priceCents)}
           </div>
         </div>
 
-        <Button
+        <button
           type="button"
-          className="rounded-2xl h-11 px-4 font-black shrink-0"
+          className="h-11 px-4 rounded-2xl font-black text-sm text-white flex items-center gap-1.5 shrink-0 transition"
+          style={{ backgroundColor: "#7c5cf8" }}
           onClick={() => cart.add(p as any)}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4" />
           Adicionar
-        </Button>
+        </button>
       </div>
     </div>
   );

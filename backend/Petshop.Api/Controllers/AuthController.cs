@@ -32,11 +32,14 @@ public class AuthController : ControllerBase
         if (req.Username != user || req.Password != pass)
             return Unauthorized("Credenciais inválidas.");
 
+        var companyId = jwt["CompanyId"] ?? Petshop.Api.Data.DbSeeder.DevCompanyId.ToString();
+
         var token = GenerateToken(new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, req.Username),
             new(ClaimTypes.Name, req.Username),
             new(ClaimTypes.Role, "admin"),
+            new("companyId", companyId),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         });
 

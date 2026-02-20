@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -9,6 +11,8 @@ using Microsoft.AspNetCore.Diagnostics;
 using Petshop.Api.Services;
 using Microsoft.OpenApi.Models;
 using Petshop.Api.Services.Geocoding;
+using Petshop.Api.Services.Images;
+using Petshop.Api.Services.Sync;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,32 +93,52 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // ===============================
-// Services
+// EF Core + PostgreSQL
+// ===============================
+var cs = builder.Configuration.GetConnectionString("Default");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(cs);
+});
+
+// ===============================
+// Hangfire
+// ===============================
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(cs)));
+
+builder.Services.AddHangfireServer();
+
+// ===============================
+// Services — Delivery
 // ===============================
 builder.Services.AddScoped<DeliveryManagementService>();
 builder.Services.AddScoped<RouteOptimizationService>();
 builder.Services.AddScoped<RouteStopTransitionService>();
 
-// ✅ Serviços de Roteamento Bidirecional
 builder.Services.AddScoped<Petshop.Api.Services.Routes.DepotService>();
 builder.Services.AddScoped<Petshop.Api.Services.Routes.GeofencingService>();
 builder.Services.AddScoped<Petshop.Api.Services.Routes.NeighborhoodClassificationService>();
 builder.Services.AddScoped<Petshop.Api.Services.Routes.RouteSideValidator>();
 builder.Services.AddScoped<Petshop.Api.Services.Routes.RoutePreviewService>();
 
-// ✅ ORS Matrix API para otimização de rotas com tempo real de trajeto
+// ===============================
+// Services — Geocoding
+// ===============================
 builder.Services.AddHttpClient<OrsMatrixService>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(15); // Matrix API pode demorar mais
+    client.Timeout = TimeSpan.FromSeconds(15);
 });
 
-// ✅ ViaCEP - Enriquecimento de endereço via CEP (gratuito, 100% BR)
 builder.Services.AddHttpClient<ViaCepService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
-// ✅ Configuração de Geocoding com Fallback Automático
 builder.Services.AddHttpClient<OrsGeocodingService>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
@@ -125,11 +149,22 @@ builder.Services.AddHttpClient<NominatimGeocodingService>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 
-// ✅ SISTEMA DE FALLBACK AUTOMÁTICO:
-// 1. Tenta ORS primeiro (mais preciso para RJ)
-// 2. Se ORS falhar, tenta Nominatim automaticamente
-// 3. Retorna null apenas se AMBOS falharem
 builder.Services.AddScoped<IGeocodingService, FallbackGeocodingService>();
+
+// ===============================
+// Services — Produto / Sync
+// ===============================
+builder.Services.AddHttpClient(); // IHttpClientFactory para conectores REST
+builder.Services.AddScoped<ConnectorFactory>();
+builder.Services.AddScoped<ProductHashService>();
+builder.Services.AddScoped<SyncMergePolicyService>();
+builder.Services.AddScoped<ProductSyncService>();
+builder.Services.AddScoped<SyncSchedulerJob>();
+
+// ===============================
+// Services — Imagens
+// ===============================
+builder.Services.AddScoped<IImageStorageProvider, LocalImageStorageProvider>();
 
 // ===============================
 // CORS
@@ -147,19 +182,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ===============================
-// EF Core + PostgreSQL
-// ===============================
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    var cs = builder.Configuration.GetConnectionString("Default");
-    options.UseNpgsql(cs);
-});
-
 var app = builder.Build();
 
 // ===============================
-// Global Exception Handler (previne 500 silencioso)
+// Global Exception Handler
 // ===============================
 app.UseExceptionHandler(errorApp =>
 {
@@ -173,7 +199,7 @@ app.UseExceptionHandler(errorApp =>
         {
             var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
             logger.LogError(exceptionFeature.Error,
-                "🔥 UNHANDLED EXCEPTION | {Method} {Path} | {Message}",
+                "UNHANDLED EXCEPTION | {Method} {Path} | {Message}",
                 context.Request.Method,
                 context.Request.Path,
                 exceptionFeature.Error.Message);
@@ -195,6 +221,15 @@ if (app.Environment.IsDevelopment())
 
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Hangfire Dashboard (dev: sem auth adicional)
+    app.UseHangfireDashboard("/admin/hangfire");
+
+    // Registrar job de sync agendado (verifica a cada minuto)
+    RecurringJob.AddOrUpdate<SyncSchedulerJob>(
+        "sync-scheduler",
+        j => j.RunScheduledSyncsAsync(CancellationToken.None),
+        "* * * * *");
 }
 
 // ===============================
@@ -202,6 +237,7 @@ if (app.Environment.IsDevelopment())
 // ===============================
 app.UseCors("Frontend");
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Serve wwwroot/product-images/
 
 app.UseAuthentication();
 app.UseAuthorization();

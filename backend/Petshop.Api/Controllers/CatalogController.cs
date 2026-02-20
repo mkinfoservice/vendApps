@@ -5,7 +5,7 @@ using Petshop.Api.Data;
 namespace Petshop.Api.Controllers;
 
 [ApiController]
-[Route("catalog")]
+[Route("catalog/{companySlug}")]
 public class CatalogController : ControllerBase
 {
     private readonly AppDbContext _db;
@@ -15,13 +15,19 @@ public class CatalogController : ControllerBase
         _db = db;
     }
 
-    /// <summary>
-    /// Lista categorias (ordenadas por nome)
-    /// </summary>
+    /// <summary>Lista categorias da empresa identificada pelo slug. Ex: GET /catalog/petshop-demo/categories</summary>
     [HttpGet("categories")]
-    public async Task<IActionResult> GetCategories()
+    public async Task<IActionResult> GetCategories([FromRoute] string companySlug)
     {
+        var company = await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Slug == companySlug && c.IsActive);
+
+        if (company == null) return NotFound("Empresa não encontrada.");
+
         var categories = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.CompanyId == company.Id)
             .OrderBy(c => c.Name)
             .Select(c => new { c.Id, c.Name, c.Slug })
             .ToListAsync();
@@ -30,16 +36,24 @@ public class CatalogController : ControllerBase
     }
 
     /// <summary>
-    /// Lista produtos com filtros opcionais:
-    /// - categorySlug
-    /// - search
+    /// Lista produtos ativos da empresa identificada pelo slug.
+    /// Ex: GET /catalog/petshop-demo/products?search=racao&categorySlug=racao
     /// </summary>
     [HttpGet("products")]
-    public async Task<IActionResult> GetProducts([FromQuery] string? categorySlug, [FromQuery] string? search)
+    public async Task<IActionResult> GetProducts(
+        [FromRoute] string companySlug,
+        [FromQuery] string? categorySlug,
+        [FromQuery] string? search)
     {
+        var company = await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Slug == companySlug && c.IsActive);
+
+        if (company == null) return NotFound("Empresa não encontrada.");
+
         var query = _db.Products
             .AsNoTracking()
-            .Where(p => p.IsActive)
+            .Where(p => p.CompanyId == company.Id && p.IsActive)
             .Include(p => p.Category)
             .AsQueryable();
 

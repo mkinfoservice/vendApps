@@ -5,7 +5,7 @@ import { CartSheet } from "@/features/cart/CartSheet";
 import { CategoryTile } from "@/features/catalog/CategoryTile";
 import { ProductRow } from "@/features/catalog/ProductRow";
 import { TopBar } from "@/components/TopBar";
-import { HeroMarket } from "./components/HeroMarket"; 
+import { HeroMarket } from "./components/HeroMarket";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -30,83 +30,63 @@ export default function App() {
   }, [categorySlug, categories]);
 
   return (
-    <>
-      {/* =========================
-          [1] PAGE BACKGROUND (tema geral + altura mínima)
-      ========================== */}
+    <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
       <div className="mx-auto w-full max-w-[1200px] px-0 pb-24">
-
-        {/* =========================
-            [2] APP SHELL (centraliza + largura máxima no desktop)
-            - max-w-6xl evita esticar demais no monitor grande
-            - pb-28 reserva espaço para a bottom bar no mobile
-        ========================== */}
         <div className="mx-auto w-full max-w-6xl px-4 pb-24">
-          {/* =========================
-              [3] RESPONSIVE GRID
-              - mobile: 1 coluna
-              - desktop: 2 colunas (catálogo + sidebar carrinho)
-          ========================== */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
-            {/* =========================
-                [4] LEFT COLUMN (CATÁLOGO)
-            ========================== */}
-            <div>
-              {/* =========================
-                  [4.1] TOP HEADER (título + categoria ativa + resumo carrinho)
-              ========================== */}
-              <CartSheet>
-  <div>
-    <TopBar
-      activeCategoryName={activeCategoryName}
-      subtotalLabel={formatBRL(cart.subtotalCents)}
-      totalItems={cart.totalItems}
-      onOpenCart={() => {}}
-    />
-  </div>
-</CartSheet>
 
-              {/* =========================
-                  [4.2] SEARCH BAR (campo + botão limpar)
-              ========================== */}
+            {/* Left column: catálogo */}
+            <div>
+              {/* TopBar com carrinho */}
+              <CartSheet>
+                <div>
+                  <TopBar
+                    activeCategoryName={activeCategoryName}
+                    subtotalLabel={formatBRL(cart.subtotalCents)}
+                    totalItems={cart.totalItems}
+                    onOpenCart={() => {}}
+                  />
+                </div>
+              </CartSheet>
+
+              {/* Search bar */}
               <div className="mt-3 flex gap-2">
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar produto..."
-                  className="flex-1 h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-white/40 focus:border-white/25"
+                  className="flex-1 h-11 rounded-xl border px-3 text-sm outline-none transition"
+                  style={{
+                    borderColor: "var(--border)",
+                    backgroundColor: "var(--surface)",
+                    color: "var(--text)",
+                  }}
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setCategorySlug("");
-                  }}
-                  className="h-11 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-bold hover:bg-white/10"
+                  onClick={() => { setSearch(""); setCategorySlug(""); }}
+                  className="h-11 rounded-xl border px-4 text-sm font-bold transition hover:bg-[var(--surface-2)]"
+                  style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
                 >
                   Limpar
                 </button>
               </div>
 
-              {/* =========================
-                  [4.3] HERO BANNER (banner principal)
-              ========================== */}
+              {/* Hero banner */}
               <HeroMarket
-              onPrimaryClick={() => {
-                const el = document.getElementById("products");
-                el?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}>
-              </HeroMarket>
+                onPrimaryClick={() => {
+                  const el = document.getElementById("products");
+                  el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
 
-              {/* =========================
-                  [4.4] CATEGORY SECTION (tiles horizontal)
-              ========================== */}
+              {/* Categorias */}
               <div className="mt-5">
                 <div className="flex items-end justify-between">
-                  <div className="text-white font-black text-lg">Categorias</div>
+                  <div className="font-black text-lg text-[var(--text)]">Categorias</div>
                   <button
                     type="button"
-                    className="text-xs text-white/70 hover:text-white"
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] transition"
                     onClick={() => setCategorySlug("")}
                   >
                     Ver todas
@@ -119,7 +99,6 @@ export default function App() {
                     active={!categorySlug}
                     onClick={() => setCategorySlug("")}
                   />
-
                   {categories.map((c) => (
                     <CategoryTile
                       key={c.id}
@@ -131,58 +110,46 @@ export default function App() {
                 </div>
               </div>
 
-              {/* =========================
-                  [4.5] PRODUCTS SECTION (responsivo)
-                  - mobile: 1 coluna
-                  - tablet: 2 colunas
-                  - desktop com sidebar: 1 coluna novamente (não aperta)
-              ========================== */}
-              <div className="mt-6" id ="products">
-                <div className="text-white font-black text-lg">Produtos</div>
-
+              {/* Produtos */}
+              <div className="mt-6" id="products">
+                <div className="font-black text-lg text-[var(--text)]">Produtos</div>
                 {isLoading ? (
-                  <p className="text-white/70 mt-3">Carregando...</p>
+                  <p className="text-[var(--text-muted)] mt-3">Carregando...</p>
                 ) : (
                   <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
                     {products.map((p) => (
                       <ProductRow key={p.id} p={p as any} />
                     ))}
-
                     {products.length === 0 ? (
-                      <p className="text-white/70">Nenhum produto encontrado.</p>
+                      <p className="text-[var(--text-muted)]">Nenhum produto encontrado.</p>
                     ) : null}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* =========================
-                [5] RIGHT COLUMN (DESKTOP ONLY) — RESUMO / CARRINHO
-                - aparece apenas em telas grandes (lg)
-                - sticky para ficar sempre visível no scroll
-            ========================== */}
-            
           </div>
         </div>
 
-        {/* =========================
-            [6] MOBILE BOTTOM BAR (somente mobile/tablet)
-            - fixo no rodapé
-            - subtotal + botão "Ver carrinho"
-        ========================== */}
-        <div className="lg:hidden fixed left-0 right-0 bottom-0 border-t border-white/10 bg-white/80 text-black backdrop-blur">
+        {/* Mobile bottom bar */}
+        <div
+          className="lg:hidden fixed left-0 right-0 bottom-0 border-t backdrop-blur-xl"
+          style={{
+            borderColor: "var(--border)",
+            backgroundColor: "rgba(13,17,28,0.92)",
+          }}
+        >
           <div className="mx-auto w-full max-w-6xl px-4 py-3 flex items-center gap-3">
-            {/* [6.1] Totais */}
             <div className="flex-1">
-              <div className="font-black tabular-nums">{formatBRL(cart.subtotalCents)}</div>
-              <div className="text-xs opacity-70">{cart.totalItems} item(ns)</div>
+              <div className="font-black tabular-nums text-[var(--text)]">{formatBRL(cart.subtotalCents)}</div>
+              <div className="text-xs text-[var(--text-muted)]">{cart.totalItems} item(ns)</div>
             </div>
 
-            {/* [6.2] CTA carrinho */}
             <CartSheet>
               <button
                 type="button"
-                className="h-12 px-5 rounded-2xl bg-black text-white font-extrabold"
+                className="h-12 px-5 rounded-2xl font-extrabold text-white transition"
+                style={{ backgroundColor: "#7c5cf8" }}
               >
                 Ver carrinho ({cart.totalItems})
               </button>
@@ -190,6 +157,6 @@ export default function App() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

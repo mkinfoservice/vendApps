@@ -19,7 +19,7 @@ const ALL_STATUSES: OrderStatus[] = [
 export function OrderStatusSelect({ value, onChange, disabled = false }: Props) {
   return (
     <select
-      className="h-10 rounded-xl border border-zinc-800 bg-zinc-950 px-3 text-sm text-zinc-100"
+      className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm text-[var(--text)]"
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as OrderStatus)}
@@ -27,10 +27,8 @@ export function OrderStatusSelect({ value, onChange, disabled = false }: Props) 
       {ALL_STATUSES.map((s) => {
         const isCurrent = s === value;
 
-        // regra: se já está CANCELADO, não pode mudar
         if (value === "CANCELADO" && !isCurrent) return null;
 
-        // regra: permitir cancelar a qualquer momento
         if (s === "CANCELADO") {
           return (
             <option key={s} value={s}>
@@ -39,7 +37,6 @@ export function OrderStatusSelect({ value, onChange, disabled = false }: Props) 
           );
         }
 
-        // regra: não pular etapas
         const isAllowed = canTransition(value, s) || isCurrent;
 
         return (
