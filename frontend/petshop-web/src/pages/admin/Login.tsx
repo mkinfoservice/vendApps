@@ -64,7 +64,7 @@ export default function AdminLogin() {
               className="text-xl font-bold tracking-tight"
               style={{ color: "var(--text)" }}
             >
-              Petshop Admin
+              vendApps Admin
             </h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
               Painel Administrativo

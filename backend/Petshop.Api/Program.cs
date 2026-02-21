@@ -35,7 +35,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Petshop API",
+        Title = "vendApps API",
         Version = "v1"
     });
 

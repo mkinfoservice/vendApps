@@ -29,7 +29,7 @@ export function HeroMarket({
         <img
           src="/hero.png"
           className="absolute inset-0 h-full w-full object-cover lg:object-right opacity-90"
-          alt="Petshop"
+          alt="vendApps"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-black/55" />

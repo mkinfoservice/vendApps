@@ -139,7 +139,7 @@ export default function Checkout() {
   function buildWhatsText(created: CreateOrderResponse, snap: ReviewSnapshot) {
     const lines: string[] = [];
     lines.push(`*Pedido:* ${created.orderNumber}`, "");
-    lines.push("*Novo Pedido - Petshop*", "");
+    lines.push("*Novo Pedido - vendApps*", "");
     lines.push(`*Cliente:* ${snap.name}`, `*Telefone:* ${snap.phone}`, `*CEP:* ${snap.cep}`, `*Endereço:* ${snap.fullAddress}`, "");
     lines.push("*Itens:*");
     snap.items.forEach((i) => lines.push(`- ${i.qty}x ${i.name} — ${formatBRL(i.totalCents)}`));

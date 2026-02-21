@@ -60,10 +60,10 @@ export function AdminNav() {
         {/* Brand */}
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="w-7 h-7 rounded-lg bg-brand flex items-center justify-center text-white text-xs font-black select-none">
-            P
+            V
           </div>
           <span className="text-sm font-bold hidden md:block" style={{ color: "var(--text)" }}>
-            Petshop Admin
+            vendApps Admin
           </span>
         </div>
 
