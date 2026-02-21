@@ -9,6 +9,8 @@ import OrderDetail from "./pages/admin/OrderDetail";
 import RoutesList from "./pages/admin/RoutesList";
 import RouteDetail from "./pages/admin/RouteDetail";
 import Financeiro from "./pages/admin/Financeiro";
+import ProductsList from "./pages/admin/ProductsList";
+import ProductForm from "./pages/admin/ProductForm";
 
 import AdminLogin from "./pages/admin/Login";
 import { AdminGuard } from "@/features/admin/auth/Guard";
@@ -94,6 +96,24 @@ export function AppRoutes() {
           element={
             <AdminGuard>
               <Financeiro />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Produtos */}
+        <Route
+          path="/admin/products"
+          element={
+            <AdminGuard>
+              <ProductsList />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/products/:id"
+          element={
+            <AdminGuard>
+              <ProductForm />
             </AdminGuard>
           }
         />

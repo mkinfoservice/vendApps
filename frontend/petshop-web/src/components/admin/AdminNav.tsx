@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, LayoutDashboard, ShoppingBag, Route, DollarSign } from "lucide-react";
+import { LogOut, LayoutDashboard, ShoppingBag, Route, DollarSign, Package } from "lucide-react";
 import { clearToken } from "@/features/admin/auth/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const NAV_ITEMS = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/admin/orders", label: "Pedidos", icon: ShoppingBag, exact: false },
+  { to: "/admin/products", label: "Produtos", icon: Package, exact: false },
   { to: "/admin/routes", label: "Rotas", icon: Route, exact: false },
   { to: "/admin/financeiro", label: "Financeiro", icon: DollarSign, exact: false },
 ];

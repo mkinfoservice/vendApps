@@ -127,3 +127,7 @@ pnpm-lock.yaml
 # Mac / Linux misc
 ############################
 *.sw?
+
+# Imagens de produtos (upload local)
+backend/Petshop.Api/wwwroot/product-images/*
+!backend/Petshop.Api/wwwroot/product-images/.gitkeep
