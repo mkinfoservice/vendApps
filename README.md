@@ -1,175 +1,283 @@
-# vendApps
+# vendApps — Plataforma de Vendas & Delivery
 
-Plataforma fullstack para catálogo, checkout, pedidos, roteirização de entregas e operação administrativa.
+Plataforma fullstack multi-empresa para catálogo online, checkout, gestão de pedidos, rotas de entrega e painel administrativo completo.
 
-## Status Atual (21/02/2026)
-
-- Backend e frontend integrados.
-- Catálogo público com busca e filtro por categoria.
-- Checkout com criação de pedido e envio para WhatsApp.
-- Painel admin com autenticação JWT (`role=admin`).
-- Portal do entregador com autenticação JWT (`role=deliverer`).
-- Planejamento de rotas com preview A/B, geocoding com fallback e links de navegação.
-- Módulo de produtos ativo (CRUD, imagens, histórico de preço e changelog).
-
-## Em Andamento
-
-- Consolidação do módulo de sincronização de produtos no frontend admin.
-- Fluxos mobile dedicados para operação de entregador (além da interface web).
+---
 
 ## Stack
 
-- Backend: ASP.NET Core (.NET 8), EF Core, PostgreSQL, Hangfire, JWT.
-- Frontend: React 19, Vite, TypeScript, React Query, Tailwind CSS.
-- Infra local: Docker Compose (PostgreSQL + Redis).
+| Camada | Tecnologia |
+|---|---|
+| Backend | ASP.NET Core .NET 8 + EF Core + PostgreSQL |
+| Frontend | React 18 + Vite + TypeScript + Tailwind CSS |
+| Auth | JWT (roles: `admin`, `deliverer`) |
+| Jobs | Hangfire + PostgreSQL storage + Cronos |
+| Sync | CSV / REST API / DB (via conector plugável) |
+| Imagens | LocalImageStorageProvider (interface pronta para S3/R2) |
 
-## Estrutura
+---
 
-```text
-.
-|- backend/
-|  |- Petshop.Api/
-|  |- tests/
-|- frontend/
-|  |- petshop-web/
-|- docker-compose.yml
-|- vendApps.sln
+## Funcionalidades
+
+### Público (cliente)
+- **Catálogo** — listagem de categorias e produtos por empresa via slug (`/catalog/{companySlug}`)
+- **Busca e filtro** por categoria
+- **Carrinho** persistido em localStorage
+- **Checkout** — validação, busca de CEP via ViaCEP, criação de pedido e abertura do WhatsApp com resumo
+
+### Painel Admin (`/admin`)
+- **Login** com JWT — sessão de 8 horas
+- **Dashboard** — métricas operacionais e financeiras em tempo real
+- **Pedidos** — listagem paginada, filtro por status, detalhe completo, alteração de status
+- **Produtos** — CRUD completo com:
+  - Slug auto-gerado a partir do nome
+  - Preço, custo e margem (calculada automaticamente)
+  - Estoque por unidade (UN, KG, L, etc.)
+  - Código interno e código de barras
+  - NCM
+  - Upload de múltiplas imagens (10 MB/imagem)
+  - Ativar/desativar inline na listagem
+- **Rotas** — planejamento e acompanhamento de rotas de entrega
+- **Financeiro** — relatórios e métricas financeiras
+- **Hangfire Dashboard** em `/admin/hangfire` (apenas ambiente de desenvolvimento)
+
+### App Entregador (`/deliverer`)
+- Login com telefone + PIN
+- Visualização da rota atribuída
+- Atualização de status por parada (entregue, tentativa, problema)
+
+### Sync de Produtos (Hangfire)
+- Sincronização agendada (cron) ou manual por empresa
+- Conectores: **CSV** (CsvHelper), **REST API** (IHttpClientFactory), **DB** (stub)
+- Hash SHA-256 por produto para detectar mudanças
+- Política de merge configurável por empresa (`Company.SettingsJson`)
+- Trilha de auditoria completa: `ProductChangeLog` e `ProductPriceHistory`
+
+---
+
+## Arquitetura
+
+```
+petshop/
+├── backend/
+│   └── Petshop.Api/               # Monolito ASP.NET Core
+│       ├── Controllers/           # Auth, Catalog, Orders, Admin (Products, Sources, Sync)
+│       ├── Data/                  # AppDbContext + DbSeeder
+│       ├── Entities/
+│       │   ├── Catalog/           # Company, Brand, ProductVariant, ProductImage
+│       │   ├── Sync/              # ExternalSource, Snapshot, SyncJob, SyncItem
+│       │   └── Audit/             # ProductChangeLog, ProductPriceHistory
+│       ├── Models/                # Product, Category, Order, OrderItem, Deliverer, Route...
+│       ├── Services/
+│       │   ├── Sync/              # IProductProvider, ConnectorFactory, ProductSyncService
+│       │   │   └── Connectors/    # CsvProductProvider, RestApiProductProvider, DbProductProvider
+│       │   └── Images/            # IImageStorageProvider, LocalImageStorageProvider
+│       ├── Contracts/Admin/       # DTOs de request/response para área admin
+│       ├── Migrations/            # EF Core (migração única: InitialProductModule)
+│       └── wwwroot/
+│           └── product-images/    # Imagens salvas localmente (ignorado no git)
+└── frontend/
+    └── petshop-web/               # React + Vite
+        └── src/
+            ├── features/
+            │   ├── admin/
+            │   │   ├── auth/      # adminFetch, Guard, login API
+            │   │   ├── products/  # api.ts + queries.ts
+            │   │   ├── orders/    # api.ts + queries.ts
+            │   │   ├── routes/    # api.ts + queries.ts
+            │   │   ├── dashboard/ # api.ts + queries.ts
+            │   │   └── financeiro/
+            │   ├── catalog/       # api.ts (catálogo público), queries.ts
+            │   ├── cart/          # CartContext + CartSheet
+            │   └── deliverer/     # auth, componentes do app de entrega
+            ├── pages/
+            │   ├── admin/         # Dashboard, OrdersList, OrderDetail, ProductsList,
+            │   │                  # ProductForm, RoutesList, RouteDetail, RoutePlanner,
+            │   │                  # Financeiro, Login
+            │   └── deliverer/     # Login, Home, RouteDetail
+            ├── components/
+            │   ├── admin/         # AdminNav
+            │   └── ui/            # ThemeToggle, Button, Badge, Input, Sheet...
+            └── App.tsx            # Catálogo público (rota /)
 ```
 
-## Pré-requisitos
+---
 
-- .NET SDK 8
-- Node.js 18+
-- Docker
+## Multiempresa
+
+Toda entidade de catálogo possui `CompanyId`. O catálogo público usa slug da empresa na URL:
+
+```
+GET /catalog/{companySlug}/products?categorySlug=racao&search=premium
+GET /catalog/{companySlug}/categories
+```
+
+**Dados de desenvolvimento:**
+- Company GUID: `11111111-0000-0000-0000-000000000001`
+- Company slug: `petshop-demo`
+
+---
+
+## Requisitos
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download)
+- [Node.js 18+](https://nodejs.org/)
+- [PostgreSQL 14+](https://www.postgresql.org/)
+
+---
 
 ## Configuração
 
-### Docker (banco/redis)
+### Backend — `backend/Petshop.Api/appsettings.Development.json`
 
-```powershell
-docker compose up -d
+```json
+{
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=petshop;Username=postgres;Password=SUA_SENHA"
+  },
+  "Jwt": {
+    "Key": "SUA_CHAVE_SECRETA_MINIMO_32_CHARS",
+    "Issuer": "petshop-api",
+    "Audience": "petshop-app",
+    "AdminUser": "admin",
+    "AdminPassword": "SUA_SENHA_ADMIN",
+    "CompanyId": "11111111-0000-0000-0000-000000000001"
+  }
+}
 ```
 
-Serviços esperados:
-- PostgreSQL em `localhost:5432` (`petshop_db`)
-- Redis em `localhost:6379`
-
-### Backend
-
-Arquivo: `backend/Petshop.Api/appsettings.Development.json`
-
-Validar:
-- `ConnectionStrings:Default`
-- `Jwt:Issuer` (`vendApps.Api`)
-- `Jwt:Audience` (`vendApps.Admin`)
-- `Jwt:Key`
-- `Jwt:AdminUser`
-- `Jwt:AdminPassword`
-- `Jwt:CompanyId`
-
-Obs.: em Development o `DbSeeder` executa automaticamente e aplica migrations na inicialização.
-
-### Frontend
-
-Arquivo: `frontend/petshop-web/.env.local`
+### Frontend — `frontend/petshop-web/.env.local`
 
 ```env
 VITE_API_URL=http://localhost:5082
 VITE_COMPANY_SLUG=petshop-demo
 ```
 
-## Como Rodar
+---
 
-### Backend
+## Como rodar localmente
 
-```powershell
+### 1. Banco de dados
+
+```bash
+# Suba o PostgreSQL (ou use o docker-compose na raiz)
+docker-compose up -d
+```
+
+### 2. Backend
+
+```bash
 cd backend/Petshop.Api
 dotnet restore
 dotnet run
 ```
 
-- API: `http://localhost:5082`
-- Swagger: `http://localhost:5082/swagger`
-- Hangfire (dev): `http://localhost:5082/admin/hangfire`
+A API sobe em `http://localhost:5082`.
+Na primeira execução, o `DbSeeder` cria automaticamente a empresa de desenvolvimento, categorias e produtos de exemplo.
 
-### Frontend
+### 3. Frontend
 
-```powershell
+```bash
 cd frontend/petshop-web
 npm install
 npm run dev
 ```
 
-- Frontend: `http://localhost:5173`
+O frontend sobe em `http://localhost:5173`.
 
-## Rotas Frontend
+---
 
-- Público:
-  - `/`
-  - `/checkout`
-- Admin:
-  - `/admin/login`
-  - `/admin`
-  - `/admin/orders`
-  - `/admin/orders/:id`
-  - `/admin/routes`
-  - `/admin/routes/planner`
-  - `/admin/routes/:routeId`
-  - `/admin/financeiro`
-  - `/admin/products`
-  - `/admin/products/:id`
-- Entregador:
-  - `/deliverer/login`
-  - `/deliverer`
-  - `/deliverer/route/:routeId`
+## Rotas
 
-## Principais Endpoints da API
+### Frontend
 
-- Auth:
-  - `POST /auth/login`
-  - `POST /auth/deliverer/login`
-- Catálogo:
-  - `GET /catalog/{companySlug}/categories`
-  - `GET /catalog/{companySlug}/products`
-- Pedidos:
-  - `POST /orders` (público)
-  - `GET /orders` (admin)
-  - `GET /orders/{idOrNumber}` (admin)
-  - `PATCH /orders/{idOrNumber}/status` (admin)
-  - `POST /orders/geocode-missing` (admin)
-  - `POST /orders/{idOrNumber}/reprocess-geocoding` (admin)
-- Rotas:
-  - `POST /routes/preview` (admin)
-  - `POST /routes` (admin)
-  - `GET /routes` (admin)
-  - `GET /routes/{routeId}` (admin)
-  - `GET /routes/{routeId}/navigation` (admin)
-- Entregadores:
-  - `GET /deliverers` (admin)
-  - `POST /deliverers` (admin)
-  - `PATCH /deliverers/{id}/active` (admin)
-  - `PATCH /deliverers/{id}/pin` (admin)
-- Portal entregador:
-  - `GET /deliverer/me/active-route`
-  - `GET /deliverer/routes/{routeId}`
-  - `PATCH /deliverer/routes/{routeId}/start`
-  - `PATCH /deliverer/routes/{routeId}/stops/{stopId}/delivered`
-  - `PATCH /deliverer/routes/{routeId}/stops/{stopId}/fail`
-  - `PATCH /deliverer/routes/{routeId}/stops/{stopId}/skip`
-  - `GET /deliverer/routes/{routeId}/navigation/next`
+| Rota | Descrição |
+|---|---|
+| `/` | Catálogo público |
+| `/checkout` | Finalização do pedido |
+| `/admin/login` | Login do administrador |
+| `/admin` | Dashboard admin |
+| `/admin/orders` | Lista de pedidos |
+| `/admin/orders/:id` | Detalhe do pedido |
+| `/admin/products` | Lista de produtos |
+| `/admin/products/new` | Criar produto |
+| `/admin/products/:id` | Editar produto |
+| `/admin/routes` | Lista de rotas |
+| `/admin/routes/planner` | Planejador de rotas |
+| `/admin/routes/:id` | Detalhe da rota |
+| `/admin/financeiro` | Painel financeiro |
+| `/admin/hangfire` | Dashboard Hangfire (dev) |
+| `/deliverer/login` | Login do entregador |
+| `/deliverer` | Home do entregador |
+| `/deliverer/route/:id` | Rota do entregador |
 
-## Credenciais de Desenvolvimento
+### API — Público
 
-Arquivo: `backend/Petshop.Api/appsettings.Development.json`
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/auth/login` | Login admin |
+| `POST` | `/auth/deliverer/login` | Login entregador |
+| `POST` | `/orders` | Criar pedido |
+| `GET` | `/catalog/{slug}/products` | Listar produtos |
+| `GET` | `/catalog/{slug}/categories` | Listar categorias |
 
-- Admin:
-  - Usuário: `admin`
-  - Senha: `admin123`
+### API — Admin (requer `Authorization: Bearer <token>`)
 
-Entregador: depende de cadastro + PIN via endpoints admin.
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/orders` | Listar pedidos |
+| `GET` | `/orders/:id` | Detalhe do pedido |
+| `PATCH` | `/orders/:id/status` | Alterar status |
+| `GET` | `/admin/products` | Listar produtos |
+| `POST` | `/admin/products` | Criar produto |
+| `GET` | `/admin/products/:id` | Detalhe do produto |
+| `PUT` | `/admin/products/:id` | Editar produto |
+| `PATCH` | `/admin/products/:id/toggle-status` | Ativar/desativar |
+| `DELETE` | `/admin/products/:id` | Excluir (soft delete) |
+| `POST` | `/admin/products/:id/images` | Upload de imagem |
+| `DELETE` | `/admin/products/:id/images/:imgId` | Excluir imagem |
+| `GET` | `/admin/products/:id/price-history` | Histórico de preços |
+| `GET` | `/admin/products/:id/changelogs` | Log de alterações |
+| `POST` | `/admin/products/:id/clone` | Clonar produto |
+| `GET` | `/admin/product-sources` | Listar fontes de sync |
+| `POST` | `/admin/product-sources` | Criar fonte de sync |
+| `PUT` | `/admin/product-sources/:id` | Editar fonte |
+| `DELETE` | `/admin/product-sources/:id` | Excluir fonte |
+| `POST` | `/admin/product-sources/:id/test` | Testar conexão |
+| `POST` | `/admin/products/sync` | Disparar sync manual |
+| `GET` | `/admin/products/sync/jobs` | Listar jobs de sync |
+| `GET` | `/admin/products/sync/jobs/:id` | Detalhe do job |
+| `GET` | `/admin/products/sync/jobs/:id/items` | Itens do job |
 
-## Observações
+---
 
-- O slug padrão da empresa seedada em dev é `petshop-demo`.
-- Se catálogo aparecer vazio, primeiro valide `VITE_COMPANY_SLUG` no frontend.
-- Upload de imagens de produtos é servido por `backend/Petshop.Api/wwwroot/product-images/`.
+## Pacotes NuGet notáveis
+
+| Pacote | Versão | Uso |
+|---|---|---|
+| Hangfire.AspNetCore | 1.8.15 | Agendamento de jobs |
+| Hangfire.PostgreSql | 1.20.9 | Storage do Hangfire |
+| CsvHelper | 33.0.1 | Conector CSV |
+| Cronos | 0.8.3 | Parse de expressões cron |
+| BCrypt.Net-Next | — | Hash de PIN dos entregadores |
+
+---
+
+## Segurança
+
+- JWT assinado com HMAC SHA256, expiração de 8 horas
+- Role `admin` obrigatória em todos os endpoints administrativos
+- Role `deliverer` obrigatória nos endpoints do app de entrega
+- Guard no frontend redirecionando para login em rotas protegidas
+- Token invalidado localmente ao receber `401`
+- Imagens de produtos limitadas a 10 MB
+
+---
+
+## Observações de desenvolvimento
+
+- O banco é criado/migrado automaticamente na inicialização (`dotnet run`)
+- O seeder só insere dados se o banco estiver vazio
+- Para recriar do zero: apague o banco e rode `dotnet run` novamente
+- O diretório `wwwroot/product-images/` é criado automaticamente pelo provider
+- O Hangfire scheduler roda a cada minuto verificando fontes de sync agendadas
