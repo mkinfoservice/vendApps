@@ -5,6 +5,8 @@ import Checkout from "./pages/Checkout";
 import Dashboard from "./pages/admin/Dashboard";
 import OrdersList from "./pages/admin/OrdersList";
 import OrderDetail from "./pages/admin/OrderDetail";
+import DelivererForm from "./pages/admin/DelivererForm";
+import DeliverersList from "./pages/admin/DeliverersList";
 
 import RoutesList from "./pages/admin/RoutesList";
 import RouteDetail from "./pages/admin/RouteDetail";
@@ -61,7 +63,31 @@ export function AppRoutes() {
             </AdminGuard>
           }
         />
-
+        {/* Admin - Entregadores */}
+        <Route
+          path="/admin/deliverers"
+          element={
+            <AdminGuard>
+              <DeliverersList />
+            </AdminGuard>
+          }
+          />
+        <Route
+          path="/admin/deliverers/new"
+          element={
+            <AdminGuard>
+              <DelivererForm />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/deliverers/:id"
+          element={
+            <AdminGuard>
+              <DelivererForm />
+            </AdminGuard>
+          }
+        />
         {/* Admin - Rotas */}
         <Route
           path="/admin/routes"

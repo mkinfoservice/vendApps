@@ -10,10 +10,7 @@ export type DelivererListItem = {
 };
 
 export async function fetchActiveDeliverers(): Promise<DelivererListItem[]> {
-  const data = await adminFetch<{ items: DelivererListItem[] }>(
-    `/deliverers?isActive=true`
-  );
-  return data.items ?? [];
+  return adminFetch<DelivererListItem[]>(`/deliverers?isActive=true`);
 }
 
 export type ReadyOrderItem = {

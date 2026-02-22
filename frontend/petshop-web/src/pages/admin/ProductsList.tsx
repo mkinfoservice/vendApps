@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ToggleLeft, ToggleRight, Trash2 } from "lucide-react";
+import { Plus, ToggleLeft, ToggleRight, Trash2, Download } from "lucide-react";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useAdminProducts, useToggleProductStatus, useDeleteProduct } from "@/features/admin/products/queries";
+import { SyncModal } from "@/features/admin/sync/SyncModal";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
 
@@ -26,9 +27,10 @@ function imageUrl(url: string | null) {
 export default function ProductsList() {
   const navigate = useNavigate();
 
-  const [page, setPage]     = useState(1);
-  const [search, setSearch] = useState("");
-  const [active, setActive] = useState<"" | "true" | "false">("");
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState("");
+  const [active, setActive]     = useState<"" | "true" | "false">("");
+  const [showSync, setShowSync] = useState(false);
 
   const productsQuery = useAdminProducts({
     page,
@@ -76,14 +78,24 @@ export default function ProductsList() {
               {productsQuery.isLoading ? "Carregando..." : `${total} produto(s)`}
             </p>
           </div>
-          <button
-            onClick={() => navigate("/admin/products/new")}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          >
-            <Plus size={16} />
-            Novo produto
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSync(true)}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold transition-all hover:bg-[var(--surface)]"
+              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+            >
+              <Download size={15} />
+              Importar
+            </button>
+            <button
+              onClick={() => navigate("/admin/products/new")}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+            >
+              <Plus size={16} />
+              Novo produto
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -284,6 +296,8 @@ export default function ProductsList() {
           </button>
         </div>
       </div>
+
+      {showSync && <SyncModal onClose={() => setShowSync(false)} />}
     </div>
   );
 }

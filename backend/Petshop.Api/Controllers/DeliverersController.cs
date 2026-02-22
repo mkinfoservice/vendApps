@@ -21,7 +21,7 @@ public class DeliverersController : ControllerBase
 
     // GET /deliverers?isActive=true
     [HttpGet]
-    public async Task<ActionResult<ListDeliverersResponse>> List(
+    public async Task<ActionResult<IEnumerable<DelivererResponse>>> List(
         [FromQuery] bool? isActive = null,
         CancellationToken ct = default
     )
@@ -33,22 +33,46 @@ public class DeliverersController : ControllerBase
 
         var items = await q
             .OrderBy(d => d.Name)
-            .Select(d => new DelivererListItem(
-                d.Id,
-                d.Name,
-                d.Phone,
-                d.Vehicle,
-                d.IsActive,
-                d.CreatedAtUtc
-            ))
+            .Select(d => new DelivererResponse
+            {
+                Id = d.Id,
+                Name = d.Name,
+                Phone = d.Phone,
+                Vehicle = d.Vehicle,
+                IsActive = d.IsActive,
+                CreatedAtUtc = d.CreatedAtUtc
+            })
             .ToListAsync(ct);
 
-        return Ok(new ListDeliverersResponse(items));
+        return Ok(items);
+    }
+
+    // GET /deliverers/{id}
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<DelivererResponse>> GetById(
+        [FromRoute] Guid id,
+        CancellationToken ct = default
+    )
+    {
+        var d = await _db.Deliverers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (d is null) return NotFound("Entregador não encontrado.");
+
+        return Ok(new DelivererResponse
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Phone = d.Phone,
+            Vehicle = d.Vehicle,
+            IsActive = d.IsActive,
+            CreatedAtUtc = d.CreatedAtUtc
+        });
     }
 
     // POST /deliverers
     [HttpPost]
-    public async Task<IActionResult> Create(
+    public async Task<ActionResult<DelivererResponse>> Create(
         [FromBody] CreateDelivererRequest req,
         CancellationToken ct = default
     )
@@ -56,9 +80,7 @@ public class DeliverersController : ControllerBase
         if (req is null) return BadRequest("Body inválido.");
         if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest("Name é obrigatório.");
         if (string.IsNullOrWhiteSpace(req.Phone)) return BadRequest("Phone é obrigatório.");
-        if (string.IsNullOrWhiteSpace(req.Vehicle)) return BadRequest("Vehicle é obrigatório.");
 
-        // PIN é obrigatório e deve ter 4-6 dígitos
         if (string.IsNullOrWhiteSpace(req.Pin))
             return BadRequest("Pin é obrigatório (4-6 dígitos).");
 
@@ -71,16 +93,73 @@ public class DeliverersController : ControllerBase
             Id = Guid.NewGuid(),
             Name = req.Name.Trim(),
             Phone = req.Phone.Trim(),
-            Vehicle = req.Vehicle.Trim(),
+            Vehicle = req.Vehicle?.Trim() ?? "",
             PinHash = BCrypt.Net.BCrypt.HashPassword(pinTrimmed),
-            IsActive = true,
+            IsActive = req.IsActive,
             CreatedAtUtc = DateTime.UtcNow
         };
 
         _db.Deliverers.Add(d);
         await _db.SaveChangesAsync(ct);
 
-        return Ok(new { id = d.Id });
+        return Ok(new DelivererResponse
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Phone = d.Phone,
+            Vehicle = d.Vehicle,
+            IsActive = d.IsActive,
+            CreatedAtUtc = d.CreatedAtUtc
+        });
+    }
+
+    // PUT /deliverers/{id}
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<DelivererResponse>> Update(
+        [FromRoute] Guid id,
+        [FromBody] UpdateDelivererRequest req,
+        CancellationToken ct = default
+    )
+    {
+        if (req is null) return BadRequest("Body inválido.");
+        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest("Name é obrigatório.");
+        if (string.IsNullOrWhiteSpace(req.Phone)) return BadRequest("Phone é obrigatório.");
+
+        var d = await _db.Deliverers.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (d is null) return NotFound("Entregador não encontrado.");
+
+        d.Name = req.Name.Trim();
+        d.Phone = req.Phone.Trim();
+        d.Vehicle = req.Vehicle?.Trim() ?? "";
+        d.IsActive = req.IsActive;
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new DelivererResponse
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Phone = d.Phone,
+            Vehicle = d.Vehicle,
+            IsActive = d.IsActive,
+            CreatedAtUtc = d.CreatedAtUtc
+        });
+    }
+
+    // DELETE /deliverers/{id}
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        [FromRoute] Guid id,
+        CancellationToken ct = default
+    )
+    {
+        var d = await _db.Deliverers.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (d is null) return NotFound("Entregador não encontrado.");
+
+        _db.Deliverers.Remove(d);
+        await _db.SaveChangesAsync(ct);
+
+        return NoContent();
     }
 
     // PATCH /deliverers/{id}/active?active=true
