@@ -13,6 +13,7 @@ using Microsoft.OpenApi.Models;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Images;
 using Petshop.Api.Services.Sync;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,7 @@ builder.Services
     .AddJsonOptions(o =>
     {
         o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 // ===============================
@@ -160,6 +162,7 @@ builder.Services.AddScoped<ProductHashService>();
 builder.Services.AddScoped<SyncMergePolicyService>();
 builder.Services.AddScoped<ProductSyncService>();
 builder.Services.AddScoped<SyncSchedulerJob>();
+builder.Services.AddScoped<DbSchemaDiscoveryService>();
 
 // ===============================
 // Services — Imagens

@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
   X, Database, Globe, FileText, RefreshCw,
-  CheckCircle2, XCircle, Loader2, Plus, ArrowLeft,
+  CheckCircle2, XCircle, Loader2, Plus, ArrowLeft, Trash2,
 } from "lucide-react";
-import { useCreateSource, useSources, useSyncJob, useTriggerSync } from "./queries";
+import { useCreateSource, useDeleteSource, useSources, useSyncJob, useTriggerSync } from "./queries";
 import { testConnection } from "./api";
 import type { CreateSourceRequest, SourceListItem, SyncJobResponse } from "./types";
+import { DbSourceWizard } from "./DbSourceWizard";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -101,11 +102,23 @@ function SourceCard({
   activeJobId: string | null;
 }) {
   const jobQuery = useSyncJob(activeJobId);
+  const deleteMut = useDeleteSource();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const Icon = SOURCE_TYPE_ICON[source.sourceType] ?? Database;
   const isRunning =
     isSyncing ||
     jobQuery.data?.status === "Queued" ||
     jobQuery.data?.status === "Running";
+
+  async function handleDelete() {
+    try {
+      await deleteMut.mutateAsync(source.id);
+    } catch {
+      alert("Erro ao excluir fonte.");
+    } finally {
+      setConfirmDelete(false);
+    }
+  }
 
   return (
     <div
@@ -130,16 +143,28 @@ function SourceCard({
           </div>
         </div>
 
-        <button
-          onClick={() => onSync(source.id)}
-          disabled={isRunning || !source.isActive}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 shrink-0"
-          style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          title={!source.isActive ? "Fonte inativa" : ""}
-        >
-          <RefreshCw size={12} className={isRunning ? "animate-spin" : ""} />
-          {isRunning ? "Sincronizando..." : "Sincronizar"}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onSync(source.id)}
+            disabled={isRunning || !source.isActive}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+            title={!source.isActive ? "Fonte inativa" : "Sincronizar agora"}
+          >
+            <RefreshCw size={12} className={isRunning ? "animate-spin" : ""} />
+            {isRunning ? "Sincronizando..." : "Sincronizar"}
+          </button>
+
+          <button
+            onClick={() => setConfirmDelete(true)}
+            disabled={isRunning || deleteMut.isPending}
+            className="w-8 h-8 flex items-center justify-center rounded-xl border transition-all hover:bg-red-950/30 hover:border-red-800 disabled:opacity-40"
+            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            title="Excluir fonte"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       </div>
 
       <div className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -153,13 +178,46 @@ function SourceCard({
       )}
 
       {jobQuery.data && <JobResult job={jobQuery.data} />}
+
+      {/* Confirmação de exclusão */}
+      {confirmDelete && (
+        <div className="rounded-xl border border-red-800/50 bg-red-950/20 p-3 space-y-2">
+          <p className="text-xs font-semibold text-red-400">
+            Excluir "{source.name}"? Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDelete}
+              disabled={deleteMut.isPending}
+              className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-500 transition-all disabled:opacity-50"
+            >
+              {deleteMut.isPending ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+              Excluir
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleteMut.isPending}
+              className="h-7 px-3 rounded-lg text-xs font-semibold transition-all hover:bg-[var(--surface-2)]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── AddSourceForm ─────────────────────────────────────────────────────────────
 
-type ConnectorType = "Csv" | "RestErp";
+type ConnectorType = "Csv" | "RestErp" | "MySql" | "Postgres" | "SqlServer" | "Firebird";
+
+const DB_CONNECTORS: ConnectorType[] = ["MySql", "Postgres", "SqlServer", "Firebird"];
+
+function isDbConnector(c: ConnectorType): boolean {
+  return DB_CONNECTORS.includes(c);
+}
 
 type FormState = {
   name: string;
@@ -172,6 +230,15 @@ type FormState = {
   apiKey: string;
   pageParam: string;
   sizeParam: string;
+  // REST — mapeamento de campos
+  fieldIdField: string;
+  fieldNameField: string;
+  fieldPriceField: string;
+  fieldPriceUnit: "cents" | "decimal";
+  fieldCategoryField: string;
+  fieldImageField: string;
+  fieldDescriptionField: string;
+  fieldStockField: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -183,6 +250,14 @@ const EMPTY_FORM: FormState = {
   apiKey: "",
   pageParam: "page",
   sizeParam: "size",
+  fieldIdField: "",
+  fieldNameField: "",
+  fieldPriceField: "",
+  fieldPriceUnit: "cents",
+  fieldCategoryField: "",
+  fieldImageField: "",
+  fieldDescriptionField: "",
+  fieldStockField: "",
 };
 
 function inputClass() {
@@ -208,10 +283,35 @@ function AddSourceForm({ onBack }: { onBack: () => void }) {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [showFieldMap, setShowFieldMap] = useState(false);
 
   function set(field: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
     setTestResult(null);
+  }
+
+  function applyFakeStorePreset() {
+    setForm((f) => ({
+      ...f,
+      url: f.url || "https://fakestoreapi.com/products",
+      pageParam: "",
+      sizeParam: "",
+      fieldIdField: "id",
+      fieldNameField: "title",
+      fieldPriceField: "price",
+      fieldPriceUnit: "decimal",
+      fieldCategoryField: "category",
+      fieldImageField: "image",
+      fieldDescriptionField: "description",
+      fieldStockField: "",
+    }));
+    setShowFieldMap(true);
+    setTestResult(null);
+  }
+
+  // Se o conector selecionado for DB, renderiza o wizard especializado
+  if (isDbConnector(form.connectorType)) {
+    return <DbSourceWizard onBack={onBack} />;
   }
 
   function buildConfig(): string {
@@ -221,11 +321,25 @@ function AddSourceForm({ onBack }: { onBack: () => void }) {
         Delimiter: form.delimiter.trim() || ",",
       });
     }
+
+    const fieldMap: Record<string, string> = {};
+    if (form.fieldIdField.trim())          fieldMap.ExternalId   = form.fieldIdField.trim();
+    if (form.fieldNameField.trim())        fieldMap.Name         = form.fieldNameField.trim();
+    if (form.fieldPriceField.trim()) {
+      fieldMap.PriceCents = form.fieldPriceField.trim();
+      fieldMap.PriceUnit  = form.fieldPriceUnit;
+    }
+    if (form.fieldCategoryField.trim())    fieldMap.CategoryName = form.fieldCategoryField.trim();
+    if (form.fieldImageField.trim())       fieldMap.ImageUrl     = form.fieldImageField.trim();
+    if (form.fieldDescriptionField.trim()) fieldMap.Description  = form.fieldDescriptionField.trim();
+    if (form.fieldStockField.trim())       fieldMap.StockQty     = form.fieldStockField.trim();
+
     return JSON.stringify({
       Url: form.url.trim(),
       ApiKey: form.apiKey.trim() || undefined,
-      PageParam: form.pageParam.trim() || "page",
-      SizeParam: form.sizeParam.trim() || "size",
+      PageParam: form.pageParam.trim() || undefined,
+      SizeParam: form.sizeParam.trim() || undefined,
+      ...(Object.keys(fieldMap).length > 0 ? { FieldMap: fieldMap } : {}),
     });
   }
 
@@ -306,6 +420,8 @@ function AddSourceForm({ onBack }: { onBack: () => void }) {
         <label className="text-xs font-semibold" style={labelStyle()}>
           Tipo de fonte
         </label>
+
+        {/* Arquivo / API */}
         <div className="grid grid-cols-2 gap-2">
           {(["Csv", "RestErp"] as ConnectorType[]).map((type) => {
             const Icon = type === "Csv" ? FileText : Globe;
@@ -329,9 +445,38 @@ function AddSourceForm({ onBack }: { onBack: () => void }) {
             );
           })}
         </div>
-        <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
-          Banco de dados relacional estará disponível em breve.
+
+        {/* Banco de dados */}
+        <p className="text-[11px] font-semibold mt-2 mb-1" style={{ color: "var(--text-muted)" }}>
+          Banco de dados
         </p>
+        <div className="grid grid-cols-2 gap-2">
+          {(DB_CONNECTORS).map((type) => {
+            const labels: Record<string, string> = {
+              MySql: "MySQL",
+              Postgres: "PostgreSQL",
+              SqlServer: "SQL Server",
+              Firebird: "Firebird",
+            };
+            const active = form.connectorType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => set("connectorType", type)}
+                className="flex items-center gap-2 h-11 px-3 rounded-xl border text-sm font-semibold transition-all"
+                style={{
+                  borderColor: active ? "#7c5cf8" : "var(--border)",
+                  backgroundColor: active ? "rgba(124,92,248,0.1)" : "var(--surface-2)",
+                  color: active ? "#7c5cf8" : "var(--text-muted)",
+                }}
+              >
+                <Database size={15} />
+                {labels[type]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Nome */}
@@ -435,6 +580,126 @@ function AddSourceForm({ onBack }: { onBack: () => void }) {
                 style={inputStyle()}
               />
             </div>
+          </div>
+
+          {/* Mapeamento de campos */}
+          <div
+            className="rounded-xl border overflow-hidden"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowFieldMap((v) => !v)}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold transition-colors hover:bg-[var(--surface-2)]"
+              style={{ color: "var(--text-muted)", backgroundColor: "var(--surface-2)" }}
+            >
+              <span>Mapeamento de campos (avançado)</span>
+              <span style={{ fontSize: 16 }}>{showFieldMap ? "▲" : "▼"}</span>
+            </button>
+
+            {showFieldMap && (
+              <div className="p-3.5 space-y-3" style={{ borderTop: "1px solid var(--border)" }}>
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                  Configure se a API usa nomes de campos diferentes (ex: <code>title</code> em vez de <code>Name</code>).
+                  Deixe em branco para usar os nomes padrão.
+                </p>
+
+                {/* Preset FakeStore */}
+                <button
+                  type="button"
+                  onClick={applyFakeStorePreset}
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg border text-[11px] font-semibold transition-all hover:bg-[var(--surface)]"
+                  style={{ borderColor: "var(--border)", color: "#7c5cf8" }}
+                >
+                  ⚡ Preencher para FakeStore API
+                </button>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo do ID</label>
+                    <input
+                      value={form.fieldIdField}
+                      onChange={(e) => set("fieldIdField", e.target.value)}
+                      placeholder="id"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo do nome *</label>
+                    <input
+                      value={form.fieldNameField}
+                      onChange={(e) => set("fieldNameField", e.target.value)}
+                      placeholder="name / title"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo do preço</label>
+                    <input
+                      value={form.fieldPriceField}
+                      onChange={(e) => set("fieldPriceField", e.target.value)}
+                      placeholder="price / priceCents"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Unidade do preço</label>
+                    <select
+                      value={form.fieldPriceUnit}
+                      onChange={(e) => setForm((f) => ({ ...f, fieldPriceUnit: e.target.value as "cents" | "decimal" }))}
+                      className={inputClass()}
+                      style={inputStyle()}
+                    >
+                      <option value="cents">Centavos (ex: 1099)</option>
+                      <option value="decimal">Decimal (ex: 10.99 → ×100)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo da categoria</label>
+                    <input
+                      value={form.fieldCategoryField}
+                      onChange={(e) => set("fieldCategoryField", e.target.value)}
+                      placeholder="category / categoryName"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo da imagem</label>
+                    <input
+                      value={form.fieldImageField}
+                      onChange={(e) => set("fieldImageField", e.target.value)}
+                      placeholder="image / imageUrl"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo da descrição</label>
+                    <input
+                      value={form.fieldDescriptionField}
+                      onChange={(e) => set("fieldDescriptionField", e.target.value)}
+                      placeholder="description"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold" style={labelStyle()}>Campo do estoque</label>
+                    <input
+                      value={form.fieldStockField}
+                      onChange={(e) => set("fieldStockField", e.target.value)}
+                      placeholder="stock / qty"
+                      className={inputClass()}
+                      style={inputStyle()}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

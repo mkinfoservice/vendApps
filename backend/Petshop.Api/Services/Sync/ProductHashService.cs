@@ -26,7 +26,8 @@ public class ProductHashService
             dto.IsActive,
             dto.Ncm,
             dto.Barcode,
-            dto.InternalCode
+            dto.InternalCode,
+            dto.ImageUrl
         };
 
         var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions

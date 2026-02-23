@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSource, fetchSources, fetchSyncJob, triggerSync } from "./api";
+import { createSource, deleteSource, fetchDbColumns, fetchDbTables, fetchSources, fetchSyncJob, triggerSync } from "./api";
 
 export function useSources() {
   return useQuery({
@@ -12,6 +12,16 @@ export function useCreateSource() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createSource,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-product-sources"] });
+    },
+  });
+}
+
+export function useDeleteSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSource,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-product-sources"] });
     },
@@ -37,5 +47,23 @@ export function useSyncJob(jobId: string | null) {
       const status = query.state.data?.status;
       return status === "Queued" || status === "Running" ? 2000 : false;
     },
+  });
+}
+
+export function useDbTables(sourceId: string | null) {
+  return useQuery({
+    queryKey: ["admin-db-tables", sourceId],
+    queryFn: () => fetchDbTables(sourceId!),
+    enabled: !!sourceId,
+    staleTime: 60_000,
+  });
+}
+
+export function useDbColumns(sourceId: string | null, tableName: string | null) {
+  return useQuery({
+    queryKey: ["admin-db-columns", sourceId, tableName],
+    queryFn: () => fetchDbColumns(sourceId!, tableName!),
+    enabled: !!sourceId && !!tableName,
+    staleTime: 60_000,
   });
 }

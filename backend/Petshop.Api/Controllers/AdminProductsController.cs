@@ -210,15 +210,27 @@ public class AdminProductsController : ControllerBase
         return NoContent();
     }
 
-    // ── DELETE /admin/products/{id} (soft delete) ─────────────────────────────
+    // ── DELETE /admin/products/{id} ───────────────────────────────────────────
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
-        var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == CompanyId, ct);
+        var product = await _db.Products
+            .Include(p => p.Images)
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == CompanyId, ct);
         if (product == null) return NotFound("Produto não encontrado.");
 
-        product.IsActive = false;
-        product.UpdatedAtUtc = DateTime.UtcNow;
+        var hasOrders = await _db.OrderItems.AnyAsync(i => i.ProductId == id, ct);
+        if (hasOrders)
+            return Conflict(new { error = "Produto possui pedidos vinculados e não pode ser excluído. Inative-o se necessário." });
+
+        foreach (var img in product.Images)
+            await _imageStorage.DeleteAsync(img.Url, ct);
+
+        await _db.ProductPriceHistories.Where(h => h.ProductId == id).ExecuteDeleteAsync(ct);
+        await _db.ProductChangeLogs.Where(l => l.ProductId == id).ExecuteDeleteAsync(ct);
+
+        _db.Products.Remove(product);
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }

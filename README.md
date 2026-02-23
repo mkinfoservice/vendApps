@@ -48,10 +48,14 @@ Plataforma fullstack multi-empresa para catálogo online, checkout, gestão de p
 
 ### Sync de Produtos (Hangfire)
 - Sincronização agendada (cron) ou manual por empresa
-- Conectores: **CSV** (CsvHelper), **REST API** (IHttpClientFactory), **DB** (stub)
+- Conectores: **CSV** (CsvHelper), **REST API** (IHttpClientFactory), **DB** (ADO.NET plugável: MySQL, PostgreSQL, SQL Server, Firebird)
 - Hash SHA-256 por produto para detectar mudanças
 - Política de merge configurável por empresa (`Company.SettingsJson`)
 - Trilha de auditoria completa: `ProductChangeLog` e `ProductPriceHistory`
+- **Mapeamento de campos configurável** no conector REST: suporta APIs com nomes de campo diferentes (ex: `title` → Name, `price` decimal → PriceCents centavos)
+- **Preset FakeStore API** e suporte a qualquer API REST com envelope `data/items/products/results`
+- **Schema discovery** para fontes de banco de dados: lista tabelas e colunas com amostras de dados
+- Excluir fonte de sync pela UI (com confirmação)
 
 ---
 
@@ -233,7 +237,7 @@ O frontend sobe em `http://localhost:5173`.
 | `GET` | `/admin/products/:id` | Detalhe do produto |
 | `PUT` | `/admin/products/:id` | Editar produto |
 | `PATCH` | `/admin/products/:id/toggle-status` | Ativar/desativar |
-| `DELETE` | `/admin/products/:id` | Excluir (soft delete) |
+| `DELETE` | `/admin/products/:id` | Excluir permanentemente (protegido se houver pedidos vinculados) |
 | `POST` | `/admin/products/:id/images` | Upload de imagem |
 | `DELETE` | `/admin/products/:id/images/:imgId` | Excluir imagem |
 | `GET` | `/admin/products/:id/price-history` | Histórico de preços |
@@ -243,7 +247,9 @@ O frontend sobe em `http://localhost:5173`.
 | `POST` | `/admin/product-sources` | Criar fonte de sync |
 | `PUT` | `/admin/product-sources/:id` | Editar fonte |
 | `DELETE` | `/admin/product-sources/:id` | Excluir fonte |
-| `POST` | `/admin/product-sources/:id/test` | Testar conexão |
+| `POST` | `/admin/product-sources/:id/test-connection` | Testar conexão |
+| `GET` | `/admin/product-sources/:id/db-schema/tables` | Listar tabelas do DB externo |
+| `GET` | `/admin/product-sources/:id/db-schema/columns` | Listar colunas de uma tabela |
 | `POST` | `/admin/products/sync` | Disparar sync manual |
 | `GET` | `/admin/products/sync/jobs` | Listar jobs de sync |
 | `GET` | `/admin/products/sync/jobs/:id` | Detalhe do job |

@@ -26,6 +26,7 @@ public class ExternalProductDto
     public decimal StockQty { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Ncm { get; set; }
+    public string? ImageUrl { get; set; }
 
     /// <summary>Timestamp de atualização na origem (para delta sync).</summary>
     public DateTime? UpdatedAtUtc { get; set; }

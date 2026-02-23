@@ -49,3 +49,18 @@ export type TestConnectionResponse = {
   message: string;
   sampleCount: number;
 };
+
+export type DbTableInfo = { tableName: string; rowCount: number | null };
+export type DbColumnInfo = {
+  columnName: string;
+  dataType: string;
+  isNullable: boolean;
+  sampleValues: string[];
+};
+
+export const DTO_FIELDS = [
+  "ExternalId", "InternalCode", "Barcode", "Name", "Description",
+  "CategoryName", "BrandName", "Unit", "PriceCents", "CostCents", "StockQty",
+  "IsActive", "Ncm", "ImageUrl", "UpdatedAt",
+] as const;
+export type DtoFieldName = typeof DTO_FIELDS[number];

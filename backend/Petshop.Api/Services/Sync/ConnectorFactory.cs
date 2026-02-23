@@ -28,7 +28,7 @@ public class ConnectorFactory
                 or ConnectorType.Postgres
                 or ConnectorType.SqlServer
                 or ConnectorType.Oracle
-                or ConnectorType.Firebird => new DbProductProvider(),
+                or ConnectorType.Firebird => new DbProductProvider(config),
             _ => throw new NotSupportedException($"Conector não suportado: {source.ConnectorType}")
         };
     }

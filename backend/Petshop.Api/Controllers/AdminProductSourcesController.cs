@@ -6,6 +6,7 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Services.Sync;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace Petshop.Api.Controllers;
 
@@ -16,11 +17,16 @@ public class AdminProductSourcesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ConnectorFactory _connectorFactory;
+    private readonly DbSchemaDiscoveryService _schemaService;
 
-    public AdminProductSourcesController(AppDbContext db, ConnectorFactory connectorFactory)
+    public AdminProductSourcesController(
+        AppDbContext db,
+        ConnectorFactory connectorFactory,
+        DbSchemaDiscoveryService schemaService)
     {
         _db = db;
         _connectorFactory = connectorFactory;
+        _schemaService = schemaService;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -43,6 +49,9 @@ public class AdminProductSourcesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSourceRequest req, CancellationToken ct)
     {
+        if (!await _db.Companies.AsNoTracking().AnyAsync(c => c.Id == CompanyId, ct))
+            return BadRequest(new { error = "CompanyId do token nao foi encontrada no banco." });
+
         var source = new ExternalSource
         {
             CompanyId = CompanyId,
@@ -55,11 +64,19 @@ public class AdminProductSourcesController : ControllerBase
             ScheduleCron = req.ScheduleCron,
             CreatedAtUtc = DateTime.UtcNow
         };
-        _db.ExternalSources.Add(source);
-        await _db.SaveChangesAsync(ct);
-        return Ok(new { source.Id });
-    }
 
+        try
+        {
+            _db.ExternalSources.Add(source);
+            await _db.SaveChangesAsync(ct);
+            return Ok(new { source.Id });
+        }
+        catch (DbUpdateException ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return BadRequest(new { error = "Falha ao salvar fonte de dados.", detail });
+        }
+    }
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSourceRequest req, CancellationToken ct)
     {
@@ -103,4 +120,48 @@ public class AdminProductSourcesController : ControllerBase
             return Ok(new TestConnectionResponse(false, ex.Message, 0));
         }
     }
+
+    [HttpGet("{id:guid}/db-schema/tables")]
+    public async Task<IActionResult> GetDbTables(Guid id, CancellationToken ct)
+    {
+        var source = await _db.ExternalSources.FirstOrDefaultAsync(s => s.Id == id && s.CompanyId == CompanyId, ct);
+        if (source == null) return NotFound();
+
+        var config = DeserializeConfig(source.ConnectionConfigEncrypted);
+        if (config == null) return BadRequest("Configuração de conexão inválida.");
+
+        try
+        {
+            var tables = await _schemaService.GetTablesAsync(config, ct);
+            return Ok(new { tables });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id:guid}/db-schema/columns")]
+    public async Task<IActionResult> GetDbColumns(Guid id, [FromQuery] string table, CancellationToken ct)
+    {
+        var source = await _db.ExternalSources.FirstOrDefaultAsync(s => s.Id == id && s.CompanyId == CompanyId, ct);
+        if (source == null) return NotFound();
+
+        var config = DeserializeConfig(source.ConnectionConfigEncrypted);
+        if (config == null) return BadRequest("Configuração de conexão inválida.");
+
+        try
+        {
+            var columns = await _schemaService.GetColumnsAsync(config, table, ct);
+            return Ok(new { columns });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    private static DbConnectionConfig? DeserializeConfig(string? json) =>
+        string.IsNullOrWhiteSpace(json) ? null :
+        JsonSerializer.Deserialize<DbConnectionConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 }

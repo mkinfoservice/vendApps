@@ -37,7 +37,7 @@ export async function adminFetch<T = unknown>(
     try {
       if (ct.includes("application/json")) {
         const data = (await res.json()) as any;
-        msg = data?.message ?? JSON.stringify(data);
+        msg = data?.message ?? data?.error ?? JSON.stringify(data);
       } else {
         msg = await res.text();
       }

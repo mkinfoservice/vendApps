@@ -192,6 +192,7 @@ public class ProductSyncService
                 StockQty = dto.StockQty,
                 IsActive = dto.IsActive,
                 Ncm = dto.Ncm,
+                ImageUrl = dto.ImageUrl,
                 CategoryId = category.Id,
                 BrandId = brand?.Id,
                 CreatedAtUtc = DateTime.UtcNow,
@@ -239,6 +240,8 @@ public class ProductSyncService
             }
             if (_policyService.ShouldUpdateField("StockQty", policy))
                 existing.StockQty = dto.StockQty;
+            if (!string.IsNullOrWhiteSpace(dto.ImageUrl) && existing.ImageUrl != dto.ImageUrl)
+                existing.ImageUrl = dto.ImageUrl;
 
             existing.MarginPercent = existing.PriceCents > 0
                 ? Math.Round((decimal)(existing.PriceCents - existing.CostCents) / existing.PriceCents * 100, 4)
