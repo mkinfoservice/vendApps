@@ -1,49 +1,10 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/features/cart/cart";
 import { useNavigate } from "react-router-dom";
-import {
-  Minus, Plus, Trash2, ShoppingBag, Tag, Receipt, ArrowRight, Sparkles,
-} from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function QtyStepper({
-  qty, onDec, onInc, onRemove,
-}: { qty: number; onDec: () => void; onInc: () => void; onRemove: () => void }) {
-  const isOne = qty <= 1;
-  return (
-    <div
-      className="flex items-center rounded-2xl border overflow-hidden"
-      style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}
-    >
-      <button
-        type="button"
-        onClick={isOne ? onRemove : onDec}
-        className="h-11 w-11 grid place-items-center hover:bg-[var(--surface)] transition"
-        aria-label={isOne ? "Remover item" : "Diminuir quantidade"}
-      >
-        {isOne
-          ? <Trash2 className="h-4 w-4 text-[var(--text-muted)]" />
-          : <Minus className="h-4 w-4 text-[var(--text-muted)]" />}
-      </button>
-
-      <div className="h-11 w-12 grid place-items-center text-sm font-black tabular-nums text-[var(--text)]">
-        {qty}
-      </div>
-
-      <button
-        type="button"
-        onClick={onInc}
-        className="h-11 w-11 grid place-items-center hover:bg-[var(--surface)] transition"
-        aria-label="Aumentar quantidade"
-      >
-        <Plus className="h-4 w-4 text-[var(--text-muted)]" />
-      </button>
-    </div>
-  );
 }
 
 export function CartSheet({ children }: { children: React.ReactNode }) {
@@ -57,100 +18,119 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
 
       <SheetContent
         side="bottom"
-        className="h-[85vh] rounded-t-3xl p-0 flex flex-col"
-        style={{ backgroundColor: "var(--bg)", color: "var(--text)", borderColor: "var(--border)" }}
+        className="h-[92vh] rounded-t-3xl p-0 flex flex-col bg-white border-0"
       >
-        {/* handle */}
-        <div className="flex justify-center pt-3">
-          <div className="h-1.5 w-12 rounded-full" style={{ backgroundColor: "var(--border)" }} />
+        {/* Handle */}
+        <div className="flex justify-center pt-4 shrink-0">
+          <div className="h-1 w-10 rounded-full bg-gray-200" />
         </div>
 
-        {/* header */}
-        <div className="px-5 pb-4 pt-3">
+        {/* Header */}
+        <div className="px-5 pt-4 pb-4 shrink-0">
           <SheetHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-10 w-10 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: "#7c5cf8" }}
-                >
-                  <ShoppingBag className="h-5 w-5 text-white" />
-                </div>
-
-                <div>
-                  <SheetTitle className="text-lg font-black tracking-tight text-[var(--text)]">
-                    Seu carrinho
-                  </SheetTitle>
-                  <div className="mt-0.5 text-xs text-[var(--text-muted)] flex items-center gap-2">
-                    <Receipt className="h-3.5 w-3.5" />
-                    <span>{cart.totalItems} item(ns) • {formatBRL(cart.subtotalCents)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={cart.clear}
-                disabled={!hasItems}
-                className="h-10 px-3 rounded-xl border text-sm font-extrabold disabled:opacity-40 transition hover:bg-[var(--surface-2)]"
-                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               >
-                Limpar
-              </button>
+                <ShoppingBag className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <SheetTitle className="text-base font-black text-gray-900 leading-tight">
+                  Seu Carrinho
+                </SheetTitle>
+                <p className="text-xs text-gray-400">{cart.totalItems} itens</p>
+              </div>
+              {hasItems && (
+                <button
+                  type="button"
+                  onClick={cart.clear}
+                  className="text-xs text-gray-400 hover:text-red-400 transition px-2 py-1 rounded-lg hover:bg-red-50"
+                >
+                  Limpar tudo
+                </button>
+              )}
             </div>
           </SheetHeader>
         </div>
 
-        <Separator style={{ backgroundColor: "var(--border)" }} />
+        <div className="h-px bg-gray-100 shrink-0" />
 
-        {/* list */}
-        <div className="flex-1 overflow-auto px-5 py-4">
+        {/* Itens */}
+        <div className="flex-1 overflow-y-auto">
           {!hasItems ? (
-            <div
-              className="rounded-3xl border p-5"
-              style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" style={{ color: "#7c5cf8" }} />
-                <div className="text-sm font-extrabold text-[var(--text)]">Seu carrinho está vazio</div>
+            <div className="flex flex-col items-center justify-center h-full gap-3 py-16">
+              <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
+                <ShoppingBag className="w-9 h-9 text-gray-300" />
               </div>
-              <div className="mt-2 text-sm text-[var(--text-muted)]">
-                Adicione itens do catálogo para continuar.
-              </div>
+              <p className="text-base font-semibold text-gray-500">Seu carrinho está vazio</p>
+              <p className="text-sm text-gray-400">Adicione produtos para continuar</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {cart.items.map((i) => {
-                const itemTotal = i.product.priceCents * i.qty;
-                return (
-                  <div
-                    key={i.product.id}
-                    className="rounded-3xl border p-4"
-                    style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-black text-[var(--text)]">{i.product.name}</div>
-                        <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-muted)]">
-                          <Tag className="h-3.5 w-3.5" />
-                          <span>{(i.product as any).categoryId?.name ?? ""}</span>
-                        </div>
-                        <div className="mt-3 flex items-baseline gap-2">
-                          <div className="text-base font-black text-[var(--text)]">
-                            {formatBRL(itemTotal)}
-                          </div>
-                          <div className="text-xs text-[var(--text-muted)]">
-                            ({formatBRL(i.product.priceCents)} cada)
-                          </div>
-                        </div>
-                      </div>
+            <div className="divide-y divide-gray-100">
+              {cart.items.map((item) => {
+                const itemTotal = item.product.priceCents * item.qty;
+                const img = (item.product as any).imageUrl || "https://picsum.photos/seed/pet/200/200";
 
-                      <QtyStepper
-                        qty={i.qty}
-                        onDec={() => cart.dec(i.product.id)}
-                        onInc={() => cart.inc(i.product.id)}
-                        onRemove={() => cart.remove(i.product.id)}
+                return (
+                  <div key={item.product.id} className="px-5 py-4 flex items-center gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-gray-100">
+                      <img
+                        src={img}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
                       />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 line-clamp-1 leading-tight">
+                        {item.product.name}
+                      </p>
+                      <p className="text-sm font-black tabular-nums mt-0.5" style={{ color: "#7c5cf8" }}>
+                        {formatBRL(item.product.priceCents)}
+                      </p>
+                      {item.qty > 1 && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Total: {formatBRL(itemTotal)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Controles */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          item.qty === 1
+                            ? cart.remove(item.product.id)
+                            : cart.dec(item.product.id)
+                        }
+                        className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
+                        aria-label={item.qty === 1 ? "Remover item" : "Diminuir quantidade"}
+                      >
+                        {item.qty === 1 ? (
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        ) : (
+                          <Minus className="w-4 h-4 text-gray-600" />
+                        )}
+                      </button>
+
+                      <span className="w-6 text-center text-sm font-black text-gray-900 tabular-nums select-none">
+                        {item.qty}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => cart.inc(item.product.id)}
+                        className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
+                        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                        aria-label="Aumentar quantidade"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -159,38 +139,28 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <Separator style={{ backgroundColor: "var(--border)" }} />
-
-        {/* footer */}
-        <div className="px-5 py-4 space-y-3">
-          <div
-            className="rounded-3xl border p-4"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
-          >
-            <div className="flex items-baseline justify-between">
-              <div className="text-sm text-[var(--text-muted)]">Subtotal</div>
-              <div className="text-lg font-black tabular-nums" style={{ color: "#7c5cf8" }}>
-                {formatBRL(cart.subtotalCents)}
-              </div>
-            </div>
-            <div className="mt-1 text-xs text-[var(--text-muted)]">
-              Entrega e descontos serão calculados no checkout.
-            </div>
+        {/* Footer */}
+        <div className="shrink-0 border-t border-gray-100 px-5 py-4 bg-white pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <div className="flex items-baseline justify-between mb-4">
+            <span className="text-sm text-gray-500">Subtotal</span>
+            <span className="text-2xl font-black text-gray-900 tabular-nums">
+              {formatBRL(cart.subtotalCents)}
+            </span>
           </div>
 
           <button
             type="button"
             disabled={!hasItems}
             onClick={() => navigate("/checkout")}
-            className="w-full h-12 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 disabled:opacity-40 transition"
-            style={{ backgroundColor: "#7c5cf8" }}
+            className="w-full h-13 py-3.5 rounded-2xl font-black text-base text-white disabled:opacity-40 transition hover:brightness-110 active:scale-[0.99]"
+            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
           >
-            Continuar <ArrowRight className="h-4 w-4" />
+            Finalizar Pedido
           </button>
 
-          <div className="text-[11px] text-[var(--text-muted)] text-center">
-            Cartão: somente na entrega • PIX: validação na próxima etapa
-          </div>
+          <p className="text-xs text-gray-400 text-center mt-3">
+            Cartão: somente na entrega • PIX: na próxima etapa
+          </p>
         </div>
       </SheetContent>
     </Sheet>

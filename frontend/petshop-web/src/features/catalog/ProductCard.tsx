@@ -1,5 +1,7 @@
-import { Plus, Tag } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "@/features/cart/cart";
+import { useToast } from "@/components/Toast";
 
 type Product = {
   id: string;
@@ -13,60 +15,107 @@ function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function ProductCard({ p }: { p: Product }) {
+export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () => void }) {
+  const navigate = useNavigate();
   const cart = useCart();
+  const { showToast } = useToast();
   const item = cart.items.find((x) => x.product.id === p.id);
-  const img = p.imageUrl || "https://picsum.photos/seed/pet/800/600";
+  const qty = item?.qty ?? 0;
+  const img = p.imageUrl || "https://picsum.photos/seed/pet/400/400";
+
+  function handleAdd(e: React.MouseEvent) {
+    e.stopPropagation();
+    cart.add(p as any);
+    showToast(`${p.name} adicionado ao carrinho!`);
+  }
+
+  function handleDec(e: React.MouseEvent) {
+    e.stopPropagation();
+    qty === 1 ? cart.remove(p.id) : cart.dec(p.id);
+  }
+
+  function handleInc(e: React.MouseEvent) {
+    e.stopPropagation();
+    cart.inc(p.id);
+  }
 
   return (
     <div
-      className="rounded-3xl border overflow-hidden shadow-sm"
-      style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}
+      className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow group h-full min-w-0 flex flex-col cursor-pointer"
+      onClick={() => (onCardClick ? onCardClick() : navigate(`/produto/${p.id}`))}
     >
-      {/* Imagem */}
-      <div className="relative h-[180px] w-full" style={{ backgroundColor: "var(--surface-2)" }}>
-        <img src={img} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0" />
-
-        {/* categoria */}
-        <div className="absolute left-3 top-3">
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white bg-black/60 border border-white/10">
-            <Tag className="h-3.5 w-3.5" />
-            {p.category?.name ?? "Categoria"}
-          </span>
-        </div>
-
-        {/* badge carrinho */}
-        {item?.qty ? (
-          <div className="absolute right-3 top-3">
+      {/* Imagem — altura responsiva por breakpoint */}
+      <div className="relative h-32 sm:h-40 lg:h-48 w-full overflow-hidden bg-gray-100 shrink-0">
+        <img
+          src={img}
+          alt={p.name}
+          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+        {qty > 0 && (
+          <div className="absolute top-2 right-2">
             <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold text-white"
-              style={{ backgroundColor: "#7c5cf8" }}
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-black shadow-md"
+              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
             >
-              No carrinho: {item.qty}
+              {qty}
             </span>
           </div>
-        ) : null}
+        )}
       </div>
 
-      {/* Conteúdo */}
-      <div className="p-4 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm font-black text-[var(--text)] line-clamp-2">{p.name}</div>
-          <div className="mt-2 text-lg font-black text-[var(--text)] tabular-nums">
-            {formatBRL(p.priceCents)}
-          </div>
-        </div>
+      {/* Conteúdo — flex-1 + mt-auto alinha botão na base em todos os cards */}
+      <div className="p-3 flex flex-col flex-1">
+        <p className="text-sm font-medium text-gray-900 line-clamp-2 min-h-[40px] leading-tight">
+          {p.name}
+        </p>
 
-        <button
-          type="button"
-          className="h-11 px-4 rounded-2xl font-black text-sm text-white flex items-center gap-1.5 shrink-0 transition"
-          style={{ backgroundColor: "#7c5cf8" }}
-          onClick={() => cart.add(p as any)}
-        >
-          <Plus className="h-4 w-4" />
-          Adicionar
-        </button>
+        <div className="mt-auto pt-2 flex items-center justify-between">
+          <span className="text-sm font-semibold tabular-nums" style={{ color: "#7c5cf8" }}>
+            {formatBRL(p.priceCents)}
+          </span>
+
+          {qty === 0 ? (
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="w-8 h-8 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shrink-0 shadow-sm"
+              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              aria-label="Adicionar ao carrinho"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={handleDec}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
+                aria-label={qty === 1 ? "Remover" : "Diminuir"}
+              >
+                {qty === 1 ? (
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                ) : (
+                  <Minus className="w-3 h-3 text-gray-600" />
+                )}
+              </button>
+
+              <span className="w-5 text-center text-sm font-bold text-gray-900 tabular-nums select-none">
+                {qty}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleInc}
+                className="w-7 h-7 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-sm"
+                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                aria-label="Aumentar"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

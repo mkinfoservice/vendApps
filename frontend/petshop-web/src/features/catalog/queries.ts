@@ -15,3 +15,14 @@ export function useProducts(categorySlug?: string, search?: string) {
         queryFn: () => fetchProducts(categorySlug, search),
     });
 }
+
+export function useProduct(id: string) {
+    return useQuery<Product | undefined>({
+        queryKey: ["product", id],
+        queryFn: async () => {
+            const products = await fetchProducts();
+            return products.find((p) => p.id === id);
+        },
+        enabled: !!id,
+    });
+}

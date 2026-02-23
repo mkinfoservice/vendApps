@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
 import Checkout from "./pages/Checkout";
+import ProductDetail from "./pages/ProductDetail";
 
 import Dashboard from "./pages/admin/Dashboard";
 import OrdersList from "./pages/admin/OrdersList";
@@ -31,6 +32,7 @@ export function AppRoutes() {
         {/* Público */}
         <Route path="/" element={<App />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="/produto/:id" element={<ProductDetail />} />
 
         {/* Admin Login */}
         <Route path="/admin/login" element={<AdminLogin />} />

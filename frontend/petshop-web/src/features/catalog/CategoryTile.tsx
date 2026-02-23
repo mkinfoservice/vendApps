@@ -4,8 +4,9 @@ type Category = {
   slug: string;
 };
 
-function firstEmoji(name: string) {
+function categoryEmoji(name: string): string {
   const n = name.toLocaleLowerCase();
+  if (n.includes("todos") || n === "") return "🏠";
   if (n.includes("ração")) return "🍖";
   if (n.includes("brinquedo")) return "🧸";
   if (n.includes("remédio")) return "💊";
@@ -24,31 +25,26 @@ export function CategoryTile({
   active: boolean;
   onClick: () => void;
 }) {
+  const emoji = categoryEmoji(c.name);
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="min-w-[132px] h-[110px] rounded-2xl border text-left p-3 transition"
-      style={{
-        backgroundColor: active ? "rgba(124,92,248,0.1)" : "var(--surface)",
-        borderColor: active ? "#7c5cf8" : "var(--border)",
-        boxShadow: active ? "0 0 0 1px #7c5cf8" : undefined,
-      }}
+      className={[
+        "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all shrink-0 select-none",
+        active
+          ? "text-white shadow-md"
+          : "bg-white text-gray-700 border border-gray-200 hover:border-[#7c5cf8] hover:text-[#7c5cf8] active:scale-95",
+      ].join(" ")}
+      style={
+        active
+          ? { background: "linear-gradient(135deg, #7c5cf8, #6d4df2)", boxShadow: "0 4px 12px rgba(124,92,248,0.3)" }
+          : undefined
+      }
     >
-      <div className="flex items-start justify-between">
-        <div className="text-2xl leading-none">{firstEmoji(c.name)}</div>
-        {active ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-            style={{ backgroundColor: "#7c5cf8", color: "#fff" }}
-          >
-            Ativa
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-3 text-sm font-extrabold text-[var(--text)] line-clamp-2">{c.name}</div>
-      <div className="mt-1 text-xs text-[var(--text-muted)]">Ver produtos</div>
+      <span className="text-base leading-none">{emoji}</span>
+      <span>{c.name}</span>
     </button>
   );
 }
