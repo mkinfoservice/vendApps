@@ -174,12 +174,16 @@ builder.Services.AddScoped<IImageStorageProvider, LocalImageStorageProvider>();
 // ===============================
 builder.Services.AddCors(options =>
 {
+    var allowedOrigins = (builder.Configuration["ALLOWED_ORIGINS"] ?? "")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     options.AddPolicy("Frontend", policy =>
     {
         policy
             .SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost") ||
-                origin.StartsWith("http://127.0.0.1"))
+                origin.StartsWith("http://127.0.0.1") ||
+                allowedOrigins.Any(o => origin.Equals(o, StringComparison.OrdinalIgnoreCase)))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -216,14 +220,14 @@ app.UseExceptionHandler(errorApp =>
 // ===============================
 // Dev-only Middleware
 // ===============================
+var enableSwagger = app.Environment.IsDevelopment()
+    || string.Equals(builder.Configuration["ENABLE_SWAGGER"], "true", StringComparison.OrdinalIgnoreCase);
+
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await DbSeeder.SeedAsync(db);
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
 
     // Hangfire Dashboard (dev: sem auth adicional)
     app.UseHangfireDashboard("/admin/hangfire");
@@ -233,6 +237,12 @@ if (app.Environment.IsDevelopment())
         "sync-scheduler",
         j => j.RunScheduledSyncsAsync(CancellationToken.None),
         "* * * * *");
+}
+
+if (enableSwagger)
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 // ===============================

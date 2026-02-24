@@ -4,6 +4,7 @@ import { useCreateSource } from "./queries";
 import { testConnection, updateSource } from "./api";
 import { useDbTables, useDbColumns } from "./queries";
 import { DTO_FIELDS, type DtoFieldName, type TestConnectionResponse } from "./types";
+import { UniversalConnectionBuilder } from "./UniversalConnectionBuilder";
 
 // ── Styles helpers ────────────────────────────────────────────────────────────
 
@@ -382,13 +383,11 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
           {/* Connection string ou FilePath */}
           {s1.mode === "live" ? (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold" style={labelStyle()}>Connection string *</label>
-              <input
+              <label className="text-xs font-semibold" style={labelStyle()}>Conexão *</label>
+              <UniversalConnectionBuilder
+                connectorType={s1.provider}
                 value={s1.connectionString}
-                onChange={(e) => setS1((p) => ({ ...p, connectionString: e.target.value }))}
-                placeholder="Server=...;Database=...;User=...;Password=..."
-                className={inputClass()}
-                style={inputStyle()}
+                onChange={(cs) => setS1((p) => ({ ...p, connectionString: cs }))}
               />
             </div>
           ) : (
