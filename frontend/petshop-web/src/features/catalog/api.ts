@@ -1,5 +1,17 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
-const COMPANY_SLUG = import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo";
+
+// Detecta o slug da empresa pelo subdomínio em runtime.
+// Ex: suaempresa.vendapps.com.br → "suaempresa"
+// Fallback: env var VITE_COMPANY_SLUG ou "petshop-demo"
+function resolveCompanySlug(): string {
+  const parts = window.location.hostname.split(".");
+  if (parts.length >= 4 && (parts[1] === "vendapps" || parts[1] === "vandapps")) {
+    return parts[0];
+  }
+  return import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo";
+}
+
+const COMPANY_SLUG = resolveCompanySlug();
 
 export type Category = {
   id: string;

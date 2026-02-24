@@ -184,13 +184,25 @@ builder.Services.AddCors(options =>
     var allowedOrigins = (builder.Configuration["ALLOWED_ORIGINS"] ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+    static bool IsVendappsSubdomain(string origin)
+    {
+        try
+        {
+            var host = new Uri(origin).Host;
+            return host.EndsWith(".vendapps.com.br", StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith(".vandapps.com.br", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { return false; }
+    }
+
     options.AddPolicy("Frontend", policy =>
     {
         policy
             .SetIsOriginAllowed(origin =>
                 origin.StartsWith("http://localhost") ||
                 origin.StartsWith("http://127.0.0.1") ||
-                allowedOrigins.Any(o => origin.Equals(o, StringComparison.OrdinalIgnoreCase)))
+                allowedOrigins.Any(o => origin.Equals(o, StringComparison.OrdinalIgnoreCase)) ||
+                IsVendappsSubdomain(origin))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -230,19 +242,16 @@ app.UseExceptionHandler(errorApp =>
 var enableSwagger = app.Environment.IsDevelopment()
     || string.Equals(builder.Configuration["ENABLE_SWAGGER"], "true", StringComparison.OrdinalIgnoreCase);
 
-// Aplica migrations automaticamente em todos os ambientes
+// Aplica migrations + seed demo em todos os ambientes
+// O DbSeeder é idempotente (checa se dados já existem antes de inserir)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    await DbSeeder.SeedAsync(db);
 }
 
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await DbSeeder.SeedAsync(db);
-
     // Hangfire Dashboard (dev: sem auth adicional)
     app.UseHangfireDashboard("/admin/hangfire");
 }
