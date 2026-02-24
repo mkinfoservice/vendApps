@@ -240,11 +240,15 @@ if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard("/admin/hangfire");
 }
 
-// Job de sync agendado — roda em todos os ambientes
-RecurringJob.AddOrUpdate<SyncSchedulerJob>(
-    "sync-scheduler",
-    j => j.RunScheduledSyncsAsync(CancellationToken.None),
-    "* * * * *");
+// Job de sync agendado — roda em todos os ambientes (usa DI, não API estática)
+using (var scope = app.Services.CreateScope())
+{
+    var jobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+    jobManager.AddOrUpdate<SyncSchedulerJob>(
+        "sync-scheduler",
+        j => j.RunScheduledSyncsAsync(CancellationToken.None),
+        "* * * * *");
+}
 
 if (enableSwagger)
 {
