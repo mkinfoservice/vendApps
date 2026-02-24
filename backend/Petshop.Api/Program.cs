@@ -230,6 +230,13 @@ app.UseExceptionHandler(errorApp =>
 var enableSwagger = app.Environment.IsDevelopment()
     || string.Equals(builder.Configuration["ENABLE_SWAGGER"], "true", StringComparison.OrdinalIgnoreCase);
 
+// Aplica migrations automaticamente em todos os ambientes
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
