@@ -8,6 +8,7 @@ using System.Text;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.HttpOverrides;
 using Petshop.Api.Services;
 using Microsoft.OpenApi.Models;
 using Petshop.Api.Services.Geocoding;
@@ -16,6 +17,12 @@ using Petshop.Api.Services.Sync;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ===============================
+// Porta dinâmica (Render define PORT)
+// ===============================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5082";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 // ===============================
 // Controllers
@@ -231,13 +238,13 @@ if (app.Environment.IsDevelopment())
 
     // Hangfire Dashboard (dev: sem auth adicional)
     app.UseHangfireDashboard("/admin/hangfire");
-
-    // Registrar job de sync agendado (verifica a cada minuto)
-    RecurringJob.AddOrUpdate<SyncSchedulerJob>(
-        "sync-scheduler",
-        j => j.RunScheduledSyncsAsync(CancellationToken.None),
-        "* * * * *");
 }
+
+// Job de sync agendado — roda em todos os ambientes
+RecurringJob.AddOrUpdate<SyncSchedulerJob>(
+    "sync-scheduler",
+    j => j.RunScheduledSyncsAsync(CancellationToken.None),
+    "* * * * *");
 
 if (enableSwagger)
 {
@@ -248,8 +255,19 @@ if (enableSwagger)
 // ===============================
 // Middleware Pipeline
 // ===============================
+
+// Necessário para funcionar atrás de reverse proxy (Render, Railway, etc.)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseCors("Frontend");
-app.UseHttpsRedirection();
+
+// Não usar HttpsRedirection atrás de reverse proxy — o proxy já termina o TLS
+if (app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
 app.UseStaticFiles(); // Serve wwwroot/product-images/
 
 app.UseAuthentication();
