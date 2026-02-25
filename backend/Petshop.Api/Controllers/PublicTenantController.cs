@@ -19,21 +19,22 @@ public class PublicTenantController : ControllerBase
     }
 
     /// <summary>
-    /// Resolve o tenant pelo Host header.
-    /// Usado pelo frontend para validar o subdomínio antes de renderizar a loja.
+    /// Resolve o tenant pelo slug (query param) ou pelo Host header.
+    /// Aceita ?slug=novaempresa para frontends em domínio diferente do API
+    /// (ex: Vercel SPA + Render API). Fallback: extrai do Host header.
     /// </summary>
     [HttpGet("resolve")]
-    public async Task<IActionResult> Resolve(CancellationToken ct)
+    public async Task<IActionResult> Resolve([FromQuery] string? slug, CancellationToken ct)
     {
-        // Request.Host.Host já exclui a porta
-        var slug = _resolver.ExtractSlug(Request.Host.Host);
+        var resolvedSlug = slug?.Trim().ToLowerInvariant()
+                           ?? _resolver.ExtractSlug(Request.Host.Host);
 
-        if (slug is null)
-            return NotFound(new { error = "Tenant não identificado para este host." });
+        if (resolvedSlug is null)
+            return NotFound(new { error = "Tenant não identificado." });
 
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Slug == slug, ct);
+            .FirstOrDefaultAsync(c => c.Slug == resolvedSlug, ct);
 
         if (company is null || company.IsDeleted || !company.IsActive)
             return NotFound(new { error = "Empresa não encontrada." });

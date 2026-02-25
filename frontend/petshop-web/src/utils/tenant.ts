@@ -40,11 +40,22 @@ export type TenantInfo = {
 };
 
 /**
- * Chama GET /public/tenant/resolve para obter dados do tenant pelo Host header.
+ * Chama GET /public/tenant/resolve?slug={slug} para obter dados do tenant.
+ * Passa o slug como query param pois o frontend (Vercel) e o backend (Render)
+ * estão em domínios diferentes — o Host header na request chegaria como
+ * "vendapps.onrender.com", não como o subdomínio do tenant.
  * Lança um erro com `.status` (403, 404) em caso de falha.
  */
 export async function fetchTenantInfo(): Promise<TenantInfo> {
-  const r = await fetch(`${API_URL}/public/tenant/resolve`);
+  const slug = resolveTenantFromHost();
+  if (!slug) {
+    const err = new Error("Sem subdomínio de tenant") as Error & { status: number };
+    err.status = 400;
+    throw err;
+  }
+  const r = await fetch(
+    `${API_URL}/public/tenant/resolve?slug=${encodeURIComponent(slug)}`
+  );
   if (!r.ok) {
     const body = await r.json().catch(() => ({}));
     const err = new Error(

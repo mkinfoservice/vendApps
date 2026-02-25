@@ -2,18 +2,15 @@ import { resolveTenantFromHost } from "@/utils/tenant";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
 
-// Slug do tenant resolvido pelo Host header (null em localhost / domínio apex)
-const tenantSlug = resolveTenantFromHost();
+// Frontend (Vercel) e backend (Render) estão em domínios distintos:
+// o Host header da request sempre chega como "vendapps.onrender.com".
+// Por isso usamos sempre slug explícito na URL do catálogo.
+//   Subdomínio válido → slug extraído do hostname do browser
+//   localhost / apex  → VITE_COMPANY_SLUG ou "petshop-demo"
+const activeSlug =
+  resolveTenantFromHost() ?? (import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo");
 
-// Fallback: env var VITE_COMPANY_SLUG ou "petshop-demo" (usado em dev/preview)
-const fallbackSlug = import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo";
-
-// Base da URL do catálogo:
-//   Em subdomínio válido → /catalog           (Host resolvido pelo backend)
-//   Em localhost / apex  → /catalog/{slug}    (slug explícito na URL)
-const catalogBase = tenantSlug
-  ? `${API_URL}/catalog`
-  : `${API_URL}/catalog/${fallbackSlug}`;
+const catalogBase = `${API_URL}/catalog/${activeSlug}`;
 
 export type Category = {
   id: string;
