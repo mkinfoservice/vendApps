@@ -7,6 +7,7 @@ using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.Delivery;
 using Petshop.Api.Entities.Master;
 using Petshop.Api.Models;
+using Petshop.Api.Services;
 using Petshop.Api.Services.Master;
 
 namespace Petshop.Api.Controllers;
@@ -22,11 +23,13 @@ public class MasterCompaniesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MasterAuditService _audit;
+    private readonly TenantResolverService _tenantResolver;
 
-    public MasterCompaniesController(AppDbContext db, MasterAuditService audit)
+    public MasterCompaniesController(AppDbContext db, MasterAuditService audit, TenantResolverService tenantResolver)
     {
         _db = db;
         _audit = audit;
+        _tenantResolver = tenantResolver;
     }
 
     // ── GET /master/companies ─────────────────────────────────
@@ -106,6 +109,11 @@ public class MasterCompaniesController : ControllerBase
     {
         var slug = req.Slug.Trim().ToLowerInvariant();
 
+        // Valida formato e reservados (regex ^[a-z0-9-]{3,63}$)
+        var slugError = _tenantResolver.ValidateSlug(slug);
+        if (slugError is not null)
+            return BadRequest(new { error = slugError });
+
         if (await _db.Companies.AnyAsync(c => c.Slug == slug, ct))
             return Conflict(new { error = $"Slug '{slug}' já está em uso." });
 
@@ -139,6 +147,7 @@ public class MasterCompaniesController : ControllerBase
         var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id, ct);
         if (company is null) return NotFound();
 
+        // Slug é imutável após a criação — não incluído no UpdateCompanyRequest.
         if (req.Name is not null) company.Name = req.Name.Trim();
         if (req.Segment is not null) company.Segment = req.Segment.Trim();
         if (req.Plan is not null) company.Plan = req.Plan.Trim();

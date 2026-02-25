@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { login } from "@/features/admin/auth/api";
 import { isAuthenticated, saveToken } from "@/features/admin/auth/auth";
+import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -9,6 +11,16 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const tenantSlug = resolveTenantFromHost();
+  const tenantQuery = useQuery({
+    queryKey: ["tenant"],
+    queryFn: fetchTenantInfo,
+    enabled: !!tenantSlug,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const companyName = tenantQuery.data?.name;
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -64,7 +76,7 @@ export default function AdminLogin() {
               className="text-xl font-bold tracking-tight"
               style={{ color: "var(--text)" }}
             >
-              vendApps Admin
+              {companyName ? `Entrar em ${companyName}` : "vendApps Admin"}
             </h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
               Painel Administrativo

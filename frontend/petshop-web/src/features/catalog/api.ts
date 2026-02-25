@@ -1,17 +1,19 @@
+import { resolveTenantFromHost } from "@/utils/tenant";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
 
-// Detecta o slug da empresa pelo subdomínio em runtime.
-// Ex: suaempresa.vendapps.com.br → "suaempresa"
-// Fallback: env var VITE_COMPANY_SLUG ou "petshop-demo"
-function resolveCompanySlug(): string {
-  const parts = window.location.hostname.split(".");
-  if (parts.length >= 4 && (parts[1] === "vendapps" || parts[1] === "vandapps")) {
-    return parts[0];
-  }
-  return import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo";
-}
+// Slug do tenant resolvido pelo Host header (null em localhost / domínio apex)
+const tenantSlug = resolveTenantFromHost();
 
-const COMPANY_SLUG = resolveCompanySlug();
+// Fallback: env var VITE_COMPANY_SLUG ou "petshop-demo" (usado em dev/preview)
+const fallbackSlug = import.meta.env.VITE_COMPANY_SLUG ?? "petshop-demo";
+
+// Base da URL do catálogo:
+//   Em subdomínio válido → /catalog           (Host resolvido pelo backend)
+//   Em localhost / apex  → /catalog/{slug}    (slug explícito na URL)
+const catalogBase = tenantSlug
+  ? `${API_URL}/catalog`
+  : `${API_URL}/catalog/${fallbackSlug}`;
 
 export type Category = {
   id: string;
@@ -29,7 +31,7 @@ export type Product = {
 };
 
 export async function fetchCategories(): Promise<Category[]> {
-  const r = await fetch(`${API_URL}/catalog/${COMPANY_SLUG}/categories`);
+  const r = await fetch(`${catalogBase}/categories`);
   if (!r.ok) throw new Error("Erro ao buscar categorias");
   return r.json();
 }
@@ -40,7 +42,7 @@ export async function fetchProducts(categorySlug?: string, search?: string): Pro
   if (search) params.set("search", search);
 
   const qs = params.toString();
-  const r = await fetch(`${API_URL}/catalog/${COMPANY_SLUG}/products${qs ? `?${qs}` : ""}`);
+  const r = await fetch(`${catalogBase}/products${qs ? `?${qs}` : ""}`);
 
   if (!r.ok) throw new Error("Erro ao buscar produtos");
   return r.json();

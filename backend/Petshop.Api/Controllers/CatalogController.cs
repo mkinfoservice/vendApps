@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
+using Petshop.Api.Services;
 
 namespace Petshop.Api.Controllers;
 
@@ -9,19 +10,67 @@ namespace Petshop.Api.Controllers;
 public class CatalogController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TenantResolverService _tenantResolver;
 
-    public CatalogController(AppDbContext db)
+    public CatalogController(AppDbContext db, TenantResolverService tenantResolver)
     {
         _db = db;
+        _tenantResolver = tenantResolver;
     }
+
+    // ── Via slug na rota ─────────────────────────────────────────────
 
     /// <summary>Lista categorias da empresa identificada pelo slug. Ex: GET /catalog/petshop-demo/categories</summary>
     [HttpGet("categories")]
-    public async Task<IActionResult> GetCategories([FromRoute] string companySlug)
+    public async Task<IActionResult> GetCategories([FromRoute] string companySlug, CancellationToken ct)
+        => await GetCategoriesCore(companySlug, ct);
+
+    /// <summary>
+    /// Lista produtos ativos da empresa identificada pelo slug.
+    /// Ex: GET /catalog/petshop-demo/products?search=racao&categorySlug=racao
+    /// </summary>
+    [HttpGet("products")]
+    public async Task<IActionResult> GetProducts(
+        [FromRoute] string companySlug,
+        [FromQuery] string? categorySlug,
+        [FromQuery] string? search,
+        CancellationToken ct)
+        => await GetProductsCore(companySlug, categorySlug, search, ct);
+
+    // ── Via Host header (subdomínio) ─────────────────────────────────
+
+    /// <summary>Lista categorias resolvendo a empresa pelo Host header. Ex: GET /catalog/categories (em minhaloja.vendapps.com.br)</summary>
+    [HttpGet("/catalog/categories")]
+    public async Task<IActionResult> GetCategoriesByHost(CancellationToken ct)
+    {
+        var slug = _tenantResolver.ExtractSlug(Request.Host.Host);
+        if (slug is null)
+            return BadRequest(new { error = "Tenant não identificado. Use /catalog/{slug}/categories" });
+
+        return await GetCategoriesCore(slug, ct);
+    }
+
+    /// <summary>Lista produtos resolvendo a empresa pelo Host header. Ex: GET /catalog/products (em minhaloja.vendapps.com.br)</summary>
+    [HttpGet("/catalog/products")]
+    public async Task<IActionResult> GetProductsByHost(
+        [FromQuery] string? categorySlug,
+        [FromQuery] string? search,
+        CancellationToken ct)
+    {
+        var slug = _tenantResolver.ExtractSlug(Request.Host.Host);
+        if (slug is null)
+            return BadRequest(new { error = "Tenant não identificado. Use /catalog/{slug}/products" });
+
+        return await GetProductsCore(slug, categorySlug, search, ct);
+    }
+
+    // ── Helpers privados ─────────────────────────────────────────────
+
+    private async Task<IActionResult> GetCategoriesCore(string companySlug, CancellationToken ct)
     {
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Slug == companySlug);
+            .FirstOrDefaultAsync(c => c.Slug == companySlug, ct);
 
         if (company == null || company.IsDeleted || !company.IsActive)
             return NotFound("Empresa não encontrada.");
@@ -34,24 +83,20 @@ public class CatalogController : ControllerBase
             .Where(c => c.CompanyId == company.Id)
             .OrderBy(c => c.Name)
             .Select(c => new { c.Id, c.Name, c.Slug })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(categories);
     }
 
-    /// <summary>
-    /// Lista produtos ativos da empresa identificada pelo slug.
-    /// Ex: GET /catalog/petshop-demo/products?search=racao&categorySlug=racao
-    /// </summary>
-    [HttpGet("products")]
-    public async Task<IActionResult> GetProducts(
-        [FromRoute] string companySlug,
-        [FromQuery] string? categorySlug,
-        [FromQuery] string? search)
+    private async Task<IActionResult> GetProductsCore(
+        string companySlug,
+        string? categorySlug,
+        string? search,
+        CancellationToken ct)
     {
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Slug == companySlug);
+            .FirstOrDefaultAsync(c => c.Slug == companySlug, ct);
 
         if (company == null || company.IsDeleted || !company.IsActive)
             return NotFound("Empresa não encontrada.");
@@ -82,7 +127,7 @@ public class CatalogController : ControllerBase
                 p.ImageUrl,
                 Category = new { p.Category.Id, p.Category.Name, p.Category.Slug }
             })
-            .ToListAsync();
+            .ToListAsync(ct);
 
         return Ok(products);
     }

@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Petshop.Api.Contracts.Auth;
 using Petshop.Api.Data;
+using Petshop.Api.Services;
 
 namespace Petshop.Api.Controllers;
 
@@ -15,11 +16,13 @@ public class AuthController : ControllerBase
 {
     private readonly IConfiguration _config;
     private readonly AppDbContext _db;
+    private readonly TenantResolverService _tenantResolver;
 
-    public AuthController(IConfiguration config, AppDbContext db)
+    public AuthController(IConfiguration config, AppDbContext db, TenantResolverService tenantResolver)
     {
         _config = config;
         _db = db;
+        _tenantResolver = tenantResolver;
     }
 
     [HttpPost("login")]
@@ -31,21 +34,25 @@ public class AuthController : ControllerBase
         var staticUser = jwt["AdminUser"];
         var staticPass = jwt["AdminPassword"];
 
+        // Slug do subdomínio atual — adicionado ao JWT como claim auxiliar (boundSlug)
+        var boundSlug = _tenantResolver.ExtractSlug(Request.Host.Host);
+
         // 1. Credenciais estáticas (compatibilidade total com comportamento anterior)
         if (req.Username == staticUser && req.Password == staticPass)
         {
             var companyId = jwt["CompanyId"] ?? Petshop.Api.Data.DbSeeder.DevCompanyId.ToString();
 
-            var token = GenerateToken(new List<Claim>
+            var claims = new List<Claim>
             {
                 new(JwtRegisteredClaimNames.Sub, req.Username),
                 new(ClaimTypes.Name, req.Username),
                 new(ClaimTypes.Role, "admin"),
                 new("companyId", companyId),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            });
+            };
+            if (boundSlug is not null) claims.Add(new Claim("boundSlug", boundSlug));
 
-            return Ok(new AdminLoginResponse(token));
+            return Ok(new AdminLoginResponse(GenerateToken(claims)));
         }
 
         // 2. AdminUsers criados pelo Wizard (BCrypt)
@@ -61,16 +68,17 @@ public class AuthController : ControllerBase
         adminUser.LastLoginAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        var adminToken = GenerateToken(new List<Claim>
+        var adminClaims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, adminUser.Username),
             new(ClaimTypes.Name, adminUser.Username),
             new(ClaimTypes.Role, "admin"),
             new("companyId", adminUser.CompanyId.ToString()!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        });
+        };
+        if (boundSlug is not null) adminClaims.Add(new Claim("boundSlug", boundSlug));
 
-        return Ok(new AdminLoginResponse(adminToken));
+        return Ok(new AdminLoginResponse(GenerateToken(adminClaims)));
     }
 
     [HttpPost("deliverer/login")]

@@ -184,6 +184,11 @@ builder.Services.AddScoped<Petshop.Api.Services.Master.MasterAuditService>();
 builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
 
 // ===============================
+// Services — Tenant
+// ===============================
+builder.Services.AddScoped<Petshop.Api.Services.TenantResolverService>();
+
+// ===============================
 // CORS
 // ===============================
 builder.Services.AddCors(options =>
@@ -191,13 +196,18 @@ builder.Services.AddCors(options =>
     var allowedOrigins = (builder.Configuration["ALLOWED_ORIGINS"] ?? "")
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    static bool IsVendappsSubdomain(string origin)
+    // Lê TENANT_BASE_DOMAIN do config (mesmo valor que TenantResolverService usa)
+    var tenantBaseDomain = (builder.Configuration["TENANT_BASE_DOMAIN"] ?? "vendapps.com.br")
+        .ToLowerInvariant().Trim('.');
+
+    bool IsTenantOrigin(string origin)
     {
         try
         {
-            var host = new Uri(origin).Host;
-            return host.EndsWith(".vendapps.com.br", StringComparison.OrdinalIgnoreCase)
-                || host.EndsWith(".vandapps.com.br", StringComparison.OrdinalIgnoreCase);
+            var host = new Uri(origin).Host.ToLowerInvariant();
+            // Aceita o domínio apex (ex: vendapps.com.br) e qualquer subdomínio direto
+            return string.Equals(host, tenantBaseDomain, StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith("." + tenantBaseDomain, StringComparison.OrdinalIgnoreCase);
         }
         catch { return false; }
     }
@@ -209,7 +219,7 @@ builder.Services.AddCors(options =>
                 origin.StartsWith("http://localhost") ||
                 origin.StartsWith("http://127.0.0.1") ||
                 allowedOrigins.Any(o => origin.Equals(o, StringComparison.OrdinalIgnoreCase)) ||
-                IsVendappsSubdomain(origin))
+                IsTenantOrigin(origin))
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -324,6 +334,9 @@ app.UseStaticFiles(); // Serve wwwroot/product-images/
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Valida que token JWT de admin pertence à empresa do subdomínio atual (FASE 3)
+app.UseMiddleware<Petshop.Api.Middleware.TenantHostValidationMiddleware>();
 
 app.MapControllers();
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
-import { ShoppingCart, Search, X } from "lucide-react";
+import { ShoppingCart, Search, X, AlertTriangle } from "lucide-react";
+import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
 import { useCategories, useProducts } from "./features/catalog/queries";
 import { useCart } from "./features/cart/cart";
 import { CartSheet } from "@/features/cart/CartSheet";
@@ -34,12 +36,24 @@ function ProductSkeleton() {
   );
 }
 
+// Slug resolvido ao nível de módulo (mesma lógica de catalog/api.ts)
+const _tenantSlug = resolveTenantFromHost();
+
 export default function App() {
   const [categorySlug, setCategorySlug] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   const isDesktop = useMediaQuery("(min-width: 1280px)");
+
+  // Verifica status do tenant (só em subdomínio válido)
+  const tenantQuery = useQuery({
+    queryKey: ["tenant"],
+    queryFn: fetchTenantInfo,
+    enabled: !!_tenantSlug,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const categoriesQuery = useCategories();
   const productsQuery = useProducts(categorySlug || undefined, search || undefined);
@@ -49,6 +63,25 @@ export default function App() {
   const isLoading = categoriesQuery.isLoading || productsQuery.isLoading;
 
   const cart = useCart();
+
+  // Empresa suspensa → tela de aviso (não renderiza loja)
+  if (_tenantSlug && tenantQuery.isError && (tenantQuery.error as { status?: number })?.status === 403) {
+    return (
+      <div className="min-h-dvh bg-gray-50 font-sans flex items-center justify-center px-6">
+        <div className="text-center max-w-xs">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-amber-100 flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8 text-amber-500" />
+          </div>
+          <h1 className="text-xl font-black text-gray-900 mb-2">
+            Loja temporariamente indisponível
+          </h1>
+          <p className="text-sm text-gray-500">
+            Esta loja está em manutenção. Tente novamente em breve.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   /** Botão do carrinho — usado tanto no TopBar quanto na bottom bar mobile */
   function CartIconButton() {
