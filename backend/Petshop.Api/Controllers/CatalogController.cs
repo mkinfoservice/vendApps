@@ -21,9 +21,13 @@ public class CatalogController : ControllerBase
     {
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Slug == companySlug && c.IsActive);
+            .FirstOrDefaultAsync(c => c.Slug == companySlug);
 
-        if (company == null) return NotFound("Empresa não encontrada.");
+        if (company == null || company.IsDeleted || !company.IsActive)
+            return NotFound("Empresa não encontrada.");
+
+        if (company.SuspendedAtUtc is not null)
+            return StatusCode(403, new { error = "Empresa temporariamente indisponível." });
 
         var categories = await _db.Categories
             .AsNoTracking()
@@ -47,9 +51,13 @@ public class CatalogController : ControllerBase
     {
         var company = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Slug == companySlug && c.IsActive);
+            .FirstOrDefaultAsync(c => c.Slug == companySlug);
 
-        if (company == null) return NotFound("Empresa não encontrada.");
+        if (company == null || company.IsDeleted || !company.IsActive)
+            return NotFound("Empresa não encontrada.");
+
+        if (company.SuspendedAtUtc is not null)
+            return StatusCode(403, new { error = "Empresa temporariamente indisponível." });
 
         var query = _db.Products
             .AsNoTracking()

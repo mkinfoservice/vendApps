@@ -23,27 +23,54 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public IActionResult Login([FromBody] AdminLoginRequest req)
+    public async Task<IActionResult> Login(
+        [FromBody] AdminLoginRequest req,
+        CancellationToken ct = default)
     {
         var jwt = _config.GetSection("Jwt");
-        var user = jwt["AdminUser"];
-        var pass = jwt["AdminPassword"];
+        var staticUser = jwt["AdminUser"];
+        var staticPass = jwt["AdminPassword"];
 
-        if (req.Username != user || req.Password != pass)
+        // 1. Credenciais estáticas (compatibilidade total com comportamento anterior)
+        if (req.Username == staticUser && req.Password == staticPass)
+        {
+            var companyId = jwt["CompanyId"] ?? Petshop.Api.Data.DbSeeder.DevCompanyId.ToString();
+
+            var token = GenerateToken(new List<Claim>
+            {
+                new(JwtRegisteredClaimNames.Sub, req.Username),
+                new(ClaimTypes.Name, req.Username),
+                new(ClaimTypes.Role, "admin"),
+                new("companyId", companyId),
+                new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            });
+
+            return Ok(new AdminLoginResponse(token));
+        }
+
+        // 2. AdminUsers criados pelo Wizard (BCrypt)
+        var adminUser = await _db.AdminUsers
+            .FirstOrDefaultAsync(u => u.Username == req.Username.Trim() && u.IsActive, ct);
+
+        if (adminUser is null || !BCrypt.Net.BCrypt.Verify(req.Password, adminUser.PasswordHash))
             return Unauthorized("Credenciais inválidas.");
 
-        var companyId = jwt["CompanyId"] ?? Petshop.Api.Data.DbSeeder.DevCompanyId.ToString();
+        if (adminUser.CompanyId is null)
+            return Unauthorized("Esta conta não possui empresa associada.");
 
-        var token = GenerateToken(new List<Claim>
+        adminUser.LastLoginAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        var adminToken = GenerateToken(new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, req.Username),
-            new(ClaimTypes.Name, req.Username),
+            new(JwtRegisteredClaimNames.Sub, adminUser.Username),
+            new(ClaimTypes.Name, adminUser.Username),
             new(ClaimTypes.Role, "admin"),
-            new("companyId", companyId),
+            new("companyId", adminUser.CompanyId.ToString()!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         });
 
-        return Ok(new AdminLoginResponse(token));
+        return Ok(new AdminLoginResponse(adminToken));
     }
 
     [HttpPost("deliverer/login")]

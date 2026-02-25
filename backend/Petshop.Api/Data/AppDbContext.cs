@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Audit;
 using Petshop.Api.Entities.Catalog;
+using Petshop.Api.Entities.Master;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
@@ -41,6 +42,12 @@ public class AppDbContext : DbContext
     // ── Auditoria ────────────────────────────────────────────
     public DbSet<ProductChangeLog> ProductChangeLogs => Set<ProductChangeLog>();
     public DbSet<ProductPriceHistory> ProductPriceHistories => Set<ProductPriceHistory>();
+
+    // ── Master Admin ──────────────────────────────────────────
+    public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
+    public DbSet<CompanyIntegrationWhatsapp> CompanyIntegrationsWhatsapp => Set<CompanyIntegrationWhatsapp>();
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+    public DbSet<MasterAuditLog> MasterAuditLogs => Set<MasterAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -184,5 +191,44 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(h => h.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // ── CompanySettings (1:1) ─────────────────────────────
+        modelBuilder.Entity<CompanySettings>()
+            .HasOne(s => s.Company)
+            .WithOne()
+            .HasForeignKey<CompanySettings>(s => s.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CompanySettings>()
+            .HasIndex(s => s.CompanyId)
+            .IsUnique();
+
+        // ── CompanyIntegrationWhatsapp (1:1) ──────────────────
+        modelBuilder.Entity<CompanyIntegrationWhatsapp>()
+            .HasOne(w => w.Company)
+            .WithOne()
+            .HasForeignKey<CompanyIntegrationWhatsapp>(w => w.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CompanyIntegrationWhatsapp>()
+            .HasIndex(w => w.CompanyId)
+            .IsUnique();
+
+        // ── AdminUser ─────────────────────────────────────────
+        modelBuilder.Entity<AdminUser>()
+            .HasIndex(u => u.Username)
+            .IsUnique();
+
+        modelBuilder.Entity<AdminUser>()
+            .HasOne(u => u.Company)
+            .WithMany()
+            .HasForeignKey(u => u.CompanyId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ── MasterAuditLog ────────────────────────────────────
+        // Sem FKs — TargetId é string flexível para qualquer tipo de alvo.
+        modelBuilder.Entity<MasterAuditLog>()
+            .HasIndex(l => l.CreatedAtUtc);
     }
 }

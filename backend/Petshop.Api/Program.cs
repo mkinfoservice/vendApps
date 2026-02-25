@@ -177,6 +177,13 @@ builder.Services.AddScoped<DbSchemaDiscoveryService>();
 builder.Services.AddScoped<IImageStorageProvider, LocalImageStorageProvider>();
 
 // ===============================
+// Services — Master Admin
+// ===============================
+builder.Services.AddDataProtection();
+builder.Services.AddScoped<Petshop.Api.Services.Master.MasterAuditService>();
+builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
+
+// ===============================
 // CORS
 // ===============================
 builder.Services.AddCors(options =>
@@ -283,6 +290,31 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 });
 
 app.UseCors("Frontend");
+
+// ===============================
+// Master Admin — feature flag
+// Bloqueia /master/* com 404 quando Master:Enabled != "true".
+// Posicionado após UseCors para que a resposta 404 leve os headers CORS corretos.
+// ===============================
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/master"))
+    {
+        var masterEnabled = string.Equals(
+            app.Configuration["Master:Enabled"],
+            "true",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (!masterEnabled)
+        {
+            context.Response.StatusCode = 404;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync("{\"error\":\"Not found.\"}");
+            return;
+        }
+    }
+    await next();
+});
 
 // Não usar HttpsRedirection atrás de reverse proxy — o proxy já termina o TLS
 if (app.Environment.IsDevelopment())

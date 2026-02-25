@@ -9,6 +9,22 @@ function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function maskPhone(digits: string): string {
+  const d = digits.replace(/\D/g, "").slice(0, 11);
+  if (d.length === 0) return "";
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+function maskCep(digits: string): string {
+  const d = digits.replace(/\D/g, "").slice(0, 8);
+  if (d.length === 0) return "";
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+}
+
 function parseBRLToCents(input: string): number | null {
   const cleaned = input.replace(/[^\d.,]/g, "");
   const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
@@ -374,9 +390,9 @@ export default function Checkout() {
           <FormField label="Telefone (WhatsApp)">
             <input
               className={inputCls}
-              value={phone}
+              value={maskPhone(phone)}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
-              placeholder="Somente números (DDD + número)"
+              placeholder="(XX) XXXXX-XXXX"
               inputMode="numeric"
             />
           </FormField>
@@ -396,9 +412,9 @@ export default function Checkout() {
           >
             <input
               className={inputCls}
-              value={cep}
+              value={maskCep(cep)}
               onChange={(e) => setCep(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              placeholder="Digite seu CEP (8 dígitos)"
+              placeholder="XXXXX-XXX"
               inputMode="numeric"
             />
           </FormField>
@@ -584,12 +600,12 @@ export default function Checkout() {
               <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cliente</p>
                 <p className="text-sm font-semibold text-gray-900">{review.name}</p>
-                <p className="text-sm text-gray-500">{review.phone}</p>
+                <p className="text-sm text-gray-500">{maskPhone(review.phone)}</p>
               </div>
 
               <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1">
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entrega</p>
-                <p className="text-xs text-gray-400">CEP: {review.cep}</p>
+                <p className="text-xs text-gray-400">CEP: {maskCep(review.cep)}</p>
                 <p className="text-sm text-gray-900">{review.fullAddress}</p>
               </div>
 

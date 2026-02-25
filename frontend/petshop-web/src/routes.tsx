@@ -19,6 +19,11 @@ import AdminLogin from "./pages/admin/Login";
 import { AdminGuard } from "@/features/admin/auth/Guard";
 import RoutePlanner from "./pages/admin/RoutePlanner";
 
+import MasterLogin from "./pages/master/Login";
+import MasterCompanies from "./pages/master/Companies";
+import MasterCompanyDetail from "./pages/master/CompanyDetail";
+import { MasterGuard } from "@/features/master/auth/Guard";
+
 import DelivererLogin from "./pages/deliverer/Login";
 import DelivererHome from "./pages/deliverer/Home";
 import DelivererRouteDetail from "./pages/deliverer/RouteDetail";
@@ -143,6 +148,25 @@ export function AppRoutes() {
             <AdminGuard>
               <ProductForm />
             </AdminGuard>
+          }
+        />
+
+        {/* Master Admin */}
+        <Route path="/master/login" element={<MasterLogin />} />
+        <Route
+          path="/master"
+          element={
+            <MasterGuard>
+              <MasterCompanies />
+            </MasterGuard>
+          }
+        />
+        <Route
+          path="/master/companies/:id"
+          element={
+            <MasterGuard>
+              <MasterCompanyDetail />
+            </MasterGuard>
           }
         />
 
