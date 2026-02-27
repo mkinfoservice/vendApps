@@ -229,7 +229,7 @@ public class WhatsAppWebhookProcessor
         => await _db.WhatsAppWebhookDedupes
             .AnyAsync(d => d.EventId == eventId, ct);
 
-    private async Task MarkAsProcessedAsync(string eventId, string eventType, Guid? companyId, CancellationToken ct)
+    private Task MarkAsProcessedAsync(string eventId, string eventType, Guid? companyId, CancellationToken ct)
     {
         // Usa INSERT com ignore de conflito via try/catch para evitar race condition
         try
@@ -246,6 +246,7 @@ public class WhatsAppWebhookProcessor
         {
             _logger.LogWarning(ex, "WH_DEDUPE_INSERT_WARN | EventId={EventId}", eventId);
         }
+        return Task.CompletedTask;
     }
 
     private async Task UpsertContactAsync(
