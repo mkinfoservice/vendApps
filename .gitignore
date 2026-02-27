@@ -61,7 +61,7 @@ vite.config.js.timestamp-*
 .env
 .env.*
 !.env.example
-
+.claude
 ############################
 # VS Code
 ############################

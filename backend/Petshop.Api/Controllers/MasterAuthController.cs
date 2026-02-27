@@ -31,6 +31,7 @@ public class MasterAuthController : ControllerBase
     {
         var masterUser = _config["Master:User"];
         var masterPassword = _config["Master:Password"];
+        
 
         if (string.IsNullOrWhiteSpace(masterUser) || string.IsNullOrWhiteSpace(masterPassword))
             return StatusCode(503, new { error = "Master admin não configurado neste ambiente." });

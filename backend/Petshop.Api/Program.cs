@@ -189,6 +189,17 @@ builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
 builder.Services.AddScoped<Petshop.Api.Services.TenantResolverService>();
 
 // ===============================
+// Services — WhatsApp
+// ===============================
+builder.Services.AddHttpClient<Petshop.Api.Services.WhatsApp.WhatsAppClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppWebhookProcessor>();
+builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppNotificationService>();
+builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppInboundRouter>();
+
+// ===============================
 // CORS
 // ===============================
 builder.Services.AddCors(options =>

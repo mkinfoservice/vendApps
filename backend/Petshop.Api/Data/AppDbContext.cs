@@ -4,6 +4,7 @@ using Petshop.Api.Entities.Audit;
 using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.Master;
 using Petshop.Api.Entities.Sync;
+using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
 using Petshop.Api.Entities.Delivery;
@@ -48,6 +49,11 @@ public class AppDbContext : DbContext
     public DbSet<CompanyIntegrationWhatsapp> CompanyIntegrationsWhatsapp => Set<CompanyIntegrationWhatsapp>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<MasterAuditLog> MasterAuditLogs => Set<MasterAuditLog>();
+
+    // ── WhatsApp ──────────────────────────────────────────────
+    public DbSet<WhatsAppContact> WhatsAppContacts => Set<WhatsAppContact>();
+    public DbSet<WhatsAppMessageLog> WhatsAppMessageLogs => Set<WhatsAppMessageLog>();
+    public DbSet<WhatsAppWebhookDedupe> WhatsAppWebhookDedupes => Set<WhatsAppWebhookDedupe>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -230,5 +236,49 @@ public class AppDbContext : DbContext
         // Sem FKs — TargetId é string flexível para qualquer tipo de alvo.
         modelBuilder.Entity<MasterAuditLog>()
             .HasIndex(l => l.CreatedAtUtc);
+
+        // ── Order → Company (opcional, compatibilidade com pedidos antigos) ──
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Company)
+            .WithMany()
+            .HasForeignKey(o => o.CompanyId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // ── WhatsAppContact ───────────────────────────────────
+        modelBuilder.Entity<WhatsAppContact>()
+            .HasOne(c => c.Company)
+            .WithMany()
+            .HasForeignKey(c => c.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Índice único: um wa_id por empresa
+        modelBuilder.Entity<WhatsAppContact>()
+            .HasIndex(c => new { c.CompanyId, c.WaId })
+            .IsUnique();
+
+        // ── WhatsAppMessageLog ────────────────────────────────
+        modelBuilder.Entity<WhatsAppMessageLog>()
+            .HasOne(m => m.Company)
+            .WithMany()
+            .HasForeignKey(m => m.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Índice para busca de idempotência (orderId + triggerStatus)
+        modelBuilder.Entity<WhatsAppMessageLog>()
+            .HasIndex(m => new { m.OrderId, m.TriggerStatus });
+
+        // Índice para busca por empresa + data
+        modelBuilder.Entity<WhatsAppMessageLog>()
+            .HasIndex(m => new { m.CompanyId, m.CreatedAtUtc });
+
+        // ── WhatsAppWebhookDedupe ─────────────────────────────
+        // Índice único por EventId para deduplificação rápida
+        modelBuilder.Entity<WhatsAppWebhookDedupe>()
+            .HasIndex(d => d.EventId)
+            .IsUnique();
+
+        modelBuilder.Entity<WhatsAppWebhookDedupe>()
+            .HasIndex(d => d.CreatedAtUtc); // Para cleanup por TTL futuro
     }
 }

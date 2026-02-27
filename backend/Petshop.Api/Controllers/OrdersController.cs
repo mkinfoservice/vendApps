@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,7 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Services;
 using Petshop.Api.Services.Geocoding;
+using Petshop.Api.Services.WhatsApp;
 
 namespace Petshop.Api.Controllers;
 
@@ -19,14 +21,16 @@ public class OrdersController : ControllerBase
     private readonly ViaCepService _viaCep;
     private readonly IConfiguration _config;
     private readonly ILogger<OrdersController> _logger;
+    private readonly IBackgroundJobClient _jobs;
 
-    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger)
+    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs)
     {
         _db = db;
         _geo = geo;
         _viaCep = viaCep;
         _config = config;
         _logger = logger;
+        _jobs = jobs;
     }
 
     /// <summary>
@@ -362,6 +366,10 @@ public class OrdersController : ControllerBase
         order.UpdatedAtUtc = updatedAt;
 
         await _db.SaveChangesAsync(ct);
+
+        // Notificação WhatsApp — fire-and-forget, sem bloquear a resposta
+        _jobs.Enqueue<WhatsAppNotificationService>(
+            s => s.NotifyOrderStatusAsync(order.Id, newStatus, CancellationToken.None));
 
         return Ok(new UpdateOrderStatusResponse(
             order.Id,
@@ -702,6 +710,9 @@ public class OrdersController : ControllerBase
             var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, ct);
             if (product is null) return BadRequest($"Produto não encontrado: {item.ProductId}");
 
+            // Herda CompanyId do primeiro produto encontrado (todos os itens pertencem à mesma empresa)
+            order.CompanyId ??= product.CompanyId;
+
             order.Items.Add(new OrderItem
             {
                 Id = Guid.NewGuid(),
@@ -740,6 +751,10 @@ public class OrdersController : ControllerBase
 
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
+
+        // Notificação WhatsApp — fire-and-forget, sem bloquear a resposta
+        _jobs.Enqueue<WhatsAppNotificationService>(
+            s => s.NotifyOrderStatusAsync(order.Id, OrderStatus.RECEBIDO, CancellationToken.None));
 
         return Ok(new CreateOrderResponse
         {

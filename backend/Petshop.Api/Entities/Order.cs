@@ -1,10 +1,15 @@
 using System.ComponentModel.DataAnnotations;
+using Petshop.Api.Entities.Catalog;
 
 namespace Petshop.Api.Entities
 {
     public class Order
     {
        public Guid Id { get; set; } = Guid.NewGuid(); // ID Técnico (PK)
+
+       /// <summary>Empresa (tenant) dona do pedido. Nullable para compatibilidade com pedidos antigos.</summary>
+       public Guid? CompanyId { get; set; }
+       public Company? Company { get; set; }
 
        [MaxLength(30)]
        public string PublicId { get; set; } = ""; // ID "Humano" do pedido (ex: PS-2026004994)
