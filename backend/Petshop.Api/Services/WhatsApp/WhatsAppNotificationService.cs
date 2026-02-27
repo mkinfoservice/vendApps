@@ -109,13 +109,37 @@ public class WhatsAppNotificationService
             return;
         }
 
-        // 6. Monta mensagem
-        var message = BuildMessage(order, triggerStatus);
+        // 6. Resolve template ou fallback para texto livre
+        var templateName = ResolveTemplateName(integration.NotificationTemplatesJson, triggerStatus);
 
-        // 7. Envia
-        var wamid = await _wa.SendTextAsync(waId, message, companyId, ct);
+        string? wamid;
+        string sendMode;
 
-        // 8. Loga (independente do sucesso — nil wamid significa falha já logada pelo client)
+        if (templateName is not null)
+        {
+            // Usa template aprovado (obrigatório para mensagens business-initiated)
+            // Variáveis padrão: {{1}}=nome, {{2}}=número do pedido, {{3}}=mensagem de status
+            var bodyParams = new List<string>
+            {
+                order.CustomerName.Split(' ')[0],         // {{1}} primeiro nome
+                order.PublicId,                           // {{2}} número do pedido
+                GetStatusLabel(triggerStatus)             // {{3}} label do status
+            };
+
+            wamid = await _wa.SendTemplateAsync(
+                waId, templateName, integration.TemplateLanguageCode, bodyParams, companyId, ct);
+            sendMode = $"template:{templateName}";
+        }
+        else
+        {
+            // Fallback texto livre — funciona somente dentro da janela de 24h
+            // (após o cliente ter enviado mensagem). Não funciona para notificações cold.
+            var message = BuildMessage(order, triggerStatus);
+            wamid = await _wa.SendTextAsync(waId, message, companyId, ct);
+            sendMode = "text";
+        }
+
+        // 7. Loga (independente do sucesso — nil wamid significa falha já logada pelo client)
         var log = new WhatsAppMessageLog
         {
             CompanyId     = companyId,
@@ -130,7 +154,7 @@ public class WhatsAppNotificationService
                 status      = triggerKey,
                 phone       = order.Phone,
                 waId,
-                messageLen  = message.Length
+                sendMode
             })
         };
         _db.WhatsAppMessageLogs.Add(log);
@@ -149,6 +173,39 @@ public class WhatsAppNotificationService
                 orderId, order.PublicId, triggerKey, waId);
         }
     }
+
+    // ── Resolução de template ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Retorna o nome do template configurado para o status, ou null se não houver.
+    /// notificationTemplatesJson format: {"RECEBIDO":"pedido_recebido","ENTREGUE":"pedido_entregue"}
+    /// </summary>
+    private static string? ResolveTemplateName(string? notificationTemplatesJson, OrderStatus status)
+    {
+        if (string.IsNullOrWhiteSpace(notificationTemplatesJson)) return null;
+        try
+        {
+            var map = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                notificationTemplatesJson,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (map is null) return null;
+            map.TryGetValue(status.ToString(), out var templateName);
+            return string.IsNullOrWhiteSpace(templateName) ? null : templateName.Trim();
+        }
+        catch { return null; }
+    }
+
+    private static string GetStatusLabel(OrderStatus s) => s switch
+    {
+        OrderStatus.RECEBIDO            => "Pedido recebido",
+        OrderStatus.EM_PREPARO          => "Em preparo",
+        OrderStatus.PRONTO_PARA_ENTREGA => "Pronto para entrega",
+        OrderStatus.SAIU_PARA_ENTREGA   => "Saiu para entrega",
+        OrderStatus.ENTREGUE            => "Entregue",
+        OrderStatus.CANCELADO           => "Cancelado",
+        _                               => s.ToString()
+    };
 
     // ── Verificação de status configurado ────────────────────────────────────
 

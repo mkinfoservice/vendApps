@@ -49,16 +49,32 @@ public class WhatsAppClient
         => SendAsync(to, BuildTextPayload(to, text), companyId, ct);
 
     /// <summary>
-    /// Envia um template (estrutura preparada para uso futuro).
+    /// Envia um template com variáveis de texto no body.
+    /// bodyParams: lista ordenada de valores para {{1}}, {{2}}, {{3}}... do template.
     /// </summary>
     public Task<string?> SendTemplateAsync(
         string to,
         string templateName,
         string languageCode,
-        IEnumerable<object>? components = null,
+        IReadOnlyList<string>? bodyParams = null,
         Guid? companyId = null,
         CancellationToken ct = default)
-        => SendAsync(to, BuildTemplatePayload(to, templateName, languageCode, components), companyId, ct);
+    {
+        // Monta componente body com parâmetros de texto se houver variáveis
+        IEnumerable<object>? components = null;
+        if (bodyParams is { Count: > 0 })
+        {
+            components = new[]
+            {
+                new
+                {
+                    type = "body",
+                    parameters = bodyParams.Select(p => new { type = "text", text = p }).ToArray()
+                }
+            };
+        }
+        return SendAsync(to, BuildTemplatePayload(to, templateName, languageCode, components), companyId, ct);
+    }
 
     // ── Helpers de normalização ──────────────────────────────────────────────
 

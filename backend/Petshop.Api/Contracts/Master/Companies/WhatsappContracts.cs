@@ -21,6 +21,12 @@ public record WhatsappIntegrationDto(
     /// <summary>JSON array string com os status que disparam notificação. Ex: ["RECEBIDO","EM_PREPARO"]</summary>
     string? NotifyOnStatuses,
 
+    /// <summary>JSON objeto status→template. Ex: {"RECEBIDO":"pedido_recebido"}</summary>
+    string? NotificationTemplatesJson,
+
+    /// <summary>Código de idioma dos templates. Ex: "pt_BR"</summary>
+    string  TemplateLanguageCode,
+
     bool     IsActive,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc
@@ -42,6 +48,15 @@ public record UpsertWhatsappRequest(
 
     /// <summary>JSON array string. Ex: "[\"RECEBIDO\",\"EM_PREPARO\"]"</summary>
     string? NotifyOnStatuses,
+
+    /// <summary>
+    /// JSON objeto mapeando status → nome do template aprovado na Meta.
+    /// Ex: {"RECEBIDO":"pedido_recebido","SAIU_PARA_ENTREGA":"pedido_saiu","ENTREGUE":"pedido_entregue"}
+    /// </summary>
+    string? NotificationTemplatesJson,
+
+    /// <summary>Código de idioma dos templates. Padrão: "pt_BR"</summary>
+    string? TemplateLanguageCode,
 
     bool? IsActive
 );

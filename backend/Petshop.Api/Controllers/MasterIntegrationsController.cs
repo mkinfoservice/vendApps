@@ -81,12 +81,14 @@ public class MasterIntegrationsController : ControllerBase
 
         w.Mode = mode;
 
-        if (req.WabaId is not null)           w.WabaId               = req.WabaId.Trim();
-        if (req.PhoneNumberId is not null)    w.PhoneNumberId        = req.PhoneNumberId.Trim();
-        if (req.AccessToken is not null)      w.AccessTokenEncrypted = _crypto.Encrypt(req.AccessToken);
-        if (req.WebhookSecret is not null)    w.WebhookSecret        = req.WebhookSecret.Trim();
-        if (req.NotifyOnStatuses is not null) w.NotifyOnStatuses     = req.NotifyOnStatuses;
-        if (req.IsActive.HasValue)            w.IsActive             = req.IsActive.Value;
+        if (req.WabaId is not null)                    w.WabaId                      = req.WabaId.Trim();
+        if (req.PhoneNumberId is not null)             w.PhoneNumberId               = req.PhoneNumberId.Trim();
+        if (req.AccessToken is not null)               w.AccessTokenEncrypted        = _crypto.Encrypt(req.AccessToken);
+        if (req.WebhookSecret is not null)             w.WebhookSecret               = req.WebhookSecret.Trim();
+        if (req.NotifyOnStatuses is not null)          w.NotifyOnStatuses            = req.NotifyOnStatuses;
+        if (req.NotificationTemplatesJson is not null) w.NotificationTemplatesJson   = req.NotificationTemplatesJson;
+        if (req.TemplateLanguageCode is not null)      w.TemplateLanguageCode        = req.TemplateLanguageCode.Trim();
+        if (req.IsActive.HasValue)                     w.IsActive                    = req.IsActive.Value;
 
         w.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -144,6 +146,8 @@ public class MasterIntegrationsController : ControllerBase
         w.AccessTokenEncrypted is not null,   // HasAccessToken — token nunca é exposto
         w.WebhookSecret,
         w.NotifyOnStatuses,
+        w.NotificationTemplatesJson,
+        w.TemplateLanguageCode,
         w.IsActive,
         w.CreatedAtUtc,
         w.UpdatedAtUtc

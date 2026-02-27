@@ -37,6 +37,18 @@ public class CompanyIntegrationWhatsapp
     [MaxLength(500)]
     public string? NotifyOnStatuses { get; set; }
 
+    /// <summary>
+    /// JSON objeto mapeando status → nome do template aprovado na Meta.
+    /// Ex: {"RECEBIDO":"pedido_recebido","SAIU_PARA_ENTREGA":"pedido_saiu","ENTREGUE":"pedido_entregue"}
+    /// Quando preenchido para um status, usa template; caso contrário tenta texto livre
+    /// (funciona apenas dentro da janela de 24h após o cliente ter enviado mensagem).
+    /// </summary>
+    public string? NotificationTemplatesJson { get; set; }
+
+    /// <summary>Código de idioma dos templates aprovados. Padrão: "pt_BR"</summary>
+    [MaxLength(10)]
+    public string TemplateLanguageCode { get; set; } = "pt_BR";
+
     // ── Estado ───────────────────────────────────────────
     public bool IsActive { get; set; } = false;
 
