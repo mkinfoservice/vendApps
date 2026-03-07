@@ -118,12 +118,11 @@ public class WhatsAppNotificationService
         if (templateName is not null)
         {
             // Usa template aprovado (obrigatório para mensagens business-initiated)
-            // Variáveis padrão: {{1}}=nome, {{2}}=número do pedido, {{3}}=mensagem de status
+            // Variáveis padrão: {{1}}=nome, {{2}}=número do pedido
             var bodyParams = new List<string>
             {
                 order.CustomerName.Split(' ')[0],         // {{1}} primeiro nome
                 order.PublicId,                           // {{2}} número do pedido
-                GetStatusLabel(triggerStatus)             // {{3}} label do status
             };
 
             wamid = await _wa.SendTemplateAsync(
