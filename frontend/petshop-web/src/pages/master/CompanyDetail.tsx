@@ -849,6 +849,13 @@ function AdminsTab({ companyId }: { companyId: string }) {
 
 // ── WhatsApp Tab ──────────────────────────────────────────────
 
+const ALL_STATUSES = ["RECEBIDO","EM_PREPARO","SAIU_PARA_ENTREGA","ENTREGUE","CANCELADO"] as const;
+type OrderStatus = typeof ALL_STATUSES[number];
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  RECEBIDO: "Recebido", EM_PREPARO: "Em preparo",
+  SAIU_PARA_ENTREGA: "Saiu para entrega", ENTREGUE: "Entregue", CANCELADO: "Cancelado",
+};
+
 function WhatsappTab({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
 
@@ -860,31 +867,54 @@ function WhatsappTab({ companyId }: { companyId: string }) {
 
   const [form, setForm] = useState({
     mode: "link", wabaId: "", phoneNumberId: "",
-    accessToken: "", webhookSecret: "", isActive: false,
+    accessToken: "", webhookSecret: "",
+    notifyStatuses: [] as OrderStatus[],
+    templates: {} as Record<string, string>,
+    templateLanguageCode: "pt_BR",
+    isActive: false,
   });
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [saved,   setSaved]   = useState(false);
 
   useEffect(() => {
     if (!data) return;
+    let notifyStatuses: OrderStatus[] = [];
+    try { notifyStatuses = JSON.parse(data.notifyOnStatuses ?? "[]"); } catch { /* ignore */ }
+    let templates: Record<string, string> = {};
+    try { templates = JSON.parse(data.notificationTemplatesJson ?? "{}"); } catch { /* ignore */ }
     setForm({
-      mode:          data.mode,
-      wabaId:        data.wabaId          ?? "",
-      phoneNumberId: data.phoneNumberId   ?? "",
-      accessToken:   "",                           // never pre-fill
-      webhookSecret: data.webhookSecret   ?? "",
-      isActive:      data.isActive,
+      mode:                data.mode,
+      wabaId:              data.wabaId        ?? "",
+      phoneNumberId:       data.phoneNumberId ?? "",
+      accessToken:         "",
+      webhookSecret:       data.webhookSecret ?? "",
+      notifyStatuses,
+      templates,
+      templateLanguageCode: data.templateLanguageCode ?? "pt_BR",
+      isActive:            data.isActive,
     });
   }, [data]);
 
+  function toggleStatus(s: OrderStatus) {
+    setForm((f) => ({
+      ...f,
+      notifyStatuses: f.notifyStatuses.includes(s)
+        ? f.notifyStatuses.filter((x) => x !== s)
+        : [...f.notifyStatuses, s],
+    }));
+  }
+
   const saveMut = useMutation({
     mutationFn: () => upsertWhatsapp(companyId, {
-      mode:          form.mode,
-      wabaId:        form.wabaId        || undefined,
-      phoneNumberId: form.phoneNumberId || undefined,
-      accessToken:   form.accessToken   || undefined,
-      webhookSecret: form.webhookSecret || undefined,
-      isActive:      form.isActive,
+      mode:                      form.mode,
+      wabaId:                    form.wabaId        || undefined,
+      phoneNumberId:             form.phoneNumberId || undefined,
+      accessToken:               form.accessToken   || undefined,
+      webhookSecret:             form.webhookSecret || undefined,
+      notifyOnStatuses:          JSON.stringify(form.notifyStatuses),
+      notificationTemplatesJson: JSON.stringify(form.templates),
+      templateLanguageCode:      form.templateLanguageCode || "pt_BR",
+      isActive:                  form.isActive,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["master", "whatsapp", companyId] });
@@ -958,6 +988,58 @@ function WhatsappTab({ companyId }: { companyId: string }) {
               onChange={(e) => setForm((f) => ({ ...f, accessToken: e.target.value }))}
               className="w-full h-9 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition"
             />
+          </div>
+
+          <hr className="border-gray-100" />
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2">Notificar nos status</label>
+            <div className="flex flex-wrap gap-3">
+              {ALL_STATUSES.map((s) => (
+                <label key={s} className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.notifyStatuses.includes(s)}
+                    onChange={() => toggleStatus(s)}
+                    className="w-4 h-4 accent-purple-600"
+                  />
+                  {STATUS_LABELS[s]}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Idioma do template</label>
+            <input
+              value={form.templateLanguageCode}
+              onChange={(e) => setForm((f) => ({ ...f, templateLanguageCode: e.target.value }))}
+              placeholder="pt_BR"
+              className="w-40 h-9 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2">
+              Template por status{" "}
+              <span className="font-normal text-gray-400">(nome exato do template aprovado na Meta)</span>
+            </label>
+            <div className="space-y-2">
+              {ALL_STATUSES.map((s) => (
+                <div key={s} className="flex items-center gap-3">
+                  <span className="w-40 text-xs text-gray-500 shrink-0">{STATUS_LABELS[s]}</span>
+                  <input
+                    value={form.templates[s] ?? ""}
+                    onChange={(e) => setForm((f) => ({
+                      ...f,
+                      templates: { ...f.templates, [s]: e.target.value },
+                    }))}
+                    placeholder="ex: pedido_recebido"
+                    className="flex-1 h-8 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

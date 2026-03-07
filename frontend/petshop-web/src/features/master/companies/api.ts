@@ -141,6 +141,9 @@ export function upsertWhatsapp(
     phoneNumberId?: string;
     accessToken?: string;
     webhookSecret?: string;
+    notifyOnStatuses?: string;
+    notificationTemplatesJson?: string;
+    templateLanguageCode?: string;
     isActive?: boolean;
   },
 ) {

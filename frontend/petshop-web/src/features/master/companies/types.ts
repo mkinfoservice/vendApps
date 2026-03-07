@@ -81,6 +81,8 @@ export type WhatsappIntegrationDto = {
   hasAccessToken: boolean;
   webhookSecret: string | null;
   notifyOnStatuses: string | null;
+  notificationTemplatesJson: string | null;
+  templateLanguageCode: string;
   isActive: boolean;
   updatedAtUtc: string;
 };
