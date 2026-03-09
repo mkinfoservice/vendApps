@@ -1,8 +1,10 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Delivery;
 using Petshop.Api.Services.Routes;
+using Petshop.Api.Services.WhatsApp;
 
 namespace Petshop.Api.Services;
 
@@ -13,6 +15,7 @@ public class DeliveryManagementService
     private readonly DepotService _depot;
     private readonly GeofencingService _geofencing;
     private readonly RouteSideValidator _routeSideValidator;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<DeliveryManagementService> _logger;
 
     public DeliveryManagementService(
@@ -21,6 +24,7 @@ public class DeliveryManagementService
         DepotService depot,
         GeofencingService geofencing,
         RouteSideValidator routeSideValidator,
+        IBackgroundJobClient jobs,
         ILogger<DeliveryManagementService> logger)
     {
         _db = db;
@@ -28,6 +32,7 @@ public class DeliveryManagementService
         _depot = depot;
         _geofencing = geofencing;
         _routeSideValidator = routeSideValidator;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -171,6 +176,11 @@ public class DeliveryManagementService
 
         _db.Routes.Add(route);
         await _db.SaveChangesAsync(ct);
+
+        // Notifica SAIU_PARA_ENTREGA via WhatsApp para cada pedido da rota
+        foreach (var o in optimized)
+            _jobs.Enqueue<WhatsAppNotificationService>(
+                s => s.NotifyOrderStatusAsync(o.Id, OrderStatus.SAIU_PARA_ENTREGA, CancellationToken.None));
 
         return route;
     }

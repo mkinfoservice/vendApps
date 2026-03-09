@@ -1,7 +1,9 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Delivery;
+using Petshop.Api.Services.WhatsApp;
 using Route = Petshop.Api.Entities.Delivery.Route;
 
 namespace Petshop.Api.Services;
@@ -9,11 +11,13 @@ namespace Petshop.Api.Services;
 public class RouteStopTransitionService
 {
     private readonly AppDbContext _db;
+    private readonly IBackgroundJobClient _jobs;
     private readonly ILogger<RouteStopTransitionService> _logger;
 
-    public RouteStopTransitionService(AppDbContext db, ILogger<RouteStopTransitionService> logger)
+    public RouteStopTransitionService(AppDbContext db, IBackgroundJobClient jobs, ILogger<RouteStopTransitionService> logger)
     {
         _db = db;
+        _jobs = jobs;
         _logger = logger;
     }
 
@@ -71,7 +75,11 @@ public class RouteStopTransitionService
         // Atualiza pedido para ENTREGUE
         var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == stop.OrderId, ct);
         if (order != null && order.Status == OrderStatus.SAIU_PARA_ENTREGA)
+        {
             order.Status = OrderStatus.ENTREGUE;
+            _jobs.Enqueue<WhatsAppNotificationService>(
+                s => s.NotifyOrderStatusAsync(order.Id, OrderStatus.ENTREGUE, CancellationToken.None));
+        }
 
         AdvanceNextStop(route);
         var allDone = CheckRouteCompletion(route);
