@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { clearToken, hasRole } from "@/features/admin/auth/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { usePrintStatus } from "@/features/admin/print/PrintContext";
 
 type NavItem = {
   to: string;
@@ -51,6 +52,7 @@ function NavLink({
 
 export function AdminNav() {
   const navigate = useNavigate();
+  const { connected } = usePrintStatus();
 
   const visibleItems = ALL_NAV_ITEMS.filter(
     (item) => item.roles === null || hasRole(...item.roles),
@@ -86,6 +88,24 @@ export function AdminNav() {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Badge impressora SignalR */}
+          <div
+            title={connected ? "Impressora conectada" : "Impressora offline"}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold select-none"
+            style={{
+              backgroundColor: connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
+              color: connected ? "#10b981" : "#f87171",
+            }}
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{
+                backgroundColor: connected ? "#10b981" : "#f87171",
+                boxShadow: connected ? "0 0 6px #10b981" : "none",
+              }}
+            />
+            <span className="hidden sm:inline">{connected ? "Impressora" : "Offline"}</span>
+          </div>
           <ThemeToggle />
           <button
             type="button"

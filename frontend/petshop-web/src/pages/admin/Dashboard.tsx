@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { useDashboard } from "@/features/admin/dashboard/queries";
+import { Headphones } from "lucide-react";
 import type { ReactNode } from "react";
 
 // ── Color tokens ─────────────────────────────────────────────────────────────
@@ -187,6 +188,29 @@ export default function Dashboard() {
       <AdminNav />
 
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
+
+        {/* ── Botão Montar Pedido ─────────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={() => navigate("/admin/atendimento/pedido")}
+          className="w-full flex items-center justify-center gap-3 mb-6 rounded-2xl py-4 text-white font-bold text-base transition-all active:scale-[0.98]"
+          style={{
+            background: "linear-gradient(135deg, #7c5cf8, #6d4df2)",
+            boxShadow: "0 4px 20px rgba(124,92,248,0.35)",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 28px rgba(124,92,248,0.5)";
+            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 4px 20px rgba(124,92,248,0.35)";
+            (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
+          }}
+        >
+          <Headphones size={20} />
+          Montar Pedido — Atendimento
+        </button>
+
         {/* Page header */}
         <div className="flex items-start justify-between gap-4 mb-2">
           <div>
