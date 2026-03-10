@@ -18,6 +18,7 @@ import ProductForm from "./pages/admin/ProductForm";
 import AdminLogin from "./pages/admin/Login";
 import { AdminGuard } from "@/features/admin/auth/Guard";
 import RoutePlanner from "./pages/admin/RoutePlanner";
+import StoreTeam from "./pages/admin/StoreTeam";
 
 import MasterLogin from "./pages/master/Login";
 import MasterCompanies from "./pages/master/Companies";
@@ -147,6 +148,16 @@ export function AppRoutes() {
           element={
             <AdminGuard>
               <ProductForm />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Equipe */}
+        <Route
+          path="/admin/equipe"
+          element={
+            <AdminGuard>
+              <StoreTeam />
             </AdminGuard>
           }
         />

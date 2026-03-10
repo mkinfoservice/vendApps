@@ -75,7 +75,7 @@ public class OrdersController : ControllerBase
     // =========================
     // GET /orders/{idOrNumber}
     // =========================
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpGet("{idOrNumber}")]
     public async Task<IActionResult> GetByIdOrNumber([FromRoute] string idOrNumber)
     {
@@ -131,7 +131,7 @@ public class OrdersController : ControllerBase
     // =========================
     // GET /orders/ready-for-delivery
     // =========================
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpGet("ready-for-delivery")]
     public async Task<ActionResult<ListReadyOrdersResponse>> ListReadyForDelivery(
         [FromQuery] int page = 1,
@@ -181,7 +181,7 @@ public class OrdersController : ControllerBase
     // =========================
     // GET /orders (admin list)
     // =========================
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpGet]
     public async Task<ActionResult<ListOrdersResponse>> List(
         [FromQuery] int page = 1,
@@ -237,7 +237,7 @@ public class OrdersController : ControllerBase
     // =========================
     // PATCH /orders/{idOrNumber}/status
     // =========================
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpPatch("{idOrNumber}/status")]
     [Consumes("application/json")]
     [ProducesResponseType(typeof(UpdateOrderStatusResponse), StatusCodes.Status200OK)]
@@ -394,7 +394,7 @@ public class OrdersController : ControllerBase
             _ => false
         };
     }
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpPost("geocode-missing")]
     public async Task<IActionResult> GeocodeMissing(
         [FromQuery] int limit = 50,
@@ -510,7 +510,7 @@ public class OrdersController : ControllerBase
     // POST /orders/{id}/reprocess-geocoding
     // Reprocessa geocoding de um pedido específico (força reprocessamento mesmo se já tiver coords)
     // =========================
-    [Authorize(Roles = "admin")]
+    [Authorize(Roles = "admin,gerente,atendente")]
     [HttpPost("{idOrNumber}/reprocess-geocoding")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]

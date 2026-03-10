@@ -12,7 +12,7 @@ namespace Petshop.Api.Controllers;
 
 [ApiController]
 [Route("admin/product-sources")]
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "admin,gerente")]
 public class AdminProductSourcesController : ControllerBase
 {
     private readonly AppDbContext _db;

@@ -1,28 +1,33 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, LayoutDashboard, ShoppingBag, Route, DollarSign, Package, Bike } from "lucide-react";
-import { clearToken } from "@/features/admin/auth/auth";
+import {
+  LogOut, LayoutDashboard, ShoppingBag, Route,
+  DollarSign, Package, Bike, Headphones, Users,
+} from "lucide-react";
+import { clearToken, hasRole } from "@/features/admin/auth/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-const NAV_ITEMS = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/orders", label: "Pedidos", icon: ShoppingBag, exact: false },
-  { to: "/admin/products", label: "Produtos", icon: Package, exact: false },
-  { to: "/admin/deliverers", label: "Entregadores", icon: Bike, exact: false },
-  { to: "/admin/routes", label: "Rotas", icon: Route, exact: false },
-  { to: "/admin/financeiro", label: "Financeiro", icon: DollarSign, exact: false },
-];
-
-function NavItem({
-  to,
-  label,
-  icon: Icon,
-  exact,
-}: {
+type NavItem = {
   to: string;
   label: string;
   icon: React.ElementType;
   exact: boolean;
-}) {
+  roles: string[] | null; // null = visível para todos os roles
+};
+
+const ALL_NAV_ITEMS: NavItem[] = [
+  { to: "/admin",             label: "Dashboard",    icon: LayoutDashboard, exact: true,  roles: null },
+  { to: "/admin/atendimento", label: "Atendimento",  icon: Headphones,      exact: false, roles: null },
+  { to: "/admin/orders",      label: "Pedidos",      icon: ShoppingBag,     exact: false, roles: null },
+  { to: "/admin/products",    label: "Produtos",     icon: Package,         exact: false, roles: null },
+  { to: "/admin/deliverers",  label: "Entregadores", icon: Bike,            exact: false, roles: null },
+  { to: "/admin/routes",      label: "Rotas",        icon: Route,           exact: false, roles: null },
+  { to: "/admin/financeiro",  label: "Financeiro",   icon: DollarSign,      exact: false, roles: ["admin", "gerente"] },
+  { to: "/admin/equipe",      label: "Equipe",       icon: Users,           exact: false, roles: ["admin", "gerente"] },
+];
+
+function NavLink({
+  to, label, icon: Icon, exact,
+}: Omit<NavItem, "roles">) {
   const loc = useLocation();
   const active = exact
     ? loc.pathname === to
@@ -47,6 +52,10 @@ function NavItem({
 export function AdminNav() {
   const navigate = useNavigate();
 
+  const visibleItems = ALL_NAV_ITEMS.filter(
+    (item) => item.roles === null || hasRole(...item.roles),
+  );
+
   function handleLogout() {
     clearToken();
     navigate("/admin/login", { replace: true });
@@ -70,8 +79,8 @@ export function AdminNav() {
 
         {/* Nav links */}
         <nav className="flex items-center gap-0.5">
-          {NAV_ITEMS.map((item) => (
-            <NavItem key={item.to} {...item} />
+          {visibleItems.map((item) => (
+            <NavLink key={item.to} to={item.to} label={item.label} icon={item.icon} exact={item.exact} />
           ))}
         </nav>
 

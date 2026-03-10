@@ -9,7 +9,7 @@ namespace Petshop.Api.Controllers;
 
 [ApiController]
 [Route("admin/financeiro")]
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "admin,gerente")]
 public class FinanceiroController : ControllerBase
 {
     private readonly AppDbContext _db;

@@ -26,7 +26,7 @@ public class AdminUser
     [Required, MaxLength(100)]
     public string PasswordHash { get; set; } = default!;
 
-    /// <summary>"master_admin" | "admin"</summary>
+    /// <summary>"master_admin" | "admin" | "gerente" | "atendente"</summary>
     [Required, MaxLength(30)]
     public string Role { get; set; } = "admin";
 

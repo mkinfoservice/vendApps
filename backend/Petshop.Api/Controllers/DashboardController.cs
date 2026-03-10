@@ -10,7 +10,7 @@ namespace Petshop.Api.Controllers;
 
 [ApiController]
 [Route("admin/dashboard")]
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "admin,gerente,atendente")]
 public class DashboardController : ControllerBase
 {
     private readonly AppDbContext _db;

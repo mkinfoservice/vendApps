@@ -47,6 +47,7 @@ public class AuthController : ControllerBase
                 new(JwtRegisteredClaimNames.Sub, req.Username),
                 new(ClaimTypes.Name, req.Username),
                 new(ClaimTypes.Role, "admin"),
+                new("role", "admin"),
                 new("companyId", companyId),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
@@ -72,7 +73,8 @@ public class AuthController : ControllerBase
         {
             new(JwtRegisteredClaimNames.Sub, adminUser.Username),
             new(ClaimTypes.Name, adminUser.Username),
-            new(ClaimTypes.Role, "admin"),
+            new(ClaimTypes.Role, adminUser.Role),
+            new("role", adminUser.Role),           // claim curto para o frontend
             new("companyId", adminUser.CompanyId.ToString()!),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };

@@ -11,7 +11,7 @@ namespace Petshop.Api.Controllers;
 
 [ApiController]
 [Route("admin/products/sync")]
-[Authorize(Roles = "admin")]
+[Authorize(Roles = "admin,gerente")]
 public class AdminProductSyncController : ControllerBase
 {
     private readonly AppDbContext _db;
