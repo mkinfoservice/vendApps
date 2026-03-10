@@ -150,8 +150,19 @@ public class CustomersController : ControllerBase
             Notes     = req.Notes?.Trim(),
         };
 
-        // Enriquece via ViaCEP + geocodifica
-        await EnrichAddressAsync(customer, ct);
+        if (req.Latitude.HasValue && req.Longitude.HasValue)
+        {
+            // Coords from frontend mini-map pin — enrich neighbourhood/city via ViaCEP but keep explicit coords
+            await EnrichAddressAsync(customer, ct);
+            customer.Latitude      = req.Latitude.Value;
+            customer.Longitude     = req.Longitude.Value;
+            customer.GeocodedAtUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            // Enriquece via ViaCEP + geocodifica automaticamente
+            await EnrichAddressAsync(customer, ct);
+        }
 
         _db.Customers.Add(customer);
         await _db.SaveChangesAsync(ct);
@@ -200,7 +211,15 @@ public class CustomersController : ControllerBase
         customer.Notes     = req.Notes?.Trim();
         customer.UpdatedAtUtc = DateTime.UtcNow;
 
-        if (addressChanged)
+        if (req.Latitude.HasValue && req.Longitude.HasValue)
+        {
+            // Coords from frontend mini-map pin override any geocoding
+            if (addressChanged) await EnrichAddressAsync(customer, ct); // still get neighbourhood/city
+            customer.Latitude      = req.Latitude.Value;
+            customer.Longitude     = req.Longitude.Value;
+            customer.GeocodedAtUtc = DateTime.UtcNow;
+        }
+        else if (addressChanged)
         {
             customer.Latitude      = null;
             customer.Longitude     = null;
@@ -284,7 +303,9 @@ public record UpsertCustomerRequest(
     string? Address,
     string? Complement,
     string? AddressReference,
-    string? Notes);
+    string? Notes,
+    double? Latitude,
+    double? Longitude);
 
 public record CustomerListItem(
     Guid Id,

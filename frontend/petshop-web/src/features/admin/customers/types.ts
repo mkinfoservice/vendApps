@@ -54,4 +54,6 @@ export type UpsertCustomerRequest = {
   complement?: string;
   addressReference?: string;
   notes?: string;
+  latitude?: number;
+  longitude?: number;
 };
