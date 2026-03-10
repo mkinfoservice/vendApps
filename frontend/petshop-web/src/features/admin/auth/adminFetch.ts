@@ -13,6 +13,8 @@ export async function adminFetch<T = unknown>(
   const token = getToken();
 
   const headers: Record<string, string> = {
+    // Adiciona Content-Type automaticamente quando há body em string (JSON)
+    ...(typeof options.body === "string" ? { "Content-Type": "application/json" } : {}),
     ...(options.headers ?? {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
