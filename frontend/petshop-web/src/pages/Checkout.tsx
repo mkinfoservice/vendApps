@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/features/cart/cart";
 import { useNavigate } from "react-router-dom";
-import { CreateOrder, type CreateOrderRequest, type CreateOrderResponse } from "@/features/orders/api";
+import { CreateOrder, type CreateOrderRequest } from "@/features/orders/api";
 import { fetchAddressByCep } from "@/features/shipping/viacep";
 import { ArrowLeft, CheckCircle2, ChevronRight, MapPin, CreditCard, Banknote, QrCode, Package } from "lucide-react";
 
@@ -49,11 +49,6 @@ type CustomerDraft = {
   address: string; houseNumber: string; complement: string;
 };
 
-const STORE_WHATSAPP_NUMBER = "5521992329239";
-function openWhatsApp(text: string) {
-  const url = `https://wa.me/${STORE_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank", "noopener,noreferrer");
-}
 
 type ReviewSnapshot = {
   name: string; phone: string; cep: string; fullAddress: string;
@@ -241,23 +236,7 @@ export default function Checkout() {
     address.trim().length >= 3 &&
     (payment !== "CASH" || (cashGivenCents !== null && cashGivenCents >= totalCentsUI));
 
-  function buildWhatsText(created: CreateOrderResponse, snap: ReviewSnapshot) {
-    const lines: string[] = [];
-    lines.push(`*Pedido:* ${created.orderNumber}`, "");
-    lines.push("*Novo Pedido - vendApps*", "");
-    lines.push(`*Cliente:* ${snap.name}`, `*Telefone:* ${snap.phone}`, `*CEP:* ${snap.cep}`, `*Endereço:* ${snap.fullAddress}`, "");
-    lines.push("*Itens:*");
-    snap.items.forEach((i) => lines.push(`- ${i.qty}x ${i.name} — ${formatBRL(i.totalCents)}`));
-    lines.push("", `*Subtotal:* ${formatBRL(created.subtotalCents)}`, `*Entrega:* ${formatBRL(created.deliveryCents)}`, `*Total:* ${formatBRL(created.totalCents)}`, "");
-    lines.push(`*Pagamento:* ${paymentLabel(created.paymentMethodStr ?? snap.paymentMethodStr)}`);
-    if ((created.paymentMethodStr ?? "").toUpperCase() === "CASH") {
-      if (typeof created.cashGivenCents === "number") lines.push(`*Troco para:* ${formatBRL(created.cashGivenCents)}`);
-      if (typeof created.changeCents === "number") lines.push(`*Troco:* ${formatBRL(created.changeCents)}`);
-    }
-    return lines.join("\n");
-  }
-
-  function handleOpenReview() {
+function handleOpenReview() {
     const items = cart.items.map((i) => ({ qty: i.qty, name: i.product.name, totalCents: (i.product.priceCents ?? 0) * i.qty }));
     const changeEstimate = payment === "CASH" && cashGivenCents != null ? cashGivenCents - totalCentsUI : null;
     setReview({
@@ -271,7 +250,7 @@ export default function Checkout() {
 
   function closeModalToEdit() { if (sending) return; setReview(null); }
 
-  async function confirmSendWhatsApp() {
+  async function confirmOrder() {
     if (!review) return;
     try {
       setSending(true);
@@ -281,8 +260,7 @@ export default function Checkout() {
         items: cart.items.map((i) => ({ productId: i.product.id, qty: i.qty })),
         ...(review.paymentMethodStr === "CASH" ? { cashGivenCents: review.cashGivenCents ?? undefined } : {}),
       };
-      const created = await CreateOrder(payload);
-      openWhatsApp(buildWhatsText(created, review));
+      await CreateOrder(payload);
       cart.clear();
       setReview(null);
       setConfirmed(true);
@@ -675,12 +653,12 @@ export default function Checkout() {
                 </button>
                 <button
                   type="button"
-                  onClick={confirmSendWhatsApp}
+                  onClick={confirmOrder}
                   disabled={sending}
                   className="h-12 rounded-xl font-black text-sm text-white transition hover:brightness-110 disabled:opacity-50 active:scale-[0.99]"
                   style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
                 >
-                  {sending ? "Enviando..." : "Enviar no WhatsApp"}
+                  {sending ? "Enviando..." : "Confirmar Pedido"}
                 </button>
               </div>
               <p className="text-xs text-gray-400 text-center mt-2">

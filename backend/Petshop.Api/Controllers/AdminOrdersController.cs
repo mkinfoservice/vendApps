@@ -151,8 +151,8 @@ public class AdminOrdersController : ControllerBase
             "📞 Pedido telefônico {PublicId} criado pelo atendente {Attendant} | Cliente: {Customer} | Total: {Total}",
             order.PublicId, attendantId, order.CustomerName, order.TotalCents);
 
-        // Fila de impressão — fire-and-forget (não falha o pedido se SignalR offline)
-        _ = Task.Run(() => _print.EnqueueAsync(order));
+        // Fila de impressão
+        await _print.EnqueueAsync(order, ct);
 
         // Notificação WhatsApp — fire-and-forget
         _jobs.Enqueue<WhatsAppNotificationService>(

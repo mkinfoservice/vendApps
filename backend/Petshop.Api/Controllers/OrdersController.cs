@@ -755,8 +755,8 @@ public class OrdersController : ControllerBase
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
 
-        // Fila de impressão — fire-and-forget
-        _ = Task.Run(() => _print.EnqueueAsync(order));
+        // Fila de impressão
+        await _print.EnqueueAsync(order, ct);
 
         // Notificação WhatsApp — fire-and-forget, sem bloquear a resposta
         _jobs.Enqueue<WhatsAppNotificationService>(
