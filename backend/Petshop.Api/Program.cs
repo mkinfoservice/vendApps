@@ -15,6 +15,8 @@ using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Images;
 using Petshop.Api.Services.Sync;
 using System.Text.Json.Serialization;
+using Petshop.Api.Hubs;
+using Petshop.Api.Services.Print;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +36,11 @@ builder.Services
         o.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
+
+// ===============================
+// SignalR
+// ===============================
+builder.Services.AddSignalR();
 
 // ===============================
 // Swagger + JWT Authorization
@@ -96,6 +103,19 @@ builder.Services
             ClockSkew = TimeSpan.FromMinutes(1),
             RoleClaimType = ClaimTypes.Role,
             NameClaimType = ClaimTypes.Name
+        };
+
+        // SignalR envia o token via query string para WebSockets
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                    context.Token = accessToken;
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -189,6 +209,11 @@ builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
 builder.Services.AddScoped<Petshop.Api.Services.TenantResolverService>();
 
 // ===============================
+// Services — Impressão
+// ===============================
+builder.Services.AddScoped<PrintService>();
+
+// ===============================
 // Services — WhatsApp
 // ===============================
 builder.Services.AddHttpClient<Petshop.Api.Services.WhatsApp.WhatsAppClient>(client =>
@@ -232,7 +257,8 @@ builder.Services.AddCors(options =>
                 allowedOrigins.Any(o => origin.Equals(o, StringComparison.OrdinalIgnoreCase)) ||
                 IsTenantOrigin(origin))
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials(); // Necessário para SignalR WebSockets
     });
 });
 
@@ -350,5 +376,10 @@ app.UseAuthorization();
 app.UseMiddleware<Petshop.Api.Middleware.TenantHostValidationMiddleware>();
 
 app.MapControllers();
+
+// ===============================
+// SignalR Hubs
+// ===============================
+app.MapHub<PrintHub>("/hubs/print");
 
 app.Run();

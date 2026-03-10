@@ -2,7 +2,13 @@ import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { isAuthenticated, getToken, clearToken, decodeTokenPayload } from "./auth";
 import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
+import { usePrintListener } from "@/features/admin/print/usePrintListener";
 import type { ReactNode } from "react";
+
+function PrintListenerMount() {
+  usePrintListener();
+  return null;
+}
 
 export function AdminGuard({ children }: { children: ReactNode }) {
   const tenantSlug = resolveTenantFromHost();
@@ -42,5 +48,10 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     }
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <PrintListenerMount />
+      {children}
+    </>
+  );
 }

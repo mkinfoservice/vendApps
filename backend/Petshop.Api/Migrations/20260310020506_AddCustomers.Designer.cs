@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Petshop.Api.Data;
@@ -11,9 +12,11 @@ using Petshop.Api.Data;
 namespace Petshop.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310020506_AddCustomers")]
+    partial class AddCustomers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,83 +266,6 @@ namespace Petshop.Api.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("ProductVariants");
-                });
-
-            modelBuilder.Entity("Petshop.Api.Entities.Customer", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Address")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("AddressReference")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("Cep")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Complement")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Cpf")
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("GeocodedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<double?>("Latitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("Longitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("Neighborhood")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("State")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CompanyId", "Phone");
-
-                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.Delivery.Deliverer", b =>
@@ -738,9 +664,6 @@ namespace Petshop.Api.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("character varying(250)");
 
-                    b.Property<Guid?>("AttendantUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<int?>("CashGivenCents")
                         .HasColumnType("integer");
 
@@ -766,9 +689,6 @@ namespace Petshop.Api.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("CustomerId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -782,9 +702,6 @@ namespace Petshop.Api.Migrations
 
                     b.Property<DateTime?>("GeocodedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsPhoneOrder")
-                        .HasColumnType("boolean");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
@@ -823,8 +740,6 @@ namespace Petshop.Api.Migrations
 
                     b.HasIndex("CompanyId");
 
-                    b.HasIndex("CustomerId");
-
                     b.HasIndex("PublicId")
                         .IsUnique();
 
@@ -861,45 +776,6 @@ namespace Petshop.Api.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems");
-                });
-
-            modelBuilder.Entity("Petshop.Api.Entities.OrderPrintJob", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsPrinted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("PrintPayloadJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("PrintedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PublicId")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId");
-
-                    b.HasIndex("CompanyId", "IsPrinted");
-
-                    b.ToTable("PrintJobs");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.Sync.ExternalProductSnapshot", b =>
@@ -1385,17 +1261,6 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("Petshop.Api.Entities.Customer", b =>
-                {
-                    b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-                });
-
             modelBuilder.Entity("Petshop.Api.Entities.Delivery.Route", b =>
                 {
                     b.HasOne("Petshop.Api.Entities.Delivery.Deliverer", "Deliverer")
@@ -1463,14 +1328,7 @@ namespace Petshop.Api.Migrations
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Petshop.Api.Entities.Customer", "Customer")
-                        .WithMany("Orders")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Company");
-
-                    b.Navigation("Customer");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.OrderItem", b =>
@@ -1490,25 +1348,6 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("Petshop.Api.Entities.OrderPrintJob", b =>
-                {
-                    b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Petshop.Api.Entities.Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.Sync.ExternalProductSnapshot", b =>
@@ -1620,11 +1459,6 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("Petshop.Api.Entities.Customer", b =>
-                {
-                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.Delivery.Deliverer", b =>

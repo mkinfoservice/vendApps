@@ -20,6 +20,12 @@ import { AdminGuard } from "@/features/admin/auth/Guard";
 import RoutePlanner from "./pages/admin/RoutePlanner";
 import StoreTeam from "./pages/admin/StoreTeam";
 
+import CustomersList from "./pages/admin/CustomersList";
+import CustomerDetail from "./pages/admin/CustomerDetail";
+import CustomerForm from "./pages/admin/CustomerForm";
+import AtendimentoHub from "./pages/admin/AtendimentoHub";
+import PhoneOrderBuilder from "./pages/admin/PhoneOrderBuilder";
+
 import MasterLogin from "./pages/master/Login";
 import MasterCompanies from "./pages/master/Companies";
 import MasterCompanyDetail from "./pages/master/CompanyDetail";
@@ -158,6 +164,58 @@ export function AppRoutes() {
           element={
             <AdminGuard>
               <StoreTeam />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Atendimento: Hub */}
+        <Route
+          path="/admin/atendimento"
+          element={
+            <AdminGuard>
+              <AtendimentoHub />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/atendimento/pedido"
+          element={
+            <AdminGuard>
+              <PhoneOrderBuilder />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Atendimento: Clientes */}
+        <Route
+          path="/admin/atendimento/clientes"
+          element={
+            <AdminGuard>
+              <CustomersList />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/atendimento/clientes/novo"
+          element={
+            <AdminGuard>
+              <CustomerForm />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/atendimento/clientes/:id"
+          element={
+            <AdminGuard>
+              <CustomerDetail />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/admin/atendimento/clientes/:id/editar"
+          element={
+            <AdminGuard>
+              <CustomerForm />
             </AdminGuard>
           }
         />

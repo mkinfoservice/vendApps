@@ -11,6 +11,16 @@ namespace Petshop.Api.Entities
        public Guid? CompanyId { get; set; }
        public Company? Company { get; set; }
 
+       /// <summary>Cliente cadastrado que originou este pedido (nullable — compatível com pedidos do catálogo).</summary>
+       public Guid? CustomerId { get; set; }
+       public Customer? Customer { get; set; }
+
+       /// <summary>True = pedido criado pelo atendente via telefone.</summary>
+       public bool IsPhoneOrder { get; set; } = false;
+
+       /// <summary>ID do AdminUser (atendente/gerente) que criou o pedido por telefone.</summary>
+       public Guid? AttendantUserId { get; set; }
+
        [MaxLength(30)]
        public string PublicId { get; set; } = ""; // ID "Humano" do pedido (ex: PS-2026004994)
 
