@@ -23,6 +23,32 @@ public class PrintController : ControllerBase
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
+    // ── GET /admin/print/jobs ─────────────────────────────────────────────────
+    /// <summary>
+    /// Retorna os últimos N jobs de impressão (pendentes + impressos) para a UI de fila.
+    /// </summary>
+    [HttpGet("jobs")]
+    public async Task<IActionResult> Jobs([FromQuery] int limit = 60, CancellationToken ct = default)
+    {
+        var jobs = await _db.PrintJobs
+            .AsNoTracking()
+            .Where(j => j.CompanyId == CompanyId)
+            .OrderByDescending(j => j.CreatedAtUtc)
+            .Take(limit)
+            .Select(j => new
+            {
+                j.Id,
+                j.OrderId,
+                j.PublicId,
+                j.IsPrinted,
+                j.CreatedAtUtc,
+                j.PrintedAtUtc,
+            })
+            .ToListAsync(ct);
+
+        return Ok(jobs);
+    }
+
     // ── GET /admin/print/pending ──────────────────────────────────────────────
     /// <summary>
     /// Retorna os jobs de impressão ainda não impressos da empresa.

@@ -88,10 +88,11 @@ export function AdminNav() {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Badge impressora SignalR */}
-          <div
-            title={connected ? "Impressora conectada" : "Impressora offline"}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold select-none"
+          {/* Badge impressora SignalR — clicável → fila de impressão */}
+          <Link
+            to="/admin/print"
+            title={connected ? "Impressora conectada — ver fila" : "Impressora offline — ver fila"}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold select-none transition-opacity hover:opacity-80"
             style={{
               backgroundColor: connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
               color: connected ? "#10b981" : "#f87171",
@@ -105,7 +106,7 @@ export function AdminNav() {
               }}
             />
             <span className="hidden sm:inline">{connected ? "Impressora" : "Offline"}</span>
-          </div>
+          </Link>
           <ThemeToggle />
           <button
             type="button"

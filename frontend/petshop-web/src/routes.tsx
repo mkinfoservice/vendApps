@@ -25,6 +25,7 @@ import CustomerDetail from "./pages/admin/CustomerDetail";
 import CustomerForm from "./pages/admin/CustomerForm";
 import AtendimentoHub from "./pages/admin/AtendimentoHub";
 import PhoneOrderBuilder from "./pages/admin/PhoneOrderBuilder";
+import PrintQueue from "./pages/admin/PrintQueue";
 
 import MasterLogin from "./pages/master/Login";
 import MasterCompanies from "./pages/master/Companies";
@@ -164,6 +165,16 @@ export function AppRoutes() {
           element={
             <AdminGuard>
               <StoreTeam />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Impressão */}
+        <Route
+          path="/admin/print"
+          element={
+            <AdminGuard>
+              <PrintQueue />
             </AdminGuard>
           }
         />

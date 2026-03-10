@@ -34,3 +34,12 @@ export type PendingJobDto = {
   printPayloadJson: string;
   createdAtUtc: string;
 };
+
+export type PrintJobDto = {
+  id: string;
+  orderId: string;
+  publicId: string;
+  isPrinted: boolean;
+  createdAtUtc: string;
+  printedAtUtc: string | null;
+};
