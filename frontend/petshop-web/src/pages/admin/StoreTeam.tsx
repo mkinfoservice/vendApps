@@ -8,7 +8,7 @@ import {
 } from "@/features/admin/team/api";
 import { ROLE_LABELS, ROLE_COLORS } from "@/features/admin/team/types";
 import type { StoreUserDto } from "@/features/admin/team/types";
-import { UserPlus, MoreVertical, RefreshCw, Trash2, Pencil } from "lucide-react";
+import { UserPlus, RefreshCw, Trash2, Pencil } from "lucide-react";
 
 type FormState = {
   username: string;
