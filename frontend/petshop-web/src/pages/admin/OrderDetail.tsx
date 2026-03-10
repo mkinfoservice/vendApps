@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useOrderById, useUpdateOrderStatus } from "@/features/admin/orders/queries";
 import { OrderItemsList } from "@/features/admin/orders/components/OrderItemsList";
@@ -7,6 +7,29 @@ import { OrderStatusBadge } from "@/features/admin/orders/components/OrderStatus
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { paymentLabel } from "@/features/admin/orders/payment";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { reprintOrder } from "@/features/admin/print/api";
+import { adminFetch } from "@/features/admin/auth/adminFetch";
+import { hasRole } from "@/features/admin/auth/auth";
+import { Printer } from "lucide-react";
+
+const ORDERED_STATUSES = [
+  "RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA", "SAIU_PARA_ENTREGA", "ENTREGUE",
+] as const;
+
+const STATUS_LABELS: Record<string, string> = {
+  RECEBIDO: "Recebido",
+  EM_PREPARO: "Em preparo",
+  PRONTO_PARA_ENTREGA: "Pronto p/ entrega",
+  SAIU_PARA_ENTREGA: "Saiu p/ entrega",
+  ENTREGUE: "Entregue",
+};
+
+async function retrogradeStatus(idOrNumber: string, status: string) {
+  return adminFetch(`/admin/orders/${idOrNumber}/retrograde`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,12 +48,32 @@ export default function OrderDetail() {
 
   const orderQuery = useOrderById(idOrNumber);
   const updateStatus = useUpdateOrderStatus();
+  const [reprinting, setReprinting] = useState(false);
+  const [retrograding, setRetrograding] = useState(false);
 
   const order = orderQuery.data;
   const status = (order?.status ?? "RECEBIDO") as OrderStatus;
   const isUpdating = updateStatus.isPending;
+  const canManage = hasRole("admin", "gerente");
 
   const canEdit = useMemo(() => !!order, [order]);
+
+  async function handleReprint() {
+    if (!order) return;
+    setReprinting(true);
+    try { await reprintOrder(order.id as string); } finally { setReprinting(false); }
+  }
+
+  async function handleRetrograde(newStatus: string) {
+    if (!order) return;
+    setRetrograding(true);
+    try {
+      await retrogradeStatus(idOrNumber, newStatus);
+      orderQuery.refetch();
+    } finally {
+      setRetrograding(false);
+    }
+  }
 
   return (
     <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
@@ -45,12 +88,25 @@ export default function OrderDetail() {
               {order ? order.orderNumber : "Carregando..."}
             </div>
           </div>
-          <button
-            className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition"
-            onClick={() => navigate("/admin/orders")}
-          >
-            Voltar
-          </button>
+          <div className="flex gap-2">
+            {order && (
+              <button
+                onClick={handleReprint}
+                disabled={reprinting}
+                className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition flex items-center gap-1.5 disabled:opacity-50"
+                title="Reimprimir pedido"
+              >
+                <Printer size={14} />
+                {reprinting ? "..." : "Imprimir"}
+              </button>
+            )}
+            <button
+              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition"
+              onClick={() => navigate("/admin/orders")}
+            >
+              Voltar
+            </button>
+          </div>
         </div>
 
         {orderQuery.isLoading && (
@@ -86,6 +142,31 @@ export default function OrderDetail() {
               {updateStatus.isError && (
                 <div className="text-xs text-red-400">
                   Erro ao atualizar status. Tente novamente.
+                </div>
+              )}
+
+              {/* Retrocesso — admin/gerente apenas */}
+              {canManage && status !== "CANCELADO" && (
+                <div className="border-t border-[var(--border)] pt-3 mt-2">
+                  <div className="text-xs font-semibold text-[var(--text-muted)] mb-2">
+                    Retroceder status (gerente)
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ORDERED_STATUSES
+                      .filter(s => s !== status && ORDERED_STATUSES.indexOf(s) < ORDERED_STATUSES.indexOf(status as typeof ORDERED_STATUSES[number]))
+                      .map(s => (
+                        <button
+                          key={s}
+                          onClick={() => handleRetrograde(s)}
+                          disabled={retrograding}
+                          className="px-2.5 py-1 rounded-lg border text-xs hover:bg-[var(--surface-2)] transition disabled:opacity-50"
+                          style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+                        >
+                          ↩ {STATUS_LABELS[s] ?? s}
+                        </button>
+                      ))}
+                  </div>
+                  {retrograding && <div className="text-xs text-[var(--text-muted)] mt-1">Atualizando...</div>}
                 </div>
               )}
             </div>

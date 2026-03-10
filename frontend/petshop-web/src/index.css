@@ -80,3 +80,69 @@ body {
   50%  { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
+
+/* ─── Print Receipt (80mm bobina) ────────────────── */
+@media print {
+  /* Ocultar tudo — apenas a receipt é visível */
+  body > * { display: none !important; }
+  .receipt-print-wrapper { display: block !important; }
+}
+
+.receipt-print-wrapper {
+  display: none;          /* Oculto durante a navegação normal */
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: white;
+  overflow: auto;
+}
+
+.receipt-root {
+  width: 80mm;
+  max-width: 80mm;
+  margin: 0 auto;
+  padding: 6mm 4mm;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  color: #000;
+  background: white;
+}
+
+.receipt-header { text-align: center; margin-bottom: 4px; }
+.receipt-title  { font-size: 14px; font-weight: bold; margin: 0 0 2px; }
+.receipt-order-id { font-size: 16px; font-weight: bold; margin: 0 0 2px; }
+.receipt-date   { font-size: 10px; margin: 0 0 2px; }
+.receipt-phone-badge { font-size: 10px; margin-top: 2px; }
+
+.receipt-divider { border-top: 1px dashed #000; margin: 6px 0; }
+
+.receipt-section { margin-bottom: 4px; }
+.receipt-label  { font-weight: bold; font-size: 10px; margin-bottom: 2px; }
+.receipt-value  { margin: 0; font-size: 11px; }
+
+.receipt-item-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 1px 0;
+  font-size: 11px;
+}
+.receipt-item-name { flex: 1; padding-right: 4px; }
+.receipt-item-price { white-space: nowrap; }
+
+.receipt-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 1px 0;
+  font-size: 11px;
+}
+.receipt-total-bold {
+  font-weight: bold;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.receipt-footer {
+  text-align: center;
+  font-size: 11px;
+  margin-top: 6px;
+}

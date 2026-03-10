@@ -25,9 +25,13 @@ public class AppDbContext : DbContext
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
 
+    // ── Clientes ─────────────────────────────────────────────
+    public DbSet<Customer> Customers => Set<Customer>();
+
     // ── Pedidos ──────────────────────────────────────────────
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderPrintJob> PrintJobs => Set<OrderPrintJob>();
 
     // ── Entrega ──────────────────────────────────────────────
     public DbSet<Deliverer> Deliverers => Set<Deliverer>();
@@ -236,6 +240,42 @@ public class AppDbContext : DbContext
         // Sem FKs — TargetId é string flexível para qualquer tipo de alvo.
         modelBuilder.Entity<MasterAuditLog>()
             .HasIndex(l => l.CreatedAtUtc);
+
+        // ── Customer ──────────────────────────────────────────
+        modelBuilder.Entity<Customer>()
+            .HasOne(c => c.Company)
+            .WithMany()
+            .HasForeignKey(c => c.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Índice: busca por telefone dentro da empresa
+        modelBuilder.Entity<Customer>()
+            .HasIndex(c => new { c.CompanyId, c.Phone });
+
+        // Customer → Orders (1:N, nullable no Order)
+        modelBuilder.Entity<Customer>()
+            .HasMany(c => c.Orders)
+            .WithOne(o => o.Customer)
+            .HasForeignKey(o => o.CustomerId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // ── OrderPrintJob ─────────────────────────────────────
+        modelBuilder.Entity<OrderPrintJob>()
+            .HasOne(j => j.Company)
+            .WithMany()
+            .HasForeignKey(j => j.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<OrderPrintJob>()
+            .HasOne(j => j.Order)
+            .WithMany()
+            .HasForeignKey(j => j.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Busca rápida de jobs pendentes por empresa
+        modelBuilder.Entity<OrderPrintJob>()
+            .HasIndex(j => new { j.CompanyId, j.IsPrinted });
 
         // ── Order → Company (opcional, compatibilidade com pedidos antigos) ──
         modelBuilder.Entity<Order>()

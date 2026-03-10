@@ -8,6 +8,7 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Services;
 using Petshop.Api.Services.Geocoding;
+using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
 
 namespace Petshop.Api.Controllers;
@@ -22,8 +23,9 @@ public class OrdersController : ControllerBase
     private readonly IConfiguration _config;
     private readonly ILogger<OrdersController> _logger;
     private readonly IBackgroundJobClient _jobs;
+    private readonly PrintService _print;
 
-    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs)
+    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print)
     {
         _db = db;
         _geo = geo;
@@ -31,6 +33,7 @@ public class OrdersController : ControllerBase
         _config = config;
         _logger = logger;
         _jobs = jobs;
+        _print = print;
     }
 
     /// <summary>
@@ -751,6 +754,9 @@ public class OrdersController : ControllerBase
 
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
+
+        // Fila de impressão — fire-and-forget
+        _ = Task.Run(() => _print.EnqueueAsync(order));
 
         // Notificação WhatsApp — fire-and-forget, sem bloquear a resposta
         _jobs.Enqueue<WhatsAppNotificationService>(
