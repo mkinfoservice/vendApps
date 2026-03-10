@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LogOut, LayoutDashboard, ShoppingBag, Route,
-  DollarSign, Package, Bike, Headphones, Users,
+  DollarSign, Package, Bike, Headphones, Users, Printer,
 } from "lucide-react";
 import { clearToken, hasRole } from "@/features/admin/auth/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -52,7 +52,7 @@ function NavLink({
 
 export function AdminNav() {
   const navigate = useNavigate();
-  const { connected } = usePrintStatus();
+  const { connected, printStation } = usePrintStatus();
 
   const visibleItems = ALL_NAV_ITEMS.filter(
     (item) => item.roles === null || hasRole(...item.roles),
@@ -91,21 +91,36 @@ export function AdminNav() {
           {/* Badge impressora SignalR — clicável → fila de impressão */}
           <Link
             to="/admin/print"
-            title={connected ? "Impressora conectada — ver fila" : "Impressora offline — ver fila"}
+            title={
+              printStation
+                ? connected ? "Estação de impressão ativa — ver fila" : "Estação offline — ver fila"
+                : connected ? "Conectado — este PC não imprime — ver fila" : "Offline — ver fila"
+            }
             className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-semibold select-none transition-opacity hover:opacity-80"
             style={{
-              backgroundColor: connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
-              color: connected ? "#10b981" : "#f87171",
+              backgroundColor: printStation
+                ? connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)"
+                : "rgba(113,113,122,0.10)",
+              color: printStation
+                ? connected ? "#10b981" : "#f87171"
+                : "var(--text-muted)",
             }}
           >
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{
-                backgroundColor: connected ? "#10b981" : "#f87171",
-                boxShadow: connected ? "0 0 6px #10b981" : "none",
-              }}
-            />
-            <span className="hidden sm:inline">{connected ? "Impressora" : "Offline"}</span>
+            {printStation
+              ? (
+                <span
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: connected ? "#10b981" : "#f87171",
+                    boxShadow: connected ? "0 0 6px #10b981" : "none",
+                  }}
+                />
+              )
+              : <Printer size={12} className="shrink-0" />
+            }
+            <span className="hidden sm:inline">
+              {printStation ? (connected ? "Estação" : "Offline") : "Impressão"}
+            </span>
           </Link>
           <ThemeToggle />
           <button

@@ -1,3 +1,4 @@
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -29,7 +30,6 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
         borderColor: job.isPrinted ? "var(--border)" : "rgba(239,68,68,0.3)",
       }}
     >
-      {/* Status icon */}
       <div className="shrink-0">
         {job.isPrinted
           ? <CheckCircle2 size={22} className="text-emerald-400" />
@@ -37,7 +37,6 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
         }
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-bold text-sm" style={{ color: "var(--text)" }}>
@@ -61,7 +60,6 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
@@ -81,7 +79,7 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
             onClick={() => onMarkPrinted(job.id)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
             style={{ backgroundColor: "rgba(16,185,129,0.12)", color: "#10b981" }}
-            title="Marcar como impresso"
+            title="Marcar como impresso manualmente"
           >
             <CheckCircle2 size={13} />
             <span className="hidden sm:inline">Marcar impresso</span>
@@ -105,7 +103,7 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
 }
 
 export default function PrintQueue() {
-  const { connected } = usePrintStatus();
+  const { connected, printStation, togglePrintStation } = usePrintStatus();
   const qc = useQueryClient();
   const [loadingId, setLoadingId] = React.useState<string | null>(null);
 
@@ -116,18 +114,12 @@ export default function PrintQueue() {
   });
 
   const markMut = useMutation({
-    mutationFn: (jobId: string) => {
-      setLoadingId(jobId);
-      return markPrintedById(jobId);
-    },
+    mutationFn: (jobId: string) => { setLoadingId(jobId); return markPrintedById(jobId); },
     onSettled: () => { setLoadingId(null); qc.invalidateQueries({ queryKey: ["print-jobs"] }); },
   });
 
   const reprintMut = useMutation({
-    mutationFn: (orderId: string) => {
-      setLoadingId(orderId);
-      return reprintOrder(orderId);
-    },
+    mutationFn: (orderId: string) => { setLoadingId(orderId); return reprintOrder(orderId); },
     onSettled: () => { setLoadingId(null); qc.invalidateQueries({ queryKey: ["print-jobs"] }); },
   });
 
@@ -139,49 +131,83 @@ export default function PrintQueue() {
       <AdminNav />
       <div className="mx-auto max-w-3xl px-4 py-8">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "var(--surface-2)" }}>
-              <Printer size={20} style={{ color: "var(--text-muted)" }} />
+        {/* ── Estação de Impressão toggle ──────────────────────────────── */}
+        <div
+          className="rounded-2xl border p-5 mb-6"
+          style={{
+            backgroundColor: printStation ? "rgba(16,185,129,0.07)" : "var(--surface)",
+            borderColor: printStation ? "rgba(16,185,129,0.35)" : "var(--border)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  backgroundColor: printStation ? "rgba(16,185,129,0.15)" : "var(--surface-2)",
+                }}
+              >
+                <Printer size={20} style={{ color: printStation ? "#10b981" : "var(--text-muted)" }} />
+              </div>
+              <div>
+                <p className="font-bold text-sm" style={{ color: "var(--text)" }}>
+                  Este PC é a estação de impressão
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  {printStation
+                    ? "Pedidos novos serão impressos automaticamente neste PC"
+                    : "Este PC não imprime — apenas visualiza a fila"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Fila de Impressão</h1>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Últimos 60 jobs • atualiza a cada 10s
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            {/* Status SignalR */}
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-              style={{
-                backgroundColor: connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.10)",
-                color: connected ? "#10b981" : "#f87171",
-              }}
+            {/* Toggle switch */}
+            <button
+              type="button"
+              onClick={togglePrintStation}
+              className="relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none"
+              style={{ backgroundColor: printStation ? "#10b981" : "var(--surface-2)" }}
+              title={printStation ? "Desativar impressão neste PC" : "Ativar impressão neste PC"}
             >
               <span
-                className="w-2 h-2 rounded-full"
+                className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                style={{ transform: printStation ? "translateX(24px)" : "translateX(0)" }}
+              />
+            </button>
+          </div>
+
+          {/* Status da conexão */}
+          {printStation && (
+            <div className="mt-3 pt-3 border-t flex items-center gap-2" style={{ borderColor: "rgba(16,185,129,0.2)" }}>
+              <span
+                className="w-2 h-2 rounded-full shrink-0"
                 style={{
                   backgroundColor: connected ? "#10b981" : "#f87171",
                   boxShadow: connected ? "0 0 6px #10b981" : "none",
                 }}
               />
-              {connected ? "Impressora conectada" : "Impressora offline"}
+              <span className="text-xs" style={{ color: connected ? "#10b981" : "#f87171" }}>
+                {connected ? "Conectado ao servidor — pronto para imprimir" : "Desconectado — reconectando…"}
+              </span>
             </div>
+          )}
+        </div>
 
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-              style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
-              title="Atualizar"
-            >
-              <RefreshCw size={15} />
-            </button>
+        {/* ── Header da fila ───────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-lg font-bold" style={{ color: "var(--text)" }}>Fila de Impressão</h1>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>Últimos 60 jobs • atualiza a cada 10s</p>
           </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+            style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
+            title="Atualizar agora"
+          >
+            <RefreshCw size={15} />
+          </button>
         </div>
 
         {isLoading && (
@@ -246,6 +272,3 @@ export default function PrintQueue() {
     </div>
   );
 }
-
-// React import needed for useState inside the component
-import React from "react";
