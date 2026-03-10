@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { usePrintListener } from "./usePrintListener";
 
 type PrintStatus = { connected: boolean };
