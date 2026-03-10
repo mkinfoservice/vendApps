@@ -39,22 +39,14 @@ export default function StoreTeam() {
   const createMut = useMutation({
     mutationFn: createMember,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team"] }); setShowCreate(false); setForm(DEFAULT_FORM); setError(null); },
-    onError: async (e: unknown) => {
-      const res = e as Response;
-      const body = await res.json?.().catch(() => ({}));
-      setError(body?.error ?? "Erro ao criar membro.");
-    },
+    onError: (e: Error) => setError(e.message ?? "Erro ao criar membro."),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { email?: string; newPassword?: string } }) =>
       updateMember(id, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["team"] }); setEditUser(null); setError(null); },
-    onError: async (e: unknown) => {
-      const res = e as Response;
-      const body = await res.json?.().catch(() => ({}));
-      setError(body?.error ?? "Erro ao atualizar membro.");
-    },
+    onError: (e: Error) => setError(e.message ?? "Erro ao atualizar membro."),
   });
 
   const deactivateMut = useMutation({
