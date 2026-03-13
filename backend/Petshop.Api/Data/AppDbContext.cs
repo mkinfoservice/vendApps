@@ -2,7 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Audit;
 using Petshop.Api.Entities.Catalog;
+using Petshop.Api.Entities.Dav;
+using Petshop.Api.Entities.Fiscal;
 using Petshop.Api.Entities.Master;
+using Petshop.Api.Entities.Pdv;
+using Petshop.Api.Entities.Scale;
+using Petshop.Api.Entities.Customers;
+using Petshop.Api.Entities.Promotions;
+using Petshop.Api.Entities.Financial;
+using Petshop.Api.Entities.Purchases;
+using Petshop.Api.Entities.Agenda;
+using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Models;
@@ -58,6 +68,51 @@ public class AppDbContext : DbContext
     public DbSet<WhatsAppContact> WhatsAppContacts => Set<WhatsAppContact>();
     public DbSet<WhatsAppMessageLog> WhatsAppMessageLogs => Set<WhatsAppMessageLog>();
     public DbSet<WhatsAppWebhookDedupe> WhatsAppWebhookDedupes => Set<WhatsAppWebhookDedupe>();
+
+    // ── DAV / Orçamento ───────────────────────────────────────
+    public DbSet<SalesQuote> SalesQuotes => Set<SalesQuote>();
+    public DbSet<SalesQuoteItem> SalesQuoteItems => Set<SalesQuoteItem>();
+
+    // ── PDV ───────────────────────────────────────────────────
+    public DbSet<CashRegister>  CashRegisters  => Set<CashRegister>();
+    public DbSet<CashSession>   CashSessions   => Set<CashSession>();
+    public DbSet<CashMovement>  CashMovements  => Set<CashMovement>();
+    public DbSet<SaleOrder>     SaleOrders     => Set<SaleOrder>();
+    public DbSet<SaleOrderItem> SaleOrderItems => Set<SaleOrderItem>();
+    public DbSet<SalePayment>   SalePayments   => Set<SalePayment>();
+
+    // ── Promoções (Fase 10) ───────────────────────────────────
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+
+    // ── Fidelidade (Fase 9) ───────────────────────────────────
+    public DbSet<LoyaltyConfig>       LoyaltyConfigs       => Set<LoyaltyConfig>();
+    public DbSet<LoyaltyTransaction>  LoyaltyTransactions  => Set<LoyaltyTransaction>();
+
+    // ── Financeiro (Fase 12) ──────────────────────────────────
+    public DbSet<FinancialEntry> FinancialEntries => Set<FinancialEntry>();
+
+    // ── Agenda de Serviços (Fase 13) ──────────────────────────
+    public DbSet<ServiceType>        ServiceTypes        => Set<ServiceType>();
+    public DbSet<ServiceAppointment> ServiceAppointments => Set<ServiceAppointment>();
+
+    // ── Compras & Fornecedores ────────────────────────────────
+    public DbSet<Supplier>          Suppliers          => Set<Supplier>();
+    public DbSet<PurchaseOrder>     PurchaseOrders     => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+
+    // ── Estoque ───────────────────────────────────────────────
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+
+    // ── Scale Agents ──────────────────────────────────────────
+    public DbSet<ScaleAgent>  ScaleAgents  => Set<ScaleAgent>();
+    public DbSet<ScaleDevice> ScaleDevices => Set<ScaleDevice>();
+
+    // ── Fiscal ────────────────────────────────────────────────
+    public DbSet<FiscalConfig> FiscalConfigs => Set<FiscalConfig>();
+    public DbSet<FiscalDocument> FiscalDocuments => Set<FiscalDocument>();
+    public DbSet<FiscalQueue> FiscalQueues => Set<FiscalQueue>();
+    public DbSet<FiscalAuditLog> FiscalAuditLogs => Set<FiscalAuditLog>();
+    public DbSet<NfceNumberControl> NfceNumberControls => Set<NfceNumberControl>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -320,5 +375,458 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<WhatsAppWebhookDedupe>()
             .HasIndex(d => d.CreatedAtUtc); // Para cleanup por TTL futuro
+
+        // ══════════════════════════════════════════════════════
+        // FISCAL
+        // ══════════════════════════════════════════════════════
+
+        // ── FiscalConfig (1:1 por empresa) ────────────────────
+        modelBuilder.Entity<FiscalConfig>()
+            .HasOne(f => f.Company)
+            .WithOne()
+            .HasForeignKey<FiscalConfig>(f => f.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<FiscalConfig>()
+            .HasIndex(f => f.CompanyId)
+            .IsUnique();
+
+        // Enums como string para legibilidade no banco e suporte a filtered index futuro
+        modelBuilder.Entity<FiscalConfig>()
+            .Property(f => f.TaxRegime)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        modelBuilder.Entity<FiscalConfig>()
+            .Property(f => f.SefazEnvironment)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // ── FiscalDocument ────────────────────────────────────
+        modelBuilder.Entity<FiscalDocument>()
+            .HasOne(d => d.Company)
+            .WithMany()
+            .HasForeignKey(d => d.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Chave de acesso única (quando preenchida)
+        modelBuilder.Entity<FiscalDocument>()
+            .HasIndex(d => d.AccessKey)
+            .IsUnique()
+            .HasFilter("\"AccessKey\" IS NOT NULL");
+
+        // Busca por empresa + status fiscal (job de contingência e relatórios)
+        modelBuilder.Entity<FiscalDocument>()
+            .HasIndex(d => new { d.CompanyId, d.FiscalStatus });
+
+        modelBuilder.Entity<FiscalDocument>()
+            .Property(d => d.DocumentType)
+            .HasConversion<string>()
+            .HasMaxLength(10);
+
+        modelBuilder.Entity<FiscalDocument>()
+            .Property(d => d.FiscalStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<FiscalDocument>()
+            .Property(d => d.ContingencyType)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // ── FiscalQueue ───────────────────────────────────────
+        modelBuilder.Entity<FiscalQueue>()
+            .HasOne(q => q.Company)
+            .WithMany()
+            .HasForeignKey(q => q.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // FK para FiscalDocument (nullable — preenchido após emissão)
+        modelBuilder.Entity<FiscalQueue>()
+            .HasOne(q => q.FiscalDocument)
+            .WithMany()
+            .HasForeignKey(q => q.FiscalDocumentId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Busca por empresa + status (job de processamento)
+        modelBuilder.Entity<FiscalQueue>()
+            .HasIndex(q => new { q.CompanyId, q.Status });
+
+        modelBuilder.Entity<FiscalQueue>()
+            .Property(q => q.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<FiscalQueue>()
+            .Property(q => q.Priority)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // ── FiscalAuditLog ────────────────────────────────────
+        // Sem FKs — log imutável, referências livres (como MasterAuditLog)
+        modelBuilder.Entity<FiscalAuditLog>()
+            .HasIndex(l => new { l.CompanyId, l.CreatedAtUtc });
+
+        modelBuilder.Entity<FiscalAuditLog>()
+            .HasIndex(l => new { l.EntityType, l.EntityId });
+
+        // ── NfceNumberControl (PK composta) ───────────────────
+        modelBuilder.Entity<NfceNumberControl>()
+            .HasKey(n => new { n.CompanyId, n.Serie });
+
+        // ══════════════════════════════════════════════════════
+        // SCALE AGENTS (Fase 4)
+        // ══════════════════════════════════════════════════════
+
+        // ── ScaleAgent ────────────────────────────────────────
+        modelBuilder.Entity<ScaleAgent>()
+            .HasOne(a => a.Company)
+            .WithMany()
+            .HasForeignKey(a => a.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ScaleAgent>()
+            .HasIndex(a => new { a.CompanyId, a.MachineName });
+
+        modelBuilder.Entity<ScaleAgent>()
+            .HasIndex(a => a.AgentKey)
+            .IsUnique();
+
+        // ── ScaleDevice ───────────────────────────────────────
+        modelBuilder.Entity<ScaleDevice>()
+            .HasOne(d => d.Agent)
+            .WithMany(a => a.Devices)
+            .HasForeignKey(d => d.AgentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ScaleDevice>()
+            .Property(d => d.ScaleModel)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<ScaleDevice>()
+            .HasIndex(d => new { d.AgentId, d.IsActive });
+
+        // ══════════════════════════════════════════════════════
+        // BALANÇA — Product (campos adicionados na Fase 1)
+        // ══════════════════════════════════════════════════════
+
+        // Enum ScaleBarcodeMode como string para legibilidade e futuros filtered indexes
+        modelBuilder.Entity<Product>()
+            .Property(p => p.ScaleBarcodeMode)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // Índice para lookup por código de balança dentro da empresa
+        modelBuilder.Entity<Product>()
+            .HasIndex(p => new { p.CompanyId, p.ScaleProductCode })
+            .HasFilter("\"ScaleProductCode\" IS NOT NULL");
+
+        // ══════════════════════════════════════════════════════
+        // PROMOÇÕES (Fase 10)
+        // ══════════════════════════════════════════════════════
+
+        modelBuilder.Entity<Promotion>()
+            .HasOne(p => p.Company)
+            .WithMany()
+            .HasForeignKey(p => p.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Promotion>()
+            .Property(p => p.Type)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<Promotion>()
+            .Property(p => p.Scope)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<Promotion>()
+            .HasIndex(p => new { p.CompanyId, p.IsActive, p.ExpiresAtUtc });
+
+        modelBuilder.Entity<Promotion>()
+            .HasIndex(p => new { p.CompanyId, p.CouponCode })
+            .HasFilter("\"CouponCode\" IS NOT NULL");
+
+        // ══════════════════════════════════════════════════════
+        // CLIENTES & FIDELIDADE (Fase 9)
+        // ══════════════════════════════════════════════════════
+
+        // ── Customer (loyalty indexes — entidade base já configurada acima) ──
+        modelBuilder.Entity<Petshop.Api.Entities.Customer>()
+            .HasIndex(c => new { c.CompanyId, c.Cpf });
+
+        modelBuilder.Entity<Petshop.Api.Entities.Customer>()
+            .HasIndex(c => new { c.CompanyId, c.PointsBalance });
+
+        // ── LoyaltyConfig ─────────────────────────────────────
+        modelBuilder.Entity<LoyaltyConfig>()
+            .HasIndex(c => c.CompanyId)
+            .IsUnique();
+
+        // ── LoyaltyTransaction ────────────────────────────────
+        modelBuilder.Entity<LoyaltyTransaction>()
+            .HasOne(t => t.Customer)
+            .WithMany(c => c.LoyaltyTransactions)
+            .HasForeignKey(t => t.CustomerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<LoyaltyTransaction>()
+            .HasIndex(t => new { t.CompanyId, t.CustomerId, t.CreatedAtUtc });
+
+        // ══════════════════════════════════════════════════════
+        // COMPRAS & FORNECEDORES (Fase 8)
+        // ══════════════════════════════════════════════════════
+
+        // ── Supplier ──────────────────────────────────────────
+        modelBuilder.Entity<Supplier>()
+            .HasOne(s => s.Company)
+            .WithMany()
+            .HasForeignKey(s => s.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Supplier>()
+            .HasIndex(s => new { s.CompanyId, s.Name });
+
+        // ── PurchaseOrder ─────────────────────────────────────
+        modelBuilder.Entity<PurchaseOrder>()
+            .HasOne(p => p.Supplier)
+            .WithMany(s => s.PurchaseOrders)
+            .HasForeignKey(p => p.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PurchaseOrder>()
+            .Property(p => p.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<PurchaseOrder>()
+            .HasIndex(p => new { p.CompanyId, p.Status, p.CreatedAtUtc });
+
+        // ── PurchaseOrderItem ─────────────────────────────────
+        modelBuilder.Entity<PurchaseOrderItem>()
+            .HasOne(i => i.PurchaseOrder)
+            .WithMany(p => p.Items)
+            .HasForeignKey(i => i.PurchaseOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ══════════════════════════════════════════════════════
+        // ESTOQUE (Fase 6)
+        // ══════════════════════════════════════════════════════
+
+        // ── StockMovement ─────────────────────────────────────
+        modelBuilder.Entity<StockMovement>()
+            .HasOne(m => m.Product)
+            .WithMany()
+            .HasForeignKey(m => m.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StockMovement>()
+            .Property(m => m.MovementType)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        // Consulta padrão: movimentos por produto ordenados por data
+        modelBuilder.Entity<StockMovement>()
+            .HasIndex(m => new { m.CompanyId, m.ProductId, m.CreatedAtUtc });
+
+        // Consulta por venda (para rastreabilidade)
+        modelBuilder.Entity<StockMovement>()
+            .HasIndex(m => m.SaleOrderId)
+            .HasFilter("\"SaleOrderId\" IS NOT NULL");
+
+        // ══════════════════════════════════════════════════════
+        // DAV / ORÇAMENTO (Fase 2)
+        // ══════════════════════════════════════════════════════
+
+        // ── SalesQuote ────────────────────────────────────────
+        modelBuilder.Entity<SalesQuote>()
+            .HasOne(q => q.Company)
+            .WithMany()
+            .HasForeignKey(q => q.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Enums como string
+        modelBuilder.Entity<SalesQuote>()
+            .Property(q => q.Status)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        modelBuilder.Entity<SalesQuote>()
+            .Property(q => q.Origin)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // PublicId único globalmente (como Order.PublicId)
+        modelBuilder.Entity<SalesQuote>()
+            .HasIndex(q => q.PublicId)
+            .IsUnique();
+
+        // Busca por empresa + status (fila de aprovação fiscal e listagens)
+        modelBuilder.Entity<SalesQuote>()
+            .HasIndex(q => new { q.CompanyId, q.Status });
+
+        // Busca por empresa + data
+        modelBuilder.Entity<SalesQuote>()
+            .HasIndex(q => new { q.CompanyId, q.CreatedAtUtc });
+
+        // Garantia: um pedido de delivery gera no máximo um DAV
+        modelBuilder.Entity<SalesQuote>()
+            .HasIndex(q => q.OriginOrderId)
+            .IsUnique()
+            .HasFilter("\"OriginOrderId\" IS NOT NULL");
+
+        // ── SalesQuoteItem ────────────────────────────────────
+        modelBuilder.Entity<SalesQuoteItem>()
+            .HasOne(i => i.SalesQuote)
+            .WithMany(q => q.Items)
+            .HasForeignKey(i => i.SalesQuoteId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ══════════════════════════════════════════════════════
+        // PDV (Fase 3)
+        // ══════════════════════════════════════════════════════
+
+        // ── CashRegister ──────────────────────────────────────
+        modelBuilder.Entity<CashRegister>()
+            .HasOne(r => r.Company)
+            .WithMany()
+            .HasForeignKey(r => r.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CashRegister>()
+            .HasIndex(r => new { r.CompanyId, r.IsActive });
+
+        // ── CashSession ───────────────────────────────────────
+        modelBuilder.Entity<CashSession>()
+            .HasOne(s => s.CashRegister)
+            .WithMany(r => r.Sessions)
+            .HasForeignKey(s => s.CashRegisterId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CashSession>()
+            .Property(s => s.Status)
+            .HasConversion<string>()
+            .HasMaxLength(10);
+
+        // Um terminal só pode ter uma sessão aberta por vez
+        modelBuilder.Entity<CashSession>()
+            .HasIndex(s => new { s.CashRegisterId, s.Status })
+            .HasFilter("\"Status\" = 'Open'")
+            .IsUnique();
+
+        modelBuilder.Entity<CashSession>()
+            .HasIndex(s => new { s.CompanyId, s.OpenedAtUtc });
+
+        // ── SaleOrder ─────────────────────────────────────────
+        modelBuilder.Entity<SaleOrder>()
+            .HasOne(o => o.CashSession)
+            .WithMany(s => s.Sales)
+            .HasForeignKey(o => o.CashSessionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SaleOrder>()
+            .Property(o => o.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<SaleOrder>()
+            .HasIndex(o => o.PublicId)
+            .IsUnique();
+
+        modelBuilder.Entity<SaleOrder>()
+            .HasIndex(o => new { o.CompanyId, o.CreatedAtUtc });
+
+        modelBuilder.Entity<SaleOrder>()
+            .HasIndex(o => new { o.CashSessionId, o.Status });
+
+        // ── SaleOrderItem ─────────────────────────────────────
+        modelBuilder.Entity<SaleOrderItem>()
+            .HasOne(i => i.SaleOrder)
+            .WithMany(o => o.Items)
+            .HasForeignKey(i => i.SaleOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── SalePayment ───────────────────────────────────────
+        modelBuilder.Entity<SalePayment>()
+            .HasOne(p => p.SaleOrder)
+            .WithMany(o => o.Payments)
+            .HasForeignKey(p => p.SaleOrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── CashMovement ──────────────────────────────────────
+        modelBuilder.Entity<CashMovement>()
+            .HasOne(m => m.CashSession)
+            .WithMany(s => s.Movements)
+            .HasForeignKey(m => m.CashSessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CashMovement>()
+            .Property(m => m.Type)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<CashMovement>()
+            .HasIndex(m => new { m.CompanyId, m.CashSessionId });
+
+        // ── FinancialEntry ────────────────────────────────────
+        modelBuilder.Entity<FinancialEntry>()
+            .HasOne(e => e.Company)
+            .WithMany()
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FinancialEntry>()
+            .Property(e => e.Type)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<FinancialEntry>()
+            .HasIndex(e => new { e.CompanyId, e.DueDate });
+
+        modelBuilder.Entity<FinancialEntry>()
+            .HasIndex(e => new { e.CompanyId, e.IsPaid, e.DueDate });
+
+        // ══════════════════════════════════════════════════════
+        // AGENDA DE SERVIÇOS (Fase 13)
+        // ══════════════════════════════════════════════════════
+
+        // ── ServiceType ───────────────────────────────────────
+        modelBuilder.Entity<ServiceType>()
+            .HasOne(t => t.Company)
+            .WithMany()
+            .HasForeignKey(t => t.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ServiceType>()
+            .HasIndex(t => new { t.CompanyId, t.IsActive });
+
+        // ── ServiceAppointment ────────────────────────────────
+        modelBuilder.Entity<ServiceAppointment>()
+            .HasOne(a => a.Company)
+            .WithMany()
+            .HasForeignKey(a => a.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ServiceAppointment>()
+            .HasOne(a => a.ServiceType)
+            .WithMany()
+            .HasForeignKey(a => a.ServiceTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ServiceAppointment>()
+            .Property(a => a.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // Busca por empresa + data (view de agenda diária/semanal)
+        modelBuilder.Entity<ServiceAppointment>()
+            .HasIndex(a => new { a.CompanyId, a.ScheduledAt });
+
+        // Busca por empresa + status (painel de atendimento)
+        modelBuilder.Entity<ServiceAppointment>()
+            .HasIndex(a => new { a.CompanyId, a.Status });
     }
 }

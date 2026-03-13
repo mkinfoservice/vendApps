@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LogOut, LayoutDashboard, ShoppingBag, Route,
-  DollarSign, Package, Bike, Headphones, Users, Printer,
+  DollarSign, Package, Bike, Headphones, Users, Printer, CalendarDays,
 } from "lucide-react";
 import { clearToken, hasRole } from "@/features/admin/auth/auth";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -22,6 +22,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: "/admin/products",    label: "Produtos",     icon: Package,         exact: false, roles: null },
   { to: "/admin/deliverers",  label: "Entregadores", icon: Bike,            exact: false, roles: null },
   { to: "/admin/routes",      label: "Rotas",        icon: Route,           exact: false, roles: null },
+  { to: "/admin/agenda",      label: "Agenda",       icon: CalendarDays,    exact: false, roles: null },
   { to: "/admin/financeiro",  label: "Financeiro",   icon: DollarSign,      exact: false, roles: ["admin", "gerente"] },
   { to: "/admin/equipe",      label: "Equipe",       icon: Users,           exact: false, roles: ["admin", "gerente"] },
 ];

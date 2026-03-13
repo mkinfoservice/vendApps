@@ -7,6 +7,7 @@ using Petshop.Api.Contracts.Orders;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Services;
+using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
@@ -373,6 +374,11 @@ public class OrdersController : ControllerBase
         // Notificação WhatsApp — fire-and-forget, sem bloquear a resposta
         _jobs.Enqueue<WhatsAppNotificationService>(
             s => s.NotifyOrderStatusAsync(order.Id, newStatus, CancellationToken.None));
+
+        // DAV automático — pedido entregue gera DAV aguardando confirmação fiscal
+        if (newStatus == OrderStatus.ENTREGUE)
+            _jobs.Enqueue<DeliveryOrderToDavJob>(
+                j => j.RunAsync(order.Id, CancellationToken.None));
 
         return Ok(new UpdateOrderStatusResponse(
             order.Id,

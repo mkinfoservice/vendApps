@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Petshop.Api.Entities.Scale;
 
 namespace Petshop.Api.Contracts.Admin.Products;
 
@@ -15,5 +16,10 @@ public record CreateProductRequest(
     int PriceCents,
     decimal StockQty,
     string? Ncm,
-    bool IsActive = true
+    bool IsActive = true,
+    // ── Balança / venda por peso ─────────────────────────────
+    bool IsSoldByWeight = false,
+    [MaxLength(5)] string? ScaleProductCode = null,
+    ScaleBarcodeMode ScaleBarcodeMode = ScaleBarcodeMode.WeightEncoded,
+    decimal ScaleTareWeight = 0
 );

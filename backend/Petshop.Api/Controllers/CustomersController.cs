@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
+using Petshop.Api.Entities.Customers;
+using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Geocoding;
 
 namespace Petshop.Api.Controllers;
@@ -19,15 +21,19 @@ public class CustomersController : ControllerBase
     private readonly IGeocodingService _geo;
     private readonly ILogger<CustomersController> _logger;
 
+    private readonly LoyaltyService _loyalty;
+
     public CustomersController(
         AppDbContext db,
         ViaCepService viaCep,
         IGeocodingService geo,
-        ILogger<CustomersController> logger)
+        ILogger<CustomersController> logger,
+        LoyaltyService loyalty)
     {
         _db = db;
         _viaCep = viaCep;
         _geo = geo;
+        _loyalty = loyalty;
         _logger = logger;
     }
 
@@ -291,6 +297,99 @@ public class CustomersController : ControllerBase
             c.City, c.State, c.AddressReference, c.Notes,
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
             orders);
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // FIDELIDADE (Fase 9)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // GET /admin/customers/{id}/loyalty
+    [HttpGet("{id:guid}/loyalty")]
+    public async Task<IActionResult> GetLoyalty(Guid id, CancellationToken ct)
+    {
+        var c = await _db.Customers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == CompanyId, ct);
+        if (c is null) return NotFound();
+
+        var txns = await _db.LoyaltyTransactions.AsNoTracking()
+            .Where(t => t.CustomerId == id)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .Take(50)
+            .Select(t => new LoyaltyTxnDto(
+                t.Id, t.Points, t.BalanceBefore, t.BalanceAfter,
+                t.Description, t.SaleOrderId, t.CreatedAtUtc))
+            .ToListAsync(ct);
+
+        var cfg = await _loyalty.GetOrCreateConfigAsync(CompanyId, ct);
+
+        return Ok(new CustomerLoyaltyDto(
+            c.Id, c.Name, c.PointsBalance, c.TotalOrders, c.TotalSpentCents,
+            c.LastOrderUtc, cfg.PointsPerReais, cfg.MinRedemptionPoints, txns));
+    }
+
+    // POST /admin/customers/{id}/loyalty/adjust
+    [HttpPost("{id:guid}/loyalty/adjust")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> AdjustPoints(
+        Guid id, [FromBody] AdjustLoyaltyRequest req, CancellationToken ct)
+    {
+        try
+        {
+            await _loyalty.AdjustAsync(CompanyId, id, req.Points, req.Reason, ct);
+            var c = await _db.Customers.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id, ct);
+            return Ok(new { PointsBalance = c?.PointsBalance ?? 0 });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(ex.Message); }
+    }
+
+    // GET /admin/loyalty/config
+    [HttpGet("/admin/loyalty/config")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> GetConfig(CancellationToken ct)
+    {
+        var cfg = await _loyalty.GetOrCreateConfigAsync(CompanyId, ct);
+        return Ok(MapConfig(cfg));
+    }
+
+    // PUT /admin/loyalty/config
+    [HttpPut("/admin/loyalty/config")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> UpdateConfig([FromBody] LoyaltyConfigDto req, CancellationToken ct)
+    {
+        var cfg = await _loyalty.GetOrCreateConfigAsync(CompanyId, ct);
+        cfg.IsEnabled           = req.IsEnabled;
+        cfg.PointsPerReal       = req.PointsPerReal;
+        cfg.PointsPerReais      = req.PointsPerReais;
+        cfg.MinRedemptionPoints = req.MinRedemptionPoints;
+        cfg.MaxDiscountPercent  = req.MaxDiscountPercent;
+        cfg.UpdatedAtUtc        = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return Ok(MapConfig(cfg));
+    }
+
+    // GET /admin/customers/lookup?q=cpf_or_phone
+    [HttpGet("lookup")]
+    public async Task<IActionResult> Lookup(
+        [FromQuery] string q, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return BadRequest();
+        var term = Regex.Replace(q, @"\D", "");
+
+        var c = await _db.Customers.AsNoTracking()
+            .Where(x => x.CompanyId == CompanyId)
+            .Where(x => (x.Cpf != null && x.Cpf == term) ||
+                        (x.Phone != null && x.Phone == term))
+            .Select(x => new CustomerLookupResult(
+                x.Id, x.Name, x.Phone, x.Cpf,
+                x.PointsBalance, x.Email, x.BirthDate))
+            .FirstOrDefaultAsync(ct);
+
+        return c is null ? NotFound() : Ok(c);
+    }
+
+    private static LoyaltyConfigDto MapConfig(LoyaltyConfig cfg) => new(
+        cfg.IsEnabled, cfg.PointsPerReal, cfg.PointsPerReais,
+        cfg.MinRedemptionPoints, cfg.MaxDiscountPercent, cfg.UpdatedAtUtc);
 }
 
 // ── DTOs ─────────────────────────────────────────────────────────────────────
@@ -343,3 +442,46 @@ public record CustomerOrderSummary(
     string Status,
     int TotalCents,
     DateTime CreatedAtUtc);
+
+public record LoyaltyTxnDto(
+    Guid      Id,
+    int       Points,
+    int       BalanceBefore,
+    int       BalanceAfter,
+    string    Description,
+    Guid?     SaleOrderId,
+    DateTime  CreatedAtUtc
+);
+
+public record CustomerLoyaltyDto(
+    Guid      CustomerId,
+    string    CustomerName,
+    int       PointsBalance,
+    int       TotalOrders,
+    int       TotalSpentCents,
+    DateTime? LastOrderUtc,
+    int       PointsPerReais,
+    int       MinRedemptionPoints,
+    List<LoyaltyTxnDto> Transactions
+);
+
+public record LoyaltyConfigDto(
+    bool     IsEnabled,
+    decimal  PointsPerReal,
+    int      PointsPerReais,
+    int      MinRedemptionPoints,
+    int      MaxDiscountPercent,
+    DateTime UpdatedAtUtc
+);
+
+public record AdjustLoyaltyRequest(int Points, string Reason);
+
+public record CustomerLookupResult(
+    Guid      Id,
+    string    Name,
+    string    Phone,
+    string?   Cpf,
+    int       PointsBalance,
+    string?   Email,
+    DateOnly? BirthDate
+);
