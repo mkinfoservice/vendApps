@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Petshop.Api.Entities.Customers;
 using Petshop.Api.Entities.Master;
 
 namespace Petshop.Api.Entities;
@@ -66,7 +67,20 @@ public class Customer
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    // ── Fidelidade (Fase 9) ───────────────────────────────────
+
+    [MaxLength(100)]
+    public string? Email { get; set; }
+
+    public DateOnly? BirthDate { get; set; }
+
+    public int PointsBalance { get; set; }
+    public int TotalSpentCents { get; set; }
+    public int TotalOrders { get; set; }
+    public DateTime? LastOrderUtc { get; set; }
+
     // ── Navegação ─────────────────────────────────────────────
 
     public ICollection<Order> Orders { get; set; } = new List<Order>();
+    public List<LoyaltyTransaction> LoyaltyTransactions { get; set; } = new();
 }

@@ -17,6 +17,11 @@ using Petshop.Api.Services.Sync;
 using System.Text.Json.Serialization;
 using Petshop.Api.Hubs;
 using Petshop.Api.Services.Print;
+using Petshop.Api.Services.Dav.Jobs;
+using Petshop.Api.Services.Fiscal;
+using Petshop.Api.Services.Fiscal.Jobs;
+using Petshop.Api.Services.Scale;
+using Petshop.Api.Services.Scale.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -214,6 +219,56 @@ builder.Services.AddScoped<Petshop.Api.Services.TenantResolverService>();
 builder.Services.AddScoped<PrintService>();
 
 // ===============================
+// Services — Balança
+// ===============================
+builder.Services.AddScoped<ScaleBarcodeParser>();
+builder.Services.AddScoped<ScaleProductSyncJob>();
+
+// ===============================
+// Services — Estoque (Fase 6)
+// ===============================
+builder.Services.AddScoped<Petshop.Api.Services.Stock.StockService>();
+
+// ===============================
+// Services — Compras (Fase 8)
+// ===============================
+builder.Services.AddScoped<Petshop.Api.Services.Purchases.PurchaseReceivingService>();
+
+// ===============================
+// Services — Clientes (Fase 9)
+// ===============================
+builder.Services.AddScoped<Petshop.Api.Services.Customers.LoyaltyService>();
+
+// ===============================
+// Services — Promoções (Fase 10)
+// ===============================
+builder.Services.AddScoped<Petshop.Api.Services.Promotions.PromotionEngine>();
+
+// ===============================
+// Services — Fiscal (Fase 5)
+// ===============================
+builder.Services.AddScoped<NfceSigningService>();
+builder.Services.AddHttpClient<SefazHttpClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddScoped<RealFiscalEngine>();
+
+// ===============================
+// Services — DAV / Orçamento
+// ===============================
+builder.Services.AddScoped<DeliveryOrderToDavJob>();
+
+// ===============================
+// Services — Fiscal
+// ===============================
+builder.Services.AddScoped<IFiscalEngine, MockFiscalEngine>();
+builder.Services.AddScoped<FiscalDecisionService>();
+builder.Services.AddScoped<NfceNumberService>();
+builder.Services.AddScoped<FiscalQueueProcessorJob>();
+builder.Services.AddScoped<ContingencyReprocessJob>();
+
+// ===============================
 // Services — WhatsApp
 // ===============================
 builder.Services.AddHttpClient<Petshop.Api.Services.WhatsApp.WhatsAppClient>(client =>
@@ -296,11 +351,11 @@ app.UseExceptionHandler(errorApp =>
 var enableSwagger = app.Environment.IsDevelopment()
     || string.Equals(builder.Configuration["ENABLE_SWAGGER"], "true", StringComparison.OrdinalIgnoreCase);
 
-// Aplica migrations + seed demo em todos os ambientes
-// O DbSeeder é idempotente (checa se dados já existem antes de inserir)
+// Aplica migrations pendentes automaticamente (seguro para Render/NeonDB)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
     await DbSeeder.SeedAsync(db);
 }
 
@@ -318,6 +373,12 @@ using (var scope = app.Services.CreateScope())
         "sync-scheduler",
         j => j.RunScheduledSyncsAsync(CancellationToken.None),
         "* * * * *");
+
+    // Reprocessamento de contingências fiscais — a cada 5 minutos
+    jobManager.AddOrUpdate<ContingencyReprocessJob>(
+        "fiscal-contingency-reprocess",
+        j => j.RunAsync(CancellationToken.None),
+        "*/5 * * * *");
 }
 
 if (enableSwagger)
@@ -381,5 +442,6 @@ app.MapControllers();
 // SignalR Hubs
 // ===============================
 app.MapHub<PrintHub>("/hubs/print");
+app.MapHub<ScaleAgentHub>("/hubs/scale-agent");
 
 app.Run();

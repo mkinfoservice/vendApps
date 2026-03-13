@@ -66,7 +66,8 @@ public class AdminProductsController : ControllerBase
                 p.Id, p.Name, p.Slug, p.InternalCode, p.Barcode,
                 p.Category.Name, p.Brand != null ? p.Brand.Name : null,
                 p.Unit, p.PriceCents, p.CostCents, p.MarginPercent, p.StockQty,
-                p.IsActive, p.UpdatedAtUtc, p.ImageUrl))
+                p.IsActive, p.UpdatedAtUtc, p.ImageUrl,
+                p.IsSoldByWeight, p.ScaleProductCode))
             .ToListAsync(ct);
 
         return Ok(new ProductListResponse(page, pageSize, total, items));
@@ -92,7 +93,8 @@ public class AdminProductsController : ControllerBase
             p.Description, p.Unit, p.PriceCents, p.CostCents, p.MarginPercent,
             p.StockQty, p.Ncm, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc,
             p.Images.OrderBy(i => i.SortOrder).Select(i => new ProductImageDto(i.Id, i.Url, i.StorageProvider, i.IsPrimary, i.SortOrder)).ToList(),
-            p.Variants.Select(v => new ProductVariantDto(v.Id, v.VariantKey, v.VariantValue, v.Barcode, v.PriceCents, v.StockQty)).ToList()
+            p.Variants.Select(v => new ProductVariantDto(v.Id, v.VariantKey, v.VariantValue, v.Barcode, v.PriceCents, v.StockQty)).ToList(),
+            p.IsSoldByWeight, p.ScaleProductCode, p.ScaleBarcodeMode, p.ScaleTareWeight
         ));
     }
 
@@ -106,21 +108,25 @@ public class AdminProductsController : ControllerBase
 
         var product = new Product
         {
-            CompanyId    = CompanyId,
-            Name         = req.Name,
-            Slug         = slug,
-            CategoryId   = req.CategoryId,
-            BrandId      = req.BrandId,
-            InternalCode = req.InternalCode,
-            Barcode      = req.Barcode,
-            Description  = req.Description,
-            Unit         = req.Unit ?? "UN",
-            CostCents    = req.CostCents,
-            PriceCents   = req.PriceCents,
-            StockQty     = req.StockQty,
-            Ncm          = req.Ncm,
-            IsActive     = req.IsActive,
-            CreatedAtUtc = DateTime.UtcNow
+            CompanyId        = CompanyId,
+            Name             = req.Name,
+            Slug             = slug,
+            CategoryId       = req.CategoryId,
+            BrandId          = req.BrandId,
+            InternalCode     = req.InternalCode,
+            Barcode          = req.Barcode,
+            Description      = req.Description,
+            Unit             = req.Unit ?? "UN",
+            CostCents        = req.CostCents,
+            PriceCents       = req.PriceCents,
+            StockQty         = req.StockQty,
+            Ncm              = req.Ncm,
+            IsActive         = req.IsActive,
+            IsSoldByWeight   = req.IsSoldByWeight,
+            ScaleProductCode = req.ScaleProductCode?.Trim(),
+            ScaleBarcodeMode = req.ScaleBarcodeMode,
+            ScaleTareWeight  = req.ScaleTareWeight,
+            CreatedAtUtc     = DateTime.UtcNow
         };
         product.MarginPercent = product.PriceCents > 0
             ? Math.Round((decimal)(product.PriceCents - product.CostCents) / product.PriceCents * 100, 4)
@@ -160,6 +166,10 @@ public class AdminProductsController : ControllerBase
         if (req.Ncm != null) product.Ncm = req.Ncm;
         if (req.IsActive.HasValue) product.IsActive = req.IsActive.Value;
         if (req.StockQty.HasValue) product.StockQty = req.StockQty.Value;
+        if (req.IsSoldByWeight.HasValue) product.IsSoldByWeight = req.IsSoldByWeight.Value;
+        if (req.ScaleProductCode != null) product.ScaleProductCode = req.ScaleProductCode.Trim();
+        if (req.ScaleBarcodeMode.HasValue) product.ScaleBarcodeMode = req.ScaleBarcodeMode.Value;
+        if (req.ScaleTareWeight.HasValue) product.ScaleTareWeight = req.ScaleTareWeight.Value;
 
         if (req.PriceCents.HasValue && req.PriceCents.Value != product.PriceCents)
         {
@@ -247,22 +257,26 @@ public class AdminProductsController : ControllerBase
         var newSlug = req?.NewSlug ?? $"{original.Slug}-copia-{Guid.NewGuid().ToString()[..6]}";
         var clone = new Product
         {
-            CompanyId    = CompanyId,
-            Name         = $"{original.Name} (Cópia)",
-            Slug         = newSlug,
-            CategoryId   = original.CategoryId,
-            BrandId      = original.BrandId,
-            InternalCode = req?.NewInternalCode ?? original.InternalCode,
-            Barcode      = req?.NewBarcode,
-            Description  = original.Description,
-            Unit         = original.Unit,
-            CostCents    = original.CostCents,
-            PriceCents   = original.PriceCents,
-            MarginPercent = original.MarginPercent,
-            StockQty     = 0,
-            Ncm          = original.Ncm,
-            IsActive     = false,
-            CreatedAtUtc = DateTime.UtcNow
+            CompanyId        = CompanyId,
+            Name             = $"{original.Name} (Cópia)",
+            Slug             = newSlug,
+            CategoryId       = original.CategoryId,
+            BrandId          = original.BrandId,
+            InternalCode     = req?.NewInternalCode ?? original.InternalCode,
+            Barcode          = req?.NewBarcode,
+            Description      = original.Description,
+            Unit             = original.Unit,
+            CostCents        = original.CostCents,
+            PriceCents       = original.PriceCents,
+            MarginPercent    = original.MarginPercent,
+            StockQty         = 0,
+            Ncm              = original.Ncm,
+            IsActive         = false,
+            IsSoldByWeight   = original.IsSoldByWeight,
+            ScaleProductCode = null, // cópia não herda código de balança — deve ser cadastrado
+            ScaleBarcodeMode = original.ScaleBarcodeMode,
+            ScaleTareWeight  = original.ScaleTareWeight,
+            CreatedAtUtc     = DateTime.UtcNow
         };
 
         _db.Products.Add(clone);

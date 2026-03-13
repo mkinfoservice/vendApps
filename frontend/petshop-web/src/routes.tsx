@@ -27,6 +27,23 @@ import AtendimentoHub from "./pages/admin/AtendimentoHub";
 import PhoneOrderBuilder from "./pages/admin/PhoneOrderBuilder";
 import PrintQueue from "./pages/admin/PrintQueue";
 
+import PdvPage from "./pages/pdv/PdvPage";
+import { PdvProvider } from "@/features/pdv/PdvContext";
+import ScaleAgentsPage from "./pages/admin/ScaleAgentsPage";
+import FiscalConfigPage from "./pages/admin/FiscalConfigPage";
+import StockPage from "./pages/admin/StockPage";
+import ReportsPage from "./pages/admin/ReportsPage";
+import SuppliersPage from "./pages/admin/SuppliersPage";
+import PurchasesPage from "./pages/admin/PurchasesPage";
+import PurchaseOrderDetail from "./pages/admin/PurchaseOrderDetail";
+import CustomersPage from "./pages/admin/CustomersPage";
+import LoyaltyConfigPage from "./pages/admin/LoyaltyConfigPage";
+import PromotionsPage from "./pages/admin/PromotionsPage";
+import CashRegistersPage from "./pages/admin/CashRegistersPage";
+import CashSessionsPage from "./pages/admin/CashSessionsPage";
+import FinancialEntriesPage from "./pages/admin/FinancialEntriesPage";
+import AgendaPage from "./pages/admin/AgendaPage";
+
 import MasterLogin from "./pages/master/Login";
 import MasterCompanies from "./pages/master/Companies";
 import MasterCompanyDetail from "./pages/master/CompanyDetail";
@@ -266,6 +283,108 @@ export function AppRoutes() {
             <DelivererGuard>
               <DelivererRouteDetail />
             </DelivererGuard>
+          }
+        />
+
+        {/* Admin - Scale Agents */}
+        <Route
+          path="/admin/scale"
+          element={
+            <AdminGuard>
+              <ScaleAgentsPage />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Clientes & Fidelidade */}
+        <Route
+          path="/admin/customers"
+          element={<AdminGuard><CustomersPage /></AdminGuard>}
+        />
+        <Route
+          path="/admin/loyalty"
+          element={<AdminGuard><LoyaltyConfigPage /></AdminGuard>}
+        />
+        <Route
+          path="/admin/promotions"
+          element={<AdminGuard><PromotionsPage /></AdminGuard>}
+        />
+
+        {/* Admin - Fornecedores & Compras */}
+        <Route
+          path="/admin/suppliers"
+          element={<AdminGuard><SuppliersPage /></AdminGuard>}
+        />
+        <Route
+          path="/admin/purchases"
+          element={<AdminGuard><PurchasesPage /></AdminGuard>}
+        />
+        <Route
+          path="/admin/purchases/:id"
+          element={<AdminGuard><PurchaseOrderDetail /></AdminGuard>}
+        />
+
+        {/* Admin - Relatórios */}
+        <Route
+          path="/admin/reports"
+          element={
+            <AdminGuard>
+              <ReportsPage />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Estoque */}
+        <Route
+          path="/admin/stock"
+          element={
+            <AdminGuard>
+              <StockPage />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Fiscal */}
+        <Route
+          path="/admin/fiscal"
+          element={
+            <AdminGuard>
+              <FiscalConfigPage />
+            </AdminGuard>
+          }
+        />
+
+        {/* Admin - Financeiro: Contas */}
+        <Route
+          path="/admin/financial"
+          element={<AdminGuard><FinancialEntriesPage /></AdminGuard>}
+        />
+
+        {/* Admin - PDV: Terminais e Sessões */}
+        <Route
+          path="/admin/pdv/terminais"
+          element={<AdminGuard><CashRegistersPage /></AdminGuard>}
+        />
+        <Route
+          path="/admin/pdv/sessoes"
+          element={<AdminGuard><CashSessionsPage /></AdminGuard>}
+        />
+
+        {/* Admin - Agenda de Serviços */}
+        <Route
+          path="/admin/agenda"
+          element={<AdminGuard><AgendaPage /></AdminGuard>}
+        />
+
+        {/* PDV */}
+        <Route
+          path="/pdv"
+          element={
+            <AdminGuard>
+              <PdvProvider>
+                <PdvPage />
+              </PdvProvider>
+            </AdminGuard>
           }
         />
 

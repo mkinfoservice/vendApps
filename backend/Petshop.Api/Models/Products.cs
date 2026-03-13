@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Petshop.Api.Entities.Catalog;
+using Petshop.Api.Entities.Scale;
 
 namespace Petshop.Api.Models;
 
@@ -53,9 +54,36 @@ public class Product
     [Column(TypeName = "decimal(14,3)")]
     public decimal StockQty { get; set; } = 0;
 
+    /// <summary>Ponto de reposição: dispara alerta quando StockQty ≤ ReorderPoint.</summary>
+    [Column(TypeName = "decimal(14,3)")]
+    public decimal? ReorderPoint { get; set; }
+
     // ── Fiscal ───────────────────────────────────────────────
     [MaxLength(10)]
     public string? Ncm { get; set; }
+
+    // ── Balança / Venda por peso ──────────────────────────────
+    /// <summary>Produto vendido por quilograma (pesado na balança)?</summary>
+    public bool IsSoldByWeight { get; set; } = false;
+
+    /// <summary>
+    /// Código de 5 dígitos cadastrado na balança (campo PPPPP do barcode EAN-13 interno).
+    /// Deve ser único por empresa. Usado para lookup quando o scanner lê etiqueta de balança.
+    /// Quando IsSoldByWeight = true, PriceCents representa o preço por KG em centavos.
+    /// </summary>
+    [MaxLength(5)]
+    public string? ScaleProductCode { get; set; }
+
+    /// <summary>
+    /// Como o valor VVVVV do barcode deve ser interpretado.
+    /// WeightEncoded (padrão): VVVVV = peso em gramas → preço total = peso × (PriceCents/100)
+    /// PriceEncoded: VVVVV = preço total em centavos → quantidade = 1
+    /// </summary>
+    public ScaleBarcodeMode ScaleBarcodeMode { get; set; } = ScaleBarcodeMode.WeightEncoded;
+
+    /// <summary>Tara da embalagem em gramas (descontada automaticamente do peso bruto). Padrão 0.</summary>
+    [Column(TypeName = "decimal(8,3)")]
+    public decimal ScaleTareWeight { get; set; } = 0;
 
     // ── Imagem legada (mantida para compatibilidade com OrderItem) ──
     [MaxLength(500)]

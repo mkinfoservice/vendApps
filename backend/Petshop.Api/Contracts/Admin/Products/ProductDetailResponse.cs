@@ -1,3 +1,5 @@
+using Petshop.Api.Entities.Scale;
+
 namespace Petshop.Api.Contracts.Admin.Products;
 
 public record ProductDetailResponse(
@@ -22,7 +24,12 @@ public record ProductDetailResponse(
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     IReadOnlyList<ProductImageDto> Images,
-    IReadOnlyList<ProductVariantDto> Variants
+    IReadOnlyList<ProductVariantDto> Variants,
+    // ── Balança ──
+    bool IsSoldByWeight,
+    string? ScaleProductCode,
+    ScaleBarcodeMode ScaleBarcodeMode,
+    decimal ScaleTareWeight
 );
 
 public record ProductImageDto(Guid Id, string Url, string StorageProvider, bool IsPrimary, int SortOrder);

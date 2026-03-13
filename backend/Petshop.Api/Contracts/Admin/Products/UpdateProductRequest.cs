@@ -1,3 +1,5 @@
+using Petshop.Api.Entities.Scale;
+
 namespace Petshop.Api.Contracts.Admin.Products;
 
 public record UpdateProductRequest(
@@ -13,5 +15,10 @@ public record UpdateProductRequest(
     int? PriceCents,
     decimal? StockQty,
     string? Ncm,
-    bool? IsActive
+    bool? IsActive,
+    // ── Balança / venda por peso ─────────────────────────────
+    bool? IsSoldByWeight = null,
+    string? ScaleProductCode = null,
+    ScaleBarcodeMode? ScaleBarcodeMode = null,
+    decimal? ScaleTareWeight = null
 );

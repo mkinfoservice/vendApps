@@ -17,5 +17,8 @@ public record ProductListItem(
     decimal StockQty,
     bool IsActive,
     DateTime? UpdatedAtUtc,
-    string? ImageUrl
+    string? ImageUrl,
+    // ── Balança ──
+    bool IsSoldByWeight,
+    string? ScaleProductCode
 );
