@@ -977,6 +977,9 @@ namespace Petshop.Api.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<string>("CertificateBase64")
+                        .HasColumnType("text");
+
                     b.Property<string>("CertificatePassword")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
