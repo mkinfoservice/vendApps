@@ -94,7 +94,7 @@ public class FiscalAdminController : ControllerBase
             return BadRequest(new { error = "FiscalConfig não configurado." });
 
         var online = await _sefaz.IsOnlineAsync(cfg.Uf, cfg.SefazEnvironment, ct);
-        return Ok(new { online, uf = cfg.Uf, env = cfg.SefazEnvironment.ToString() });
+        return Ok(new { online, uf = cfg.Uf, env = cfg.SefazEnvironment.ToString(), checkedAtUtc = DateTime.UtcNow });
     }
 
     // ── DANFE NFC-e ───────────────────────────────────────────────────────────
