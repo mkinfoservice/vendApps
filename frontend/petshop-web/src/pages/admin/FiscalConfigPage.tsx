@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -102,6 +103,7 @@ function Sel(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 
 export default function FiscalConfigPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [form, setForm] = useState<FiscalConfigDto>(EMPTY_CONFIG);
   const [showDocs, setShowDocs] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -147,7 +149,7 @@ export default function FiscalConfigPage() {
       qc.setQueryData(["fiscal-config"], data);
       setSaved(true);
       setError(null);
-      setTimeout(() => setSaved(false), 3000);
+      setTimeout(() => navigate("/app"), 1500);
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -470,8 +472,8 @@ export default function FiscalConfigPage() {
                           {doc.serie}/{String(doc.number).padStart(9, "0")}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[doc.fiscalStatus] ?? "bg-gray-900/30 text-gray-400"}`}>
-                            {doc.fiscalStatus}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[doc.fiscalStatus ?? doc.status ?? ""] ?? "bg-gray-900/30 text-gray-400"}`}>
+                            {doc.fiscalStatus ?? doc.status ?? "—"}
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-xs max-w-xs truncate" style={{ color: "var(--text-muted)" }}>
