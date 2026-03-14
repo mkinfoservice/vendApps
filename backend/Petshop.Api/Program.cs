@@ -366,6 +366,43 @@ using (var scope = app.Services.CreateScope())
         ADD COLUMN IF NOT EXISTS "CertificateBase64" text;
         """);
 
+    // Cria tabela de config fiscal por caixa se ainda não existir (idempotente)
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "CashRegisterFiscalConfigs" (
+            "Id"                  uuid NOT NULL DEFAULT gen_random_uuid(),
+            "CashRegisterId"      uuid NOT NULL,
+            "Cnpj"                character varying(14) NOT NULL DEFAULT '',
+            "InscricaoEstadual"   character varying(30) NOT NULL DEFAULT '',
+            "Uf"                  character varying(2) NOT NULL DEFAULT '',
+            "RazaoSocial"         character varying(60) NOT NULL DEFAULT '',
+            "NomeFantasia"        character varying(60),
+            "Logradouro"          character varying(60) NOT NULL DEFAULT '',
+            "NumeroEndereco"      character varying(60) NOT NULL DEFAULT '',
+            "Complemento"         character varying(60),
+            "Bairro"              character varying(60) NOT NULL DEFAULT '',
+            "CodigoMunicipio"     integer NOT NULL DEFAULT 0,
+            "NomeMunicipio"       character varying(60) NOT NULL DEFAULT '',
+            "Cep"                 character varying(8) NOT NULL DEFAULT '',
+            "Telefone"            character varying(14),
+            "TaxRegime"           character varying(30) NOT NULL DEFAULT 'SimplesNacional',
+            "DefaultCfop"         character varying(10) NOT NULL DEFAULT '5102',
+            "SefazEnvironment"    character varying(20) NOT NULL DEFAULT 'Homologacao',
+            "CertificateBase64"   text,
+            "CertificatePassword" character varying(200),
+            "CscId"               character varying(10),
+            "CscToken"            character varying(36),
+            "NfceSerie"           smallint NOT NULL DEFAULT 1,
+            "IsActive"            boolean NOT NULL DEFAULT true,
+            "CreatedAtUtc"        timestamp with time zone NOT NULL DEFAULT now(),
+            "UpdatedAtUtc"        timestamp with time zone,
+            CONSTRAINT "PK_CashRegisterFiscalConfigs" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_CashRegisterFiscalConfigs_CashRegisters_CashRegisterId"
+                FOREIGN KEY ("CashRegisterId") REFERENCES "CashRegisters"("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_CashRegisterFiscalConfigs_CashRegisterId"
+            ON "CashRegisterFiscalConfigs"("CashRegisterId");
+        """);
+
     await DbSeeder.SeedAsync(db);
 }
 

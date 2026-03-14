@@ -193,6 +193,14 @@ export async function getCupom(saleId: string): Promise<CupomData> {
   return adminFetch<CupomData>(`/pdv/sale/${saleId}/cupom`);
 }
 
+export async function importDav(saleId: string, quoteCode: string): Promise<{ id: string; itemsAdded: number; publicId: string; totalCents: number }> {
+  return adminFetch(`/pdv/sale/${saleId}/import-dav`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quoteCode }),
+  });
+}
+
 // ── Movements (Sangria / Suprimento) ──────────────────────────────────────────
 
 export interface CashMovement {

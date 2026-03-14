@@ -74,12 +74,13 @@ public class AppDbContext : DbContext
     public DbSet<SalesQuoteItem> SalesQuoteItems => Set<SalesQuoteItem>();
 
     // ── PDV ───────────────────────────────────────────────────
-    public DbSet<CashRegister>  CashRegisters  => Set<CashRegister>();
-    public DbSet<CashSession>   CashSessions   => Set<CashSession>();
-    public DbSet<CashMovement>  CashMovements  => Set<CashMovement>();
-    public DbSet<SaleOrder>     SaleOrders     => Set<SaleOrder>();
-    public DbSet<SaleOrderItem> SaleOrderItems => Set<SaleOrderItem>();
-    public DbSet<SalePayment>   SalePayments   => Set<SalePayment>();
+    public DbSet<CashRegister>            CashRegisters            => Set<CashRegister>();
+    public DbSet<CashRegisterFiscalConfig> CashRegisterFiscalConfigs => Set<CashRegisterFiscalConfig>();
+    public DbSet<CashSession>             CashSessions             => Set<CashSession>();
+    public DbSet<CashMovement>            CashMovements            => Set<CashMovement>();
+    public DbSet<SaleOrder>               SaleOrders               => Set<SaleOrder>();
+    public DbSet<SaleOrderItem>           SaleOrderItems           => Set<SaleOrderItem>();
+    public DbSet<SalePayment>             SalePayments             => Set<SalePayment>();
 
     // ── Promoções (Fase 10) ───────────────────────────────────
     public DbSet<Promotion> Promotions => Set<Promotion>();
@@ -696,6 +697,27 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<CashRegister>()
             .HasIndex(r => new { r.CompanyId, r.IsActive });
+
+        // ── CashRegisterFiscalConfig (1:1 por terminal) ───────
+        modelBuilder.Entity<CashRegisterFiscalConfig>()
+            .HasOne(f => f.CashRegister)
+            .WithOne()
+            .HasForeignKey<CashRegisterFiscalConfig>(f => f.CashRegisterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CashRegisterFiscalConfig>()
+            .HasIndex(f => f.CashRegisterId)
+            .IsUnique();
+
+        modelBuilder.Entity<CashRegisterFiscalConfig>()
+            .Property(f => f.TaxRegime)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        modelBuilder.Entity<CashRegisterFiscalConfig>()
+            .Property(f => f.SefazEnvironment)
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
         // ── CashSession ───────────────────────────────────────
         modelBuilder.Entity<CashSession>()

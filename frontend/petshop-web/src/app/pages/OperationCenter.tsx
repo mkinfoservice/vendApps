@@ -300,7 +300,7 @@ export default function OperationCenter() {
             {/* Orçamento / DAV */}
             <button
               type="button"
-              onClick={() => { trackRecent("orcamento"); navigate("/app/atendimento/pedido"); }}
+              onClick={() => { trackRecent("orcamento"); navigate("/app/dav"); }}
               className="group relative overflow-hidden rounded-2xl border p-5 flex items-center gap-4 text-left transition-all hover:ring-2 hover:ring-[#10b981]/40 hover:scale-[1.02] active:scale-[0.99]"
               style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
             >

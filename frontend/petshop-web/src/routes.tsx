@@ -47,6 +47,8 @@ import CashRegistersPage from "./pages/admin/CashRegistersPage";
 import CashSessionsPage from "./pages/admin/CashSessionsPage";
 import AgendaPage from "./pages/admin/AgendaPage";
 import ScaleAgentsPage from "./pages/admin/ScaleAgentsPage";
+import DavListPage from "./pages/admin/DavListPage";
+import DavBuilderPage from "./pages/admin/DavBuilderPage";
 
 // ── PDV ───────────────────────────────────────────────────────────────────────
 import PdvPage from "./pages/pdv/PdvPage";
@@ -106,6 +108,9 @@ export function AppRoutes() {
         <Route path="/app/atendimento/clientes/novo" element={<AppPage><CustomerForm /></AppPage>} />
         <Route path="/app/atendimento/clientes/:id" element={<AppPage><CustomerDetail /></AppPage>} />
         <Route path="/app/atendimento/clientes/:id/editar" element={<AppPage><CustomerForm /></AppPage>} />
+
+        <Route path="/app/dav" element={<AppPage><DavListPage /></AppPage>} />
+        <Route path="/app/dav/novo" element={<AppPage><DavBuilderPage /></AppPage>} />
 
         <Route path="/app/agenda" element={<AppPage><AgendaPage /></AppPage>} />
         <Route path="/app/impressao" element={<AppPage><PrintQueue /></AppPage>} />

@@ -1726,6 +1726,125 @@ namespace Petshop.Api.Migrations
                     b.ToTable("CashRegisters");
                 });
 
+            modelBuilder.Entity("Petshop.Api.Entities.Pdv.CashRegisterFiscalConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Bairro")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("CashRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cep")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("CertificateBase64")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CertificatePassword")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("CodigoMunicipio")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Complemento")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CscId")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("CscToken")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
+
+                    b.Property<string>("DefaultCfop")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Logradouro")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("NfceSerie")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("NomeFantasia")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("NomeMunicipio")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("NumeroEndereco")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("RazaoSocial")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("SefazEnvironment")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TaxRegime")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
+                    b.Property<string>("Uf")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Cnpj")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)");
+
+                    b.Property<string>("InscricaoEstadual")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashRegisterId")
+                        .IsUnique();
+
+                    b.ToTable("CashRegisterFiscalConfigs");
+                });
+
             modelBuilder.Entity("Petshop.Api.Entities.Pdv.CashSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3035,6 +3154,17 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Pdv.CashRegisterFiscalConfig", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Pdv.CashRegister", "CashRegister")
+                        .WithOne()
+                        .HasForeignKey("Petshop.Api.Entities.Pdv.CashRegisterFiscalConfig", "CashRegisterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CashRegister");
                 });
 
             modelBuilder.Entity("Petshop.Api.Entities.Pdv.CashMovement", b =>

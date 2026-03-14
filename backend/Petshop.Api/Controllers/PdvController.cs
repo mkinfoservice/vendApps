@@ -676,6 +676,83 @@ public class PdvController : ControllerBase
         return Ok(new { sale.Id, sale.Status });
     }
 
+    // ── POST /pdv/sale/{id}/import-dav ───────────────────────────────────────
+    /// <summary>
+    /// Importa itens de um DAV (por PublicId) para uma venda aberta.
+    /// O caixa escaneia o código de barras do orçamento impresso.
+    /// </summary>
+    [HttpPost("sale/{id:guid}/import-dav")]
+    public async Task<IActionResult> ImportDav(
+        Guid id,
+        [FromBody] ImportDavRequest req,
+        CancellationToken ct)
+    {
+        var sale = await _db.SaleOrders
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
+                                      o.Status == SaleOrderStatus.Open, ct);
+
+        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+
+        var dav = await _db.SalesQuotes
+            .Include(q => q.Items)
+            .FirstOrDefaultAsync(q => q.PublicId == req.QuoteCode &&
+                                      q.CompanyId == CompanyId &&
+                                      q.Status != SalesQuoteStatus.Converted &&
+                                      q.Status != SalesQuoteStatus.Cancelled, ct);
+
+        if (dav is null) return BadRequest("Orçamento não encontrado ou já utilizado.");
+
+        // Merge: add DAV items to existing sale
+        foreach (var item in dav.Items)
+        {
+            var existing = sale.Items.FirstOrDefault(i =>
+                i.ProductId == item.ProductId && !i.IsSoldByWeight);
+
+            if (existing != null)
+            {
+                existing.Qty       += item.Qty;
+                existing.TotalCents = (int)Math.Round(existing.Qty * existing.UnitPriceCentsSnapshot);
+            }
+            else
+            {
+                sale.Items.Add(new SaleOrderItem
+                {
+                    ProductId              = item.ProductId,
+                    ProductNameSnapshot    = item.ProductNameSnapshot,
+                    ProductBarcodeSnapshot = item.ProductBarcodeSnapshot,
+                    Qty                    = item.Qty,
+                    UnitPriceCentsSnapshot = item.UnitPriceCentsSnapshot,
+                    TotalCents             = item.TotalCents,
+                    IsSoldByWeight         = item.IsSoldByWeight,
+                    WeightKg               = item.WeightKg
+                });
+            }
+        }
+
+        RecalcSaleTotals(sale);
+
+        if (string.IsNullOrWhiteSpace(sale.CustomerName) && !string.IsNullOrWhiteSpace(dav.CustomerName))
+            sale.CustomerName = dav.CustomerName;
+
+        sale.SalesQuoteId = dav.Id;
+        dav.Status        = SalesQuoteStatus.Converted;
+        dav.SaleOrderId   = sale.Id;
+        dav.ConvertedAtUtc = DateTime.UtcNow;
+        dav.UpdatedAtUtc   = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            sale.Id,
+            ItemsAdded   = dav.Items.Count,
+            dav.PublicId,
+            sale.SubtotalCents,
+            sale.TotalCents,
+        });
+    }
+
     // ── GET /pdv/sale/{id}/cupom ──────────────────────────────────────────────
     /// <summary>
     /// Retorna os dados do cupom em JSON para renderização no frontend.
@@ -893,3 +970,5 @@ public record AddMovementRequest(
     int    AmountCents,
     string? Description = null
 );
+
+public record ImportDavRequest(string QuoteCode);

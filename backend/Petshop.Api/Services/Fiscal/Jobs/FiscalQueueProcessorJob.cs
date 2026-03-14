@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Fiscal;
+using Petshop.Api.Entities.Pdv;
 
 namespace Petshop.Api.Services.Fiscal.Jobs;
 
@@ -54,14 +55,15 @@ public class FiscalQueueProcessorJob
         _logger.LogInformation("[FiscalQueue] Processando {Count} itens para empresa {CompanyId}.",
             items.Count, companyId);
 
-        var fiscalConfig = await _db.FiscalConfigs
+        // Fallback: config empresa (legado). Config por caixa é resolvida em ProcessItemAsync.
+        var fallbackConfig = await _db.FiscalConfigs
             .FirstOrDefaultAsync(f => f.CompanyId == companyId && f.IsActive, ct);
 
         foreach (var item in items)
-            await ProcessItemAsync(item, fiscalConfig, ct);
+            await ProcessItemAsync(item, fallbackConfig, ct);
     }
 
-    private async Task ProcessItemAsync(FiscalQueue item, FiscalConfig? fiscalConfig, CancellationToken ct)
+    private async Task ProcessItemAsync(FiscalQueue item, FiscalConfig? fallbackConfig, CancellationToken ct)
     {
         item.Status         = FiscalQueueStatus.Processing;
         item.RetryCount++;
@@ -83,9 +85,38 @@ public class FiscalQueueProcessorJob
                 return;
             }
 
-            if (fiscalConfig == null)
+            // Resolve config fiscal: prefere config por caixa, fallback para config empresa (legado)
+            CashRegisterFiscalConfig? registerConfig = null;
+            if (sale.CashRegisterId != Guid.Empty)
             {
-                _logger.LogWarning("[FiscalQueue] FiscalConfig ausente para {Co}. Item mantido em espera.", item.CompanyId);
+                registerConfig = await _db.CashRegisterFiscalConfigs
+                    .FirstOrDefaultAsync(c => c.CashRegisterId == sale.CashRegisterId && c.IsActive, ct);
+            }
+
+            // Extrai dados do emitter da fonte disponível
+            string? certBase64, certPassword, certPath;
+            EmitterData emitter;
+            short nfceSerie;
+
+            if (registerConfig != null)
+            {
+                emitter      = BuildEmitter(registerConfig);
+                certBase64   = registerConfig.CertificateBase64;
+                certPassword = registerConfig.CertificatePassword;
+                certPath     = null;
+                nfceSerie    = registerConfig.NfceSerie;
+            }
+            else if (fallbackConfig != null)
+            {
+                emitter      = BuildEmitter(fallbackConfig);
+                certBase64   = fallbackConfig.CertificateBase64;
+                certPassword = fallbackConfig.CertificatePassword;
+                certPath     = fallbackConfig.CertificatePath;
+                nfceSerie    = fallbackConfig.NfceSerie;
+            }
+            else
+            {
+                _logger.LogWarning("[FiscalQueue] Nenhuma FiscalConfig para caixa/empresa {Co}. Item mantido em espera.", item.CompanyId);
                 item.Status     = FiscalQueueStatus.Waiting;
                 item.RetryCount--;
                 await _db.SaveChangesAsync(ct);
@@ -106,7 +137,7 @@ public class FiscalQueueProcessorJob
             }
 
             // Reserva número sequencial (atômico via upsert PostgreSQL)
-            var serie  = fiscalConfig.NfceSerie;
+            var serie  = nfceSerie;
             var number = await _numberSvc.GetNextNumberAsync(item.CompanyId, serie);
 
             var fiscalDoc = new FiscalDocument
@@ -130,14 +161,7 @@ public class FiscalQueueProcessorJob
                 .Where(p => productIds.Contains(p.Id))
                 .ToDictionaryAsync(p => p.Id, ct);
 
-            var emitter = new EmitterData(
-                fiscalConfig.Cnpj, fiscalConfig.InscricaoEstadual, fiscalConfig.RazaoSocial,
-                fiscalConfig.NomeFantasia, fiscalConfig.Uf, fiscalConfig.Logradouro,
-                fiscalConfig.NumeroEndereco, fiscalConfig.Complemento, fiscalConfig.Bairro,
-                fiscalConfig.CodigoMunicipio, fiscalConfig.NomeMunicipio, fiscalConfig.Cep,
-                fiscalConfig.Telefone, fiscalConfig.DefaultCfop,
-                fiscalConfig.CscId, fiscalConfig.CscToken,
-                fiscalConfig.SefazEnvironment, fiscalConfig.TaxRegime);
+            var defaultCfop = registerConfig?.DefaultCfop ?? fallbackConfig?.DefaultCfop ?? "5102";
 
             var fiscalItems = sale.Items.Select((i, idx) =>
             {
@@ -148,7 +172,7 @@ public class FiscalQueueProcessorJob
                     p?.Barcode ?? i.ProductBarcodeSnapshot ?? "",
                     i.ProductNameSnapshot,
                     p?.Ncm ?? "00000000",
-                    fiscalConfig.DefaultCfop,
+                    defaultCfop,
                     i.IsSoldByWeight ? "KG" : (p?.Unit ?? "UN"),
                     i.IsSoldByWeight ? (decimal)(i.WeightKg ?? 0) : (decimal)i.Qty,
                     (decimal)i.UnitPriceCentsSnapshot,
@@ -183,13 +207,13 @@ public class FiscalQueueProcessorJob
 
             // Chama motor fiscal — prefere base64 (cloud-friendly), fallback para path (legado)
             FiscalEngineResult engineResult;
-            if (!string.IsNullOrWhiteSpace(fiscalConfig.CertificateBase64))
+            if (!string.IsNullOrWhiteSpace(certBase64))
             {
-                var certBytes = Convert.FromBase64String(fiscalConfig.CertificateBase64);
-                engineResult = await _realEngine.IssueWithCertAsync(req, certBytes, fiscalConfig.CertificatePassword, ct);
+                var certBytes = Convert.FromBase64String(certBase64);
+                engineResult = await _realEngine.IssueWithCertAsync(req, certBytes, certPassword, ct);
             }
-            else if (!string.IsNullOrWhiteSpace(fiscalConfig.CertificatePath))
-                engineResult = await _realEngine.IssueWithCertAsync(req, fiscalConfig.CertificatePath, fiscalConfig.CertificatePassword, ct);
+            else if (!string.IsNullOrWhiteSpace(certPath))
+                engineResult = await _realEngine.IssueWithCertAsync(req, certPath, certPassword, ct);
             else
                 engineResult = await _fiscalEngine.IssueAsync(req, ct);
 
@@ -252,4 +276,18 @@ public class FiscalQueueProcessorJob
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static EmitterData BuildEmitter(CashRegisterFiscalConfig c) => new(
+        c.Cnpj, c.InscricaoEstadual, c.RazaoSocial, c.NomeFantasia, c.Uf,
+        c.Logradouro, c.NumeroEndereco, c.Complemento, c.Bairro,
+        c.CodigoMunicipio, c.NomeMunicipio, c.Cep, c.Telefone,
+        c.DefaultCfop, c.CscId, c.CscToken, c.SefazEnvironment, c.TaxRegime);
+
+    private static EmitterData BuildEmitter(FiscalConfig c) => new(
+        c.Cnpj, c.InscricaoEstadual, c.RazaoSocial, c.NomeFantasia, c.Uf,
+        c.Logradouro, c.NumeroEndereco, c.Complemento, c.Bairro,
+        c.CodigoMunicipio, c.NomeMunicipio, c.Cep, c.Telefone,
+        c.DefaultCfop, c.CscId, c.CscToken, c.SefazEnvironment, c.TaxRegime);
 }

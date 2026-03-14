@@ -7,7 +7,7 @@ import {
   getFiscalDocuments,
   type FiscalConfigDto, type FiscalDocumentListItem,
 } from "@/features/fiscal/fiscalApi";
-import { Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Upload, Info } from "lucide-react";
 
 // ── Masks ─────────────────────────────────────────────────────────────────────
 
@@ -213,6 +213,21 @@ export default function FiscalConfigPage() {
             </button>
           }
         />
+
+        {/* Aviso: config fiscal agora é por caixa */}
+        <div className="flex items-start gap-3 px-4 py-3 rounded-xl border bg-blue-50 border-blue-200 text-blue-800 text-sm">
+          <Info className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>
+            A configuração fiscal (CNPJ, certificado, CSC) pode ser definida individualmente por terminal em{" "}
+            <button
+              className="underline font-medium hover:text-blue-600"
+              onClick={() => navigate("/app/caixa")}
+            >
+              Terminais PDV
+            </button>
+            . Use esta página apenas como configuração global de fallback.
+          </span>
+        </div>
 
         {/* SEFAZ status */}
         {sefazStatus && (

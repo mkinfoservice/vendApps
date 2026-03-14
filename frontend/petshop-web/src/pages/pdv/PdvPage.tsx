@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { usePdv } from "@/features/pdv/PdvContext";
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
-  closeSession, getCupom, getSessionReport, addMovement,
+  closeSession, getCupom, getSessionReport, addMovement, importDav,
   type Sale, type CupomData, type SessionReport,
 } from "@/features/pdv/api";
 import OpenSessionPage from "./OpenSessionPage";
@@ -393,6 +393,8 @@ export default function PdvPage() {
   const [initialized, setInitialized]       = useState(false);
   const [barcode, setBarcode]               = useState("");
   const [scanning, setScanning]             = useState(false);
+  const [davCode, setDavCode]               = useState("");
+  const [importingDav, setImportingDav]     = useState(false);
   const [paying, setPaying]                 = useState(false);
   const [showPay, setShowPay]               = useState(false);
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
@@ -441,6 +443,22 @@ export default function PdvPage() {
       flash(e instanceof Error ? e.message : "Produto não encontrado", false);
     } finally {
       setScanning(false);
+    }
+  }
+
+  async function handleImportDav(e: React.FormEvent) {
+    e.preventDefault();
+    if (!sale || !davCode.trim()) return;
+    setImportingDav(true);
+    try {
+      const res = await importDav(sale.id, davCode.trim());
+      await refreshSale(sale.id);
+      flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
+      setDavCode("");
+    } catch (e: unknown) {
+      flash(e instanceof Error ? e.message : "DAV não encontrado", false);
+    } finally {
+      setImportingDav(false);
     }
   }
 
@@ -613,6 +631,23 @@ export default function PdvPage() {
               style={{ background: "#7c5cf8" }}
             >
               {scanning ? "..." : "Ler"}
+            </button>
+          </form>
+
+          <form onSubmit={handleImportDav} className="flex gap-2">
+            <input
+              value={davCode}
+              onChange={(e) => setDavCode(e.target.value)}
+              placeholder="Orçamento DAV (cód. ou barcode)..."
+              className="flex-1 border border-emerald-300 rounded-xl px-4 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+            <button
+              type="submit"
+              disabled={importingDav || !davCode.trim()}
+              className="px-4 py-2 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              style={{ background: "#10b981" }}
+            >
+              {importingDav ? "..." : "Importar DAV"}
             </button>
           </form>
 
