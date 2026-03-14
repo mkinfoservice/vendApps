@@ -549,67 +549,91 @@ public class PdvController : ControllerBase
             sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
         }
 
-        // Adicionar pagamentos
+        // Calcular totais finais (com eventual desconto)
+        var discountCents = req.DiscountCents is > 0 ? req.DiscountCents.Value : sale.DiscountCents;
+        var totalCents    = req.DiscountCents is > 0
+            ? Math.Max(0, sale.SubtotalCents - discountCents)
+            : sale.TotalCents;
+
+        // Decisão fiscal
         var register = sale.CashSession.CashRegister;
         var fiscalSettings = new CashRegisterFiscalSettings
         {
-            AutoIssuePix          = register.FiscalAutoIssuePix,
+            AutoIssuePix               = register.FiscalAutoIssuePix,
             SendCashContingencyToSefaz = register.FiscalSendCashToSefaz
         };
+        var primaryMethod  = req.Payments.OrderByDescending(p => p.AmountCents).First().PaymentMethod;
+        var fiscalMethod   = MapToFiscalPaymentMethod(primaryMethod);
+        var decision       = _fiscal.Evaluate(fiscalMethod, fiscalSettings);
+        var fiscalDecision = decision.ToString();
+        var completedAt    = DateTime.UtcNow;
+        var finalNotes     = req.Notes ?? sale.Notes;
 
-        foreach (var p in req.Payments)
+        // Montar pagamentos com FK explícito (sem tocar na navigação do sale rastreado)
+        var saleId   = sale.Id;
+        var payments = req.Payments.Select(p =>
         {
-            var changeCents = p.PaymentMethod.ToUpper() is "DINHEIRO" or "CASH"
-                ? Math.Max(0, totalPaid - sale.TotalCents)
+            var change = p.PaymentMethod.ToUpper() is "DINHEIRO" or "CASH"
+                ? Math.Max(0, totalPaid - totalCents)
                 : 0;
-
-            sale.Payments.Add(new SalePayment
+            return new SalePayment
             {
+                SaleOrderId   = saleId,
                 PaymentMethod = p.PaymentMethod,
                 AmountCents   = p.AmountCents,
-                ChangeCents   = changeCents
-            });
-        }
+                ChangeCents   = change,
+            };
+        }).ToList();
 
-        // Determinar decisão fiscal (usa primeiro pagamento principal)
-        var primaryMethod = req.Payments.OrderByDescending(p => p.AmountCents).First().PaymentMethod;
-        var fiscalMethod  = MapToFiscalPaymentMethod(primaryMethod);
-        var decision      = _fiscal.Evaluate(fiscalMethod, fiscalSettings);
-
-        sale.FiscalDecision = decision.ToString();
-        sale.Status         = SaleOrderStatus.Completed;
-        sale.CompletedAtUtc = DateTime.UtcNow;
-        if (req.Notes is not null) sale.Notes = req.Notes;
-
-        // Transação explícita: DecrementOnSaleAsync usa ExecuteSqlAsync (direto),
-        // enquanto Sale/Payment/StockMovements/FiscalQueue são salvos via SaveChangesAsync.
-        // Ambos participam da mesma conexão/transação para garantir atomicidade.
+        // Transação explícita — DecrementOnSaleAsync usa ExecuteSqlAsync (sem EF tracking).
+        // SaleOrder também é atualizado via SQL direto para evitar DbUpdateConcurrencyException.
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
 
         // Debita estoque via SQL direto (sem EF tracking, sem concurrency check)
         await _stock.DecrementOnSaleAsync(sale, UserName, ct);
 
+        // UPDATE SaleOrder via SQL direto (sem EF concurrency check)
+        await _db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE "SaleOrders"
+            SET    "Status"         = 'Completed',
+                   "FiscalDecision" = {fiscalDecision},
+                   "CompletedAtUtc" = {completedAt},
+                   "DiscountCents"  = {discountCents},
+                   "TotalCents"     = {totalCents},
+                   "Notes"          = {finalNotes}
+            WHERE  "Id" = {saleId}
+            """, ct);
+
+        // Desanexa o sale do tracker para o EF não gerar UPDATE duplicado
+        _db.Entry(sale).State = EntityState.Detached;
+
+        // INSERT pagamentos com FK explícito
+        foreach (var payment in payments)
+            _db.SalePayments.Add(payment);
+
         // Enfileira emissão fiscal (exceto contingência permanente)
-        if (sale.FiscalDecision != "PermanentContingency")
+        if (fiscalDecision != "PermanentContingency")
         {
-            var priority = sale.FiscalDecision == "AutoIssue"
+            var priority = fiscalDecision == "AutoIssue"
                 ? (fiscalMethod == FiscalPaymentMethod.Cash ? FiscalQueuePriority.Normal : FiscalQueuePriority.High)
                 : FiscalQueuePriority.Normal;
 
             _db.FiscalQueues.Add(new FiscalQueue
             {
                 CompanyId   = CompanyId,
-                SaleOrderId = sale.Id,
+                SaleOrderId = saleId,
                 Priority    = priority,
                 Status      = FiscalQueueStatus.Waiting,
             });
         }
 
+        // Salva apenas INSERTs (SalePayments + StockMovements + FiscalQueue)
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
         // Dispara processamento assíncrono da fila fiscal
-        if (sale.FiscalDecision != "PermanentContingency")
+        if (fiscalDecision != "PermanentContingency")
             _jobs.Enqueue<FiscalQueueProcessorJob>(j => j.ProcessAsync(CompanyId, CancellationToken.None));
 
         // Acumula pontos de fidelidade (fire-and-forget — não bloqueia o PDV)
@@ -619,18 +643,18 @@ public class PdvController : ControllerBase
             try
             {
                 earnedPoints = await _loyalty.EarnAsync(
-                    CompanyId, sale.CustomerId.Value, sale.Id, sale.TotalCents, ct);
+                    CompanyId, sale.CustomerId.Value, saleId, totalCents, ct);
             }
             catch { /* fidelidade não pode derrubar a venda */ }
         }
 
         return Ok(new
         {
-            sale.Id,
+            Id           = saleId,
             sale.PublicId,
-            sale.TotalCents,
-            sale.FiscalDecision,
-            ChangeCents  = sale.Payments.Sum(p => p.ChangeCents),
+            TotalCents   = totalCents,
+            FiscalDecision = fiscalDecision,
+            ChangeCents  = payments.Sum(p => p.ChangeCents),
             EarnedPoints = earnedPoints,
         });
     }
