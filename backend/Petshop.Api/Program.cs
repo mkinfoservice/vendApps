@@ -340,9 +340,10 @@ app.UseExceptionHandler(errorApp =>
                 exceptionFeature.Error.Message);
         }
 
-        object response = (app.Environment.IsDevelopment() && exceptionFeature != null)
+        // Temporário: expõe detalhe em produção para diagnóstico — remover após estabilizar
+        object response = exceptionFeature != null
             ? new { error = exceptionFeature.Error.Message, detail = exceptionFeature.Error.ToString() }
-            : (object)new { error = "Erro interno do servidor. Tente novamente mais tarde." };
+            : (object)new { error = "Erro interno do servidor." };
         await context.Response.WriteAsync(JsonSerializer.Serialize(response));
     });
 });
@@ -358,6 +359,13 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    // Garante colunas que podem ter ficado fora das migrations (idempotente)
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "FiscalConfigs"
+        ADD COLUMN IF NOT EXISTS "CertificateBase64" text;
+        """);
+
     await DbSeeder.SeedAsync(db);
 }
 
