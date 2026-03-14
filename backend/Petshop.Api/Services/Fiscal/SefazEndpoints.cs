@@ -35,6 +35,18 @@ public static class SefazEndpoints
     {
         ["SP"] = ("https://nfce.sefaz.sp.gov.br/ws/NFeStatusServico4.asmx",
                   "https://homologacao.nfce.fazenda.sp.gov.br/ws/NFeStatusServico4.asmx"),
+        ["RJ"] = ("https://nfce.fazenda.rj.gov.br/ws/NFeStatusServico4.asmx",
+                  "https://nfce.fazenda.rj.gov.br/ws-hom/NFeStatusServico4.asmx"),
+        ["MG"] = ("https://hnfce.fazenda.mg.gov.br/nfce/services/NFeStatusServico4",
+                  "https://hnfce.fazenda.mg.gov.br/nfce-hom/services/NFeStatusServico4"),
+        ["PR"] = ("https://app.sefaz.pr.gov.br/wsNFCe/NFeStatusServico4.asmx",
+                  "https://homologacao.nfce.sefa.pr.gov.br/wsNFCe/NFeStatusServico4.asmx"),
+        ["RS"] = ("https://nfce.sefaz.rs.gov.br/ws/NFeStatusServico4/NFeStatusServico4.asmx",
+                  "https://nfce-homologacao.sefazrs.rs.gov.br/ws/NFeStatusServico4/NFeStatusServico4.asmx"),
+        ["BA"] = ("https://nfce.sefaz.ba.gov.br/webservices-nfce/NFeStatusServico4",
+                  "https://hnfce.sefaz.ba.gov.br/webservices-nfce/NFeStatusServico4"),
+        ["GO"] = ("https://nfce.sefaz.go.gov.br/nfeweb/services/NFeStatusServico4.asmx",
+                  "https://homologacao.nfe.go.gov.br/nfeweb/services/NFeStatusServico4.asmx"),
     };
 
     private const string SvcAnStatusProd   = "https://www.sefazvirtual.fazenda.gov.br/NFeStatusServico4/NFeStatusServico4.asmx";

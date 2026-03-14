@@ -148,7 +148,7 @@ public class SefazHttpClient
             var body = await resp.Content.ReadAsStringAsync(ct);
             var doc  = XDocument.Parse(body);
             var cStat = doc.Descendants(NfeNs + "cStat").FirstOrDefault()?.Value ?? "999";
-            return cStat == "107"; // 107 = Serviço em Operação
+            return cStat is "107" or "108"; // 107 = Operação, 108 = Parado temporariamente (aceita NF)
         }
         catch
         {
