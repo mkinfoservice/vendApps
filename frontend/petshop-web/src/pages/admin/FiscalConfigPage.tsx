@@ -6,7 +6,7 @@ import {
   getFiscalDocuments,
   type FiscalConfigDto, type FiscalDocumentListItem,
 } from "@/features/fiscal/fiscalApi";
-import { FileText, Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Upload } from "lucide-react";
+import { Save, RefreshCw, CheckCircle, XCircle, AlertTriangle, ChevronDown, ChevronUp, Upload } from "lucide-react";
 
 // ── Masks ─────────────────────────────────────────────────────────────────────
 
