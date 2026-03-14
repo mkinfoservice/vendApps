@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { fetchCustomerByPhone } from "@/features/admin/customers/api";
 import type { CustomerDetailDto } from "@/features/admin/customers/types";
 import { fetchAdminProducts } from "@/features/admin/products/api";
@@ -250,7 +249,7 @@ export default function PhoneOrderBuilder() {
                   Continuar sem cadastro
                 </button>
                 <button
-                  onClick={() => navigate(`/admin/atendimento/clientes/novo`)}
+                  onClick={() => navigate(`/app/atendimento/clientes/novo`)}
                   className="w-full py-2 text-sm font-semibold text-brand hover:underline"
                 >
                   + Cadastrar novo cliente
@@ -506,7 +505,7 @@ export default function PhoneOrderBuilder() {
 
         <div className="flex gap-3 pt-2">
           <button
-            onClick={() => navigate("/admin/atendimento")}
+            onClick={() => navigate("/app/atendimento")}
             className="flex-1 py-3 rounded-xl border text-sm font-semibold hover:bg-[--surface-2] transition"
             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
@@ -543,7 +542,7 @@ export default function PhoneOrderBuilder() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => navigate(`/admin/orders/${confirmedOrderId}`)}
+            onClick={() => navigate(`/app/pedidos/${confirmedOrderId}`)}
             className="flex-1 py-3 rounded-xl border text-sm font-semibold hover:bg-[--surface-2] transition"
             style={{ borderColor: "var(--border)", color: "var(--text)" }}
           >
@@ -599,13 +598,12 @@ export default function PhoneOrderBuilder() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <main className="mx-auto max-w-lg px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => (stepIndex(step) > 0 && !isSuccessScreen ? goPrev() : navigate("/admin/atendimento"))}
+            onClick={() => (stepIndex(step) > 0 && !isSuccessScreen ? goPrev() : navigate("/app/atendimento"))}
             className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-[--surface-2] transition"
             style={{ color: "var(--text-muted)" }}
           >

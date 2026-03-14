@@ -19,6 +19,20 @@ public class NfceSigningService
     public NfceSigningService(ILogger<NfceSigningService> logger) => _logger = logger;
 
     /// <summary>
+    /// Assina o XML a partir de bytes do certificado (base64 já decodificado).
+    /// Preferível ao overload de caminho de arquivo em ambientes cloud.
+    /// </summary>
+    public string Sign(string unsignedXml, byte[] certBytes, string certificatePassword)
+    {
+        var cert = new X509Certificate2(
+            certBytes,
+            certificatePassword,
+            X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+
+        return SignWithCert(unsignedXml, cert);
+    }
+
+    /// <summary>
     /// Assina o XML não-assinado retornado pelo NfceXmlBuilder.
     /// Retorna o XML completo com &lt;Signature&gt; embutido.
     /// </summary>
@@ -29,6 +43,12 @@ public class NfceSigningService
             certificatePath,
             certificatePassword,
             X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+
+        return SignWithCert(unsignedXml, cert);
+    }
+
+    private string SignWithCert(string unsignedXml, X509Certificate2 cert)
+    {
 
         using var rsa = cert.GetRSAPrivateKey()
             ?? throw new InvalidOperationException("Certificado não possui chave RSA privada.");

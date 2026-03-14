@@ -31,25 +31,9 @@ public class RealFiscalEngine : IFiscalEngine
 
         try
         {
-            // 1. Gera XML não-assinado
+            // IssueAsync é chamado apenas pelo MockFiscalEngine path ou quando não há certificado.
+            // Com certificado, usar IssueWithCertAsync diretamente.
             var (unsignedXml, accessKey) = NfceXmlBuilder.Build(req);
-
-            // 2. Verifica certificado
-            if (string.IsNullOrWhiteSpace(req.Emitter.CscId))
-            {
-                _logger.LogWarning("[RealFiscalEngine] FiscalConfig sem certificado — usando MockSign.");
-                // Transmissão sem assinatura só funciona em mock/testes
-                return await TransmitAsync(req, unsignedXml, accessKey, ct);
-            }
-
-            // 3. Assina
-            if (!File.Exists(req.Emitter.DefaultCfop)) // trick: reutiliza campo p/ detectar sem cert
-            {
-                // Certificado configurado — busca path via request (campo separado necessário)
-            }
-
-            // Por hora emite sem assinar se não há cert path
-            // (em produção, o cert path vem do FiscalConfig.CertificatePath)
             return await TransmitAsync(req, unsignedXml, accessKey, ct);
         }
         catch (Exception ex)
@@ -59,7 +43,19 @@ public class RealFiscalEngine : IFiscalEngine
         }
     }
 
-    /// <summary>Assina (se tiver cert) e transmite à SEFAZ.</summary>
+    /// <summary>Assina com bytes do certificado (base64 decodificado) e transmite à SEFAZ.</summary>
+    internal async Task<FiscalEngineResult> IssueWithCertAsync(
+        FiscalDocumentRequest req,
+        byte[] certBytes,
+        string? certPassword,
+        CancellationToken ct)
+    {
+        var (unsignedXml, accessKey) = NfceXmlBuilder.Build(req);
+        var signedXml = _signer.Sign(unsignedXml, certBytes, certPassword ?? "");
+        return await TransmitAsync(req, signedXml, accessKey, ct);
+    }
+
+    /// <summary>Assina com caminho de arquivo (legado) e transmite à SEFAZ.</summary>
     internal async Task<FiscalEngineResult> IssueWithCertAsync(
         FiscalDocumentRequest req,
         string? certPath,

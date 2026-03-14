@@ -18,7 +18,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
 
   // 1. Não autenticado → login
   if (!isAuthenticated()) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // 2. Em subdomínio: valida que o JWT pertence a esta empresa
@@ -29,7 +29,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
     // Tenant não encontrado ou suspenso → limpa sessão e redireciona
     if (tenantQuery.isError) {
       clearToken();
-      return <Navigate to="/admin/login" replace />;
+      return <Navigate to="/login" replace />;
     }
 
     // Compara companyId do JWT com o da empresa do subdomínio
@@ -39,7 +39,7 @@ export function AdminGuard({ children }: { children: ReactNode }) {
       payload.companyId.toLowerCase() !== tenantQuery.data.companyId.toLowerCase()
     ) {
       clearToken();
-      return <Navigate to="/admin/login" replace />;
+      return <Navigate to="/login" replace />;
     }
   }
 

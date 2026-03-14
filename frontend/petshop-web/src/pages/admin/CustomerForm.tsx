@@ -4,10 +4,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { fetchCustomer, createCustomer, updateCustomer } from "@/features/admin/customers/api";
 import type { UpsertCustomerRequest } from "@/features/admin/customers/types";
 import { ArrowLeft, Loader2, MapPin, Search } from "lucide-react";
+
+// ── Masks ─────────────────────────────────────────────────────────────────────
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) return d.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  return d.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+}
+function maskCPF(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+function maskCEP(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 8);
+  return d.replace(/(\d{5})(\d{1,3})$/, "$1-$2");
+}
+function unmask(v: string) { return v.replace(/\D/g, ""); }
 
 // Fix leaflet default icon (webpack/vite issue)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -95,9 +110,9 @@ export default function CustomerForm() {
     if (!customer) return;
     setForm({
       name: customer.name,
-      phone: customer.phone,
-      cpf: customer.cpf ?? "",
-      cep: customer.cep ?? "",
+      phone: maskPhone(customer.phone),
+      cpf: maskCPF(customer.cpf ?? ""),
+      cep: maskCEP(customer.cep ?? ""),
       address: customer.address ?? "",
       complement: customer.complement ?? "",
       addressReference: customer.addressReference ?? "",
@@ -114,7 +129,7 @@ export default function CustomerForm() {
 
   // ── CEP auto-fill ─────────────────────────────────────────────────────────
   const handleCepBlur = useCallback(async () => {
-    const cep = form.cep?.replace(/\D/g, "") ?? "";
+    const cep = unmask(form.cep ?? "");
     if (cep.length !== 8) return;
     setCepLoading(true);
     setCepMsg(null);
@@ -137,7 +152,7 @@ export default function CustomerForm() {
   async function handleGeocode(
     cep?: string, logradouro?: string, bairro?: string, cidade?: string, uf?: string
   ) {
-    const c = cep ?? form.cep?.replace(/\D/g, "");
+    const c = cep ?? unmask(form.cep ?? "");
     const parts = [
       logradouro ?? form.address,
       bairro ?? form.neighborhood,
@@ -165,7 +180,7 @@ export default function CustomerForm() {
     mutationFn: createCustomer,
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["customers"] });
-      navigate(`/admin/atendimento/clientes/${data.id}`);
+      navigate(`/app/atendimento/clientes/${data.id}`);
     },
     onError: (e: Error) => setError(e.message ?? "Erro ao criar cliente."),
   });
@@ -175,7 +190,7 @@ export default function CustomerForm() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       qc.invalidateQueries({ queryKey: ["customer", id] });
-      navigate(`/admin/atendimento/clientes/${id}`);
+      navigate(`/app/atendimento/clientes/${id}`);
     },
     onError: (e: Error) => setError(e.message ?? "Erro ao atualizar cliente."),
   });
@@ -185,9 +200,9 @@ export default function CustomerForm() {
     setError(null);
     const payload: UpsertCustomerRequest = {
       name: form.name.trim(),
-      phone: form.phone.trim(),
-      cpf: form.cpf?.trim() || undefined,
-      cep: form.cep?.trim() || undefined,
+      phone: unmask(form.phone),
+      cpf: unmask(form.cpf ?? "") || undefined,
+      cep: unmask(form.cep ?? "") || undefined,
       address: form.address?.trim() || undefined,
       complement: form.complement?.trim() || undefined,
       addressReference: form.addressReference?.trim() || undefined,
@@ -205,7 +220,6 @@ export default function CustomerForm() {
   if (isEdit && isLoading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-        <AdminNav />
         <div className="flex items-center justify-center h-64">
           <Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} />
         </div>
@@ -215,7 +229,6 @@ export default function CustomerForm() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       <main className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -249,12 +262,12 @@ export default function CustomerForm() {
             <div className="grid grid-cols-2 gap-4">
               <Field label="Telefone *" required>
                 <input required value={form.phone}
-                  onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                  onChange={e => setForm(f => ({ ...f, phone: maskPhone(e.target.value) }))}
                   placeholder="(21) 99999-9999" className={inputClass} style={inputStyle} />
               </Field>
               <Field label="CPF (opcional)">
                 <input value={form.cpf ?? ""}
-                  onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))}
+                  onChange={e => setForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))}
                   placeholder="000.000.000-00" className={inputClass} style={inputStyle} />
               </Field>
             </div>
@@ -271,7 +284,7 @@ export default function CustomerForm() {
                   <div className="relative">
                     <input
                       value={form.cep ?? ""}
-                      onChange={e => { setForm(f => ({ ...f, cep: e.target.value })); setCepMsg(null); }}
+                      onChange={e => { setForm(f => ({ ...f, cep: maskCEP(e.target.value) })); setCepMsg(null); }}
                       onBlur={handleCepBlur}
                       placeholder="00000-000"
                       maxLength={9}

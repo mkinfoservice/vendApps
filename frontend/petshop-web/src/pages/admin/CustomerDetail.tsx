@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { fetchCustomer } from "@/features/admin/customers/api";
 import { getCustomerLoyalty, adjustPoints, type LoyaltyTxnDto } from "@/features/customers/customersApi";
 import { ArrowLeft, Pencil, Loader2, Phone, MapPin, FileText, ShoppingBag, Star, Plus, Minus } from "lucide-react";
@@ -23,11 +22,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  RECEBIDO:    "bg-yellow-100 text-yellow-700",
-  EM_PREPARO:  "bg-blue-100 text-blue-700",
-  SAIU:        "bg-purple-100 text-purple-700",
-  ENTREGUE:    "bg-green-100 text-green-700",
-  CANCELADO:   "bg-red-100 text-red-700",
+  RECEBIDO:    "bg-yellow-900/30 text-yellow-400",
+  EM_PREPARO:  "bg-blue-900/30 text-blue-400",
+  SAIU:        "bg-purple-900/30 text-purple-400",
+  ENTREGUE:    "bg-green-900/30 text-green-400",
+  CANCELADO:   "bg-red-900/30 text-red-400",
 };
 
 function AdjustModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
@@ -48,18 +47,18 @@ function AdjustModal({ customerId, onClose }: { customerId: string; onClose: () 
         <div className="space-y-3">
           <div>
             <label className="text-xs text-gray-500">Pontos (+acúmulo / −débito)</label>
-            <input type="number" className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+            <input type="number" className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={pts} onChange={e => setPts(e.target.value)} placeholder="ex: 100 ou -50" />
           </div>
           <div>
             <label className="text-xs text-gray-500">Motivo *</label>
-            <input className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+            <input className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={reason} onChange={e => setReason(e.target.value)} />
           </div>
         </div>
         {err && <p className="text-xs text-red-600">{err}</p>}
         <div className="flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50">Cancelar</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-100 transition">Cancelar</button>
           <button disabled={!ok || mut.isPending} onClick={() => mut.mutate()}
             className="px-4 py-2 bg-brand text-white text-sm font-semibold rounded-xl hover:brightness-110 disabled:opacity-40 transition">
             {mut.isPending ? "..." : "Confirmar"}
@@ -90,7 +89,6 @@ export default function CustomerDetail() {
   if (isLoading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-        <AdminNav />
         <div className="flex items-center justify-center h-64">
           <Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} />
         </div>
@@ -101,7 +99,6 @@ export default function CustomerDetail() {
   if (!customer) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-        <AdminNav />
         <div className="flex items-center justify-center h-64 text-sm" style={{ color: "var(--text-muted)" }}>
           Cliente não encontrado.
         </div>
@@ -114,7 +111,6 @@ export default function CustomerDetail() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       {showAdjust && <AdjustModal customerId={id!} onClose={() => setShowAdjust(false)} />}
       <main className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
@@ -135,7 +131,7 @@ export default function CustomerDetail() {
             </p>
           </div>
           <button
-            onClick={() => navigate(`/admin/atendimento/clientes/${id}/editar`)}
+            onClick={() => navigate(`/app/atendimento/clientes/${id}/editar`)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:bg-[--surface-2] transition"
             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
@@ -187,7 +183,10 @@ export default function CustomerDetail() {
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-amber-600">{loyalty.pointsBalance.toLocaleString("pt-BR")} pts</span>
                   <button onClick={() => setShowAdjust(true)}
-                    className="px-2 py-1 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition">Ajuste</button>
+                    className="px-2 py-1 text-xs rounded-lg transition"
+                    style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-2)"}
+                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = ""}>Ajuste</button>
                 </div>
               </div>
               <div className="px-5 py-3 flex gap-6 text-sm border-b" style={{ borderColor: "var(--border)" }}>
@@ -230,7 +229,7 @@ export default function CustomerDetail() {
                 {customer.orders.map((o) => (
                   <li key={o.id}>
                     <button
-                      onClick={() => navigate(`/admin/orders/${o.id}`)}
+                      onClick={() => navigate(`/app/pedidos/${o.id}`)}
                       className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[--surface-2] transition text-left"
                     >
                       <div>

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { getRole } from "@/features/admin/auth/auth";
 import {
   fetchTeam, createMember, updateMember,
@@ -91,7 +90,6 @@ export default function StoreTeam() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       <main className="mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -180,7 +178,7 @@ export default function StoreTeam() {
                           <button
                             onClick={() => deactivateMut.mutate(m.id)}
                             title="Desativar"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition text-red-400"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-900/20 transition text-red-400"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -188,7 +186,7 @@ export default function StoreTeam() {
                           <button
                             onClick={() => reactivateMut.mutate(m.id)}
                             title="Reativar"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 transition text-green-500"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-900/20 transition text-green-500"
                           >
                             <RefreshCw size={14} />
                           </button>

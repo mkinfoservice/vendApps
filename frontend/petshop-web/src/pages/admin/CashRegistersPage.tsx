@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import { Loader2, Plus, Pencil } from "lucide-react";
 
@@ -74,7 +73,7 @@ function RegisterModal({ item, onClose }: ModalProps) {
           <div>
             <label className="text-xs text-gray-500">Nome do terminal *</label>
             <input
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Caixa 1, PDV Balcão"
               autoFocus
@@ -84,7 +83,7 @@ function RegisterModal({ item, onClose }: ModalProps) {
             <label className="text-xs text-gray-500">Série fiscal NFC-e</label>
             <input
               maxLength={3}
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={serie} onChange={(e) => setSerie(e.target.value)}
             />
           </div>
@@ -141,7 +140,6 @@ export default function CashRegistersPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       <main className="mx-auto max-w-3xl px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Terminais PDV</h1>
@@ -155,7 +153,7 @@ export default function CashRegistersPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16"><Loader2 className="animate-spin text-gray-300" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} /></div>
         ) : (
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
             <table className="w-full text-sm">
@@ -171,10 +169,13 @@ export default function CashRegistersPage() {
               </thead>
               <tbody>
                 {registers.length === 0 && (
-                  <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400">Nenhum terminal cadastrado.</td></tr>
+                  <tr><td colSpan={6} className="px-5 py-10 text-center" style={{ color: "var(--text-muted)" }}>Nenhum terminal cadastrado.</td></tr>
                 )}
                 {registers.map((r) => (
-                  <tr key={r.id} className="border-t hover:bg-gray-50 transition" style={{ borderColor: "var(--border)" }}>
+                  <tr key={r.id} className="border-t transition" style={{ borderColor: "var(--border)" }}
+                    onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "var(--surface-2)"}
+                    onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = ""}
+                  >
                     <td className="px-5 py-3 font-medium" style={{ color: "var(--text)" }}>{r.name}</td>
                     <td className="px-4 py-3 hidden sm:table-cell font-mono text-xs" style={{ color: "var(--text-muted)" }}>{r.fiscalSerie}</td>
                     <td className="px-4 py-3 hidden md:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
@@ -189,7 +190,7 @@ export default function CashRegistersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setEditing(r)} className="text-gray-400 hover:text-gray-600 transition">
+                      <button onClick={() => setEditing(r)} className="transition" style={{ color: "var(--text-muted)" }}>
                         <Pencil size={14} />
                       </button>
                     </td>

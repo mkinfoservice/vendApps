@@ -18,8 +18,9 @@ export interface FiscalConfigDto {
   telefone: string | null;
   taxRegime: string;
   sefazEnvironment: string;
-  certificatePath: string | null;
+  certificateBase64: string | null;
   certificatePassword: string | null;
+  certificatePath: string | null; // legado
   cscId: string | null;
   cscToken: string | null;
   nfceSerie: number;

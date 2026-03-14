@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Pencil } from "lucide-react";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { Plus, Trash2, Pencil, Search, Bike } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { useDeleteDeliverer, useDeliverers } from "@/features/admin/deliverers/queries";
 import type { DelivererResponse } from "@/features/admin/deliverers/type";
 
@@ -65,46 +67,47 @@ export default function DeliverersList() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-              Entregadores
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {isLoading ? "Carregando..." : `${filtered.length} entregador(es)`}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate("/admin/deliverers/new")}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          >
-            <Plus size={16} />
-            Novo entregador
-          </button>
-        </div>
+        <PageHeader
+          title="Entregadores"
+          subtitle={isLoading ? "Carregando..." : `${filtered.length} entregador${filtered.length !== 1 ? "es" : ""}`}
+          actions={
+            <button
+              type="button"
+              onClick={() => navigate("/app/logistica/entregadores/novo")}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+            >
+              <Plus size={15} />
+              Novo entregador
+            </button>
+          }
+        />
 
         {/* Filters */}
         <div
           className="rounded-2xl border p-4 mb-4 flex flex-col sm:flex-row gap-3"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <input
-            className="h-10 flex-1 rounded-xl border px-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
-            style={{
-              backgroundColor: "var(--surface-2)",
-              borderColor: "var(--border)",
-              color: "var(--text)",
-            }}
-            placeholder="Buscar por nome ou telefone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              className="h-10 w-full rounded-xl border pl-9 pr-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+              }}
+              placeholder="Buscar por nome ou telefone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <select
             className="h-10 rounded-xl border px-3.5 text-sm outline-none"
             style={{
@@ -181,26 +184,33 @@ export default function DeliverersList() {
             </thead>
 
             <tbody>
-              {isLoading && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-10 text-center text-sm"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Carregando entregadores...
-                  </td>
-                </tr>
-              )}
+              {isLoading && <TableSkeleton rows={5} cols={6} />}
 
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-10 text-center text-sm"
-                    style={{ color: "var(--text-muted)" }}
-                  >
-                    Nenhum entregador encontrado.
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={Bike}
+                      title="Nenhum entregador encontrado"
+                      description={
+                        search || activeFilter
+                          ? "Tente ajustar os filtros."
+                          : "Cadastre o primeiro entregador pelo botão acima."
+                      }
+                      action={
+                        !search && !activeFilter ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/app/logistica/entregadores/novo")}
+                            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white"
+                            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+                          >
+                            <Plus size={15} />
+                            Novo entregador
+                          </button>
+                        ) : undefined
+                      }
+                    />
                   </td>
                 </tr>
               )}
@@ -208,7 +218,7 @@ export default function DeliverersList() {
               {filtered.map((d, i) => (
                 <tr
                   key={d.id}
-                  onClick={() => navigate(`/admin/deliverers/${d.id}`)}
+                  onClick={() => navigate(`/app/logistica/entregadores/${d.id}`)}
                   className="cursor-pointer transition-colors"
                   style={{
                     backgroundColor:
@@ -282,7 +292,7 @@ export default function DeliverersList() {
                     >
                       <button
                         title="Editar"
-                        onClick={() => navigate(`/admin/deliverers/${d.id}`)}
+                        onClick={() => navigate(`/app/logistica/entregadores/${d.id}`)}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
                         style={{ color: "var(--text-muted)" }}
                         onMouseEnter={(e) =>

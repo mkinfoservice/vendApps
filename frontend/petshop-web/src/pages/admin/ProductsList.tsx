@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ToggleLeft, ToggleRight, Trash2, Download } from "lucide-react";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { Plus, ToggleLeft, ToggleRight, Trash2, Download, Search, Package } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
 import { useAdminProducts, useToggleProductStatus, useDeleteProduct } from "@/features/admin/products/queries";
 import { SyncModal } from "@/features/admin/sync/SyncModal";
 
@@ -47,8 +50,8 @@ export default function ProductsList() {
     return Math.max(1, Math.ceil(productsQuery.data.total / productsQuery.data.pageSize));
   }, [productsQuery.data]);
 
-  const items  = productsQuery.data?.items ?? [];
-  const total  = productsQuery.data?.total ?? 0;
+  const items = productsQuery.data?.items ?? [];
+  const total = productsQuery.data?.total ?? 0;
 
   function handleToggle(e: React.MouseEvent, id: string) {
     e.stopPropagation();
@@ -64,52 +67,58 @@ export default function ProductsList() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-              Produtos
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {productsQuery.isLoading ? "Carregando..." : `${total} produto(s)`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSync(true)}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold transition-all hover:bg-[var(--surface)]"
-              style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
-            >
-              <Download size={15} />
-              Importar
-            </button>
-            <button
-              onClick={() => navigate("/admin/products/new")}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-            >
-              <Plus size={16} />
-              Novo produto
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Produtos"
+          subtitle={
+            productsQuery.isLoading
+              ? "Carregando..."
+              : `${total} produto${total !== 1 ? "s" : ""} cadastrado${total !== 1 ? "s" : ""}`
+          }
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setShowSync(true)}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl border text-sm font-semibold transition-all hover:bg-[var(--surface-2)]"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <Download size={15} />
+                Importar
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/app/produtos/new")}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+              >
+                <Plus size={15} />
+                Novo produto
+              </button>
+            </>
+          }
+        />
 
         {/* Filters */}
         <div
           className="rounded-2xl border p-4 mb-4 flex flex-col sm:flex-row gap-3"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
         >
-          <input
-            className="h-10 flex-1 rounded-xl border px-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
-            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
-            placeholder="Buscar por nome, código interno ou código de barras..."
-            value={search}
-            onChange={(e) => { setPage(1); setSearch(e.target.value); }}
-          />
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              className="h-10 w-full rounded-xl border pl-9 pr-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
+              style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+              placeholder="Buscar por nome, código interno ou código de barras..."
+              value={search}
+              onChange={(e) => { setPage(1); setSearch(e.target.value); }}
+            />
+          </div>
           <select
             className="h-10 rounded-xl border px-3.5 text-sm outline-none"
             style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
@@ -130,7 +139,7 @@ export default function ProductsList() {
         )}
 
         {/* Table */}
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        <div className="rounded-2xl border overflow-hidden mb-4" style={{ borderColor: "var(--border)" }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
@@ -146,31 +155,54 @@ export default function ProductsList() {
               </tr>
             </thead>
             <tbody>
-              {productsQuery.isLoading && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Carregando produtos...
-                  </td>
-                </tr>
-              )}
+              {productsQuery.isLoading && <TableSkeleton rows={8} cols={9} />}
+
               {!productsQuery.isLoading && items.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Nenhum produto encontrado.
+                  <td colSpan={9}>
+                    <EmptyState
+                      icon={Package}
+                      title="Nenhum produto encontrado"
+                      description={
+                        search || active
+                          ? "Tente ajustar os filtros de busca."
+                          : "Cadastre o primeiro produto ou importe do seu sistema."
+                      }
+                      action={
+                        !search && !active ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/app/produtos/new")}
+                            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white"
+                            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+                          >
+                            <Plus size={15} />
+                            Novo produto
+                          </button>
+                        ) : undefined
+                      }
+                    />
                   </td>
                 </tr>
               )}
+
               {items.map((p, i) => (
                 <tr
                   key={p.id}
-                  onClick={() => navigate(`/admin/products/${p.id}`)}
+                  onClick={() => navigate(`/app/produtos/${p.id}`)}
                   className="cursor-pointer transition-colors"
                   style={{
                     backgroundColor: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
                     borderBottom: "1px solid var(--border)",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(124,92,248,0.06)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                      "rgba(124,92,248,0.06)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                      i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")
+                  }
                 >
                   {/* Thumb */}
                   <td className="px-3 py-2.5 w-12">
@@ -185,7 +217,10 @@ export default function ProductsList() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full grid place-items-center text-[10px] font-black" style={{ color: "var(--text-muted)" }}>
+                        <div
+                          className="w-full h-full grid place-items-center text-[10px] font-black"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
                       )}
@@ -195,7 +230,9 @@ export default function ProductsList() {
                   {/* Nome + status */}
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: "var(--text)" }}>{p.name}</span>
+                      <span className="font-semibold" style={{ color: "var(--text)" }}>
+                        {p.name}
+                      </span>
                       {!p.isActive && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-900/30 text-red-400">
                           Inativo
@@ -212,39 +249,46 @@ export default function ProductsList() {
                     </div>
                   </td>
 
-                  {/* Categoria */}
                   <td className="px-4 py-2.5 hidden md:table-cell" style={{ color: "var(--text-muted)" }}>
                     {p.categoryName ?? "—"}
                   </td>
 
-                  {/* Preço */}
                   <td className="px-4 py-2.5 text-right hidden sm:table-cell font-semibold" style={{ color: "var(--text)" }}>
                     {formatBRL(p.priceCents)}
                   </td>
 
-                  {/* Custo */}
                   <td className="px-4 py-2.5 text-right hidden lg:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
                     {formatBRL(p.costCents)}
                   </td>
 
-                  {/* Margem */}
-                  <td className="px-4 py-2.5 text-right hidden lg:table-cell text-xs font-semibold" style={{ color: p.marginPercent >= 30 ? "#4ade80" : p.marginPercent >= 10 ? "#facc15" : "#f87171" }}>
+                  <td
+                    className="px-4 py-2.5 text-right hidden lg:table-cell text-xs font-semibold"
+                    style={{
+                      color:
+                        p.marginPercent >= 30
+                          ? "#4ade80"
+                          : p.marginPercent >= 10
+                            ? "#facc15"
+                            : "#f87171",
+                    }}
+                  >
                     {Number(p.marginPercent).toFixed(1)}%
                   </td>
 
-                  {/* Estoque */}
                   <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
                     {Number(p.stockQty).toFixed(0)} {p.unit}
                   </td>
 
-                  {/* Data */}
                   <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
                     {formatDate(p.updatedAtUtc)}
                   </td>
 
                   {/* Ações */}
                   <td className="px-4 py-2.5 text-center">
-                    <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="flex items-center justify-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         title={p.isActive ? "Desativar" : "Ativar"}
                         onClick={(e) => handleToggle(e, p.id)}
@@ -260,8 +304,12 @@ export default function ProductsList() {
                         disabled={remove.isPending}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-red-900/20"
                         style={{ color: "var(--text-muted)" }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = "#f87171")}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-muted)")}
+                        onMouseEnter={(e) =>
+                          ((e.currentTarget as HTMLButtonElement).style.color = "#f87171")
+                        }
+                        onMouseLeave={(e) =>
+                          ((e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)")
+                        }
                       >
                         <Trash2 size={16} />
                       </button>
@@ -273,28 +321,13 @@ export default function ProductsList() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium transition-all disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </button>
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Página {page} de {totalPages}
-          </span>
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium transition-all disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Próxima
-          </button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
 
       {showSync && <SyncModal onClose={() => setShowSync(false)} />}

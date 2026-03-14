@@ -68,8 +68,9 @@ public class FiscalAdminController : ControllerBase
         cfg.Telefone           = dto.Telefone;
         cfg.TaxRegime          = Enum.Parse<TaxRegime>(dto.TaxRegime ?? "SimplesNacional");
         cfg.SefazEnvironment   = Enum.Parse<SefazEnvironment>(dto.SefazEnvironment ?? "Homologacao");
-        cfg.CertificatePath    = dto.CertificatePath;
+        cfg.CertificateBase64   = dto.CertificateBase64;
         cfg.CertificatePassword = dto.CertificatePassword;
+        cfg.CertificatePath     = dto.CertificatePath; // legado
         cfg.CscId              = dto.CscId;
         cfg.CscToken           = dto.CscToken;
         cfg.NfceSerie          = dto.NfceSerie;
@@ -219,6 +220,7 @@ table{{width:100%;border-collapse:collapse;}}td{{padding:2px 0;}}
         Telefone           = cfg.Telefone,
         TaxRegime          = cfg.TaxRegime.ToString(),
         SefazEnvironment   = cfg.SefazEnvironment.ToString(),
+        CertificateBase64  = cfg.CertificateBase64,
         CertificatePath    = cfg.CertificatePath,
         CscId              = cfg.CscId,
         CscToken           = cfg.CscToken,
@@ -246,8 +248,9 @@ public class FiscalConfigDto
     public string?  Telefone          { get; set; }
     public string?  TaxRegime         { get; set; } = "SimplesNacional";
     public string?  SefazEnvironment  { get; set; } = "Homologacao";
-    public string?  CertificatePath   { get; set; }
+    public string?  CertificateBase64  { get; set; }
     public string?  CertificatePassword { get; set; }
+    public string?  CertificatePath    { get; set; } // legado
     public string?  CscId             { get; set; }
     public string?  CscToken          { get; set; }
     public short    NfceSerie         { get; set; } = 1;

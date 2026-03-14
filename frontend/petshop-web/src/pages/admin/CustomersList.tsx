@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { fetchCustomers } from "@/features/admin/customers/api";
-import { UserPlus, Search, ChevronRight, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
+import { UserPlus, Search, ChevronRight, Users } from "lucide-react";
 
 export default function CustomersList() {
   const navigate = useNavigate();
@@ -23,103 +26,131 @@ export default function CustomersList() {
     placeholderData: (prev) => prev,
   });
 
+  const total = data?.total ?? 0;
+  const totalPages = useMemo(
+    () => (data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1),
+    [data],
+  );
+
   function handleSearch(val: string) {
     setSearch(val);
     setPage(1);
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-      <main className="mx-auto max-w-3xl px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-            Clientes
-          </h1>
-          <button
-            onClick={() => navigate("/admin/atendimento/clientes/novo")}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 transition"
-          >
-            <UserPlus size={16} />
-            Novo cliente
-          </button>
-        </div>
+    <div style={{ backgroundColor: "var(--bg)" }}>
+      <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
+        <PageHeader
+          title="Clientes"
+          subtitle={isLoading ? "Carregando..." : `${total} cliente${total !== 1 ? "s" : ""}`}
+          actions={
+            <button
+              type="button"
+              onClick={() => navigate("/app/atendimento/clientes/novo")}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+            >
+              <UserPlus size={15} />
+              Novo cliente
+            </button>
+          }
+        />
 
         {/* Search */}
-        <div className="relative mb-4">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
-          <input
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Buscar por nome ou telefone…"
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-            style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-          />
-        </div>
-
-        {/* List */}
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} />
-            </div>
-          ) : !data?.items.length ? (
-            <div className="text-center py-12 text-sm" style={{ color: "var(--text-muted)" }}>
-              {search ? "Nenhum cliente encontrado." : "Nenhum cliente cadastrado."}
-            </div>
-          ) : (
-            <ul className="divide-y" style={{ borderColor: "var(--border)" }}>
-              {data.items.map((c) => (
-                <li key={c.id}>
-                  <button
-                    onClick={() => navigate(`/admin/atendimento/clientes/${c.id}`)}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-[--surface-2] transition text-left"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text)" }}>
-                        {c.name}
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        {c.phone}
-                        {c.city && ` · ${c.city}${c.state ? `/${c.state}` : ""}`}
-                      </p>
-                    </div>
-                    <ChevronRight size={16} style={{ color: "var(--text-muted)" }} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Pagination */}
-        {data && data.total > data.pageSize && (
-          <div className="flex items-center justify-between mt-4 text-sm" style={{ color: "var(--text-muted)" }}>
-            <span>
-              {(page - 1) * data.pageSize + 1}–{Math.min(page * data.pageSize, data.total)} de {data.total}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="px-3 py-1.5 rounded-lg border disabled:opacity-40 hover:bg-[--surface-2] transition"
-                style={{ borderColor: "var(--border)" }}
-              >
-                Anterior
-              </button>
-              <button
-                disabled={page * data.pageSize >= data.total}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1.5 rounded-lg border disabled:opacity-40 hover:bg-[--surface-2] transition"
-                style={{ borderColor: "var(--border)" }}
-              >
-                Próximo
-              </button>
-            </div>
+        <div
+          className="rounded-2xl border p-4 mb-4"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Buscar por nome ou telefone…"
+              className="h-10 w-full rounded-xl border pl-9 pr-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+              }}
+            />
           </div>
-        )}
-      </main>
+        </div>
+
+        {/* Table */}
+        <div className="rounded-2xl border overflow-hidden mb-4" style={{ borderColor: "var(--border)" }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Nome</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>Telefone</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Cidade</th>
+                <th className="px-4 py-3 w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && <TableSkeleton rows={6} cols={4} />}
+
+              {!isLoading && (!data?.items.length) && (
+                <tr>
+                  <td colSpan={4}>
+                    <EmptyState
+                      icon={Users}
+                      title="Nenhum cliente encontrado"
+                      description={search ? "Tente outro nome ou telefone." : "Cadastre o primeiro cliente pelo botão acima."}
+                    />
+                  </td>
+                </tr>
+              )}
+
+              {data?.items.map((c, i) => (
+                <tr
+                  key={c.id}
+                  onClick={() => navigate(`/app/atendimento/clientes/${c.id}`)}
+                  className="cursor-pointer transition-colors"
+                  style={{
+                    backgroundColor: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor = "rgba(124,92,248,0.06)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                      i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")
+                  }
+                >
+                  <td className="px-4 py-3.5">
+                    <span className="font-semibold" style={{ color: "var(--text)" }}>{c.name}</span>
+                    <div className="sm:hidden text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{c.phone}</div>
+                  </td>
+                  <td className="px-4 py-3.5 hidden sm:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
+                    {c.phone}
+                  </td>
+                  <td className="px-4 py-3.5 hidden md:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
+                    {c.city ? `${c.city}${c.state ? `/${c.state}` : ""}` : "—"}
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <ChevronRight size={15} style={{ color: "var(--text-muted)" }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
+      </div>
     </div>
   );
 }

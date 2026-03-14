@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { useFinanceiro } from "@/features/admin/financeiro/queries";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   ResponsiveContainer,
   LineChart,
@@ -137,37 +137,31 @@ export default function Financeiro() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Financeiro</h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              Receita, entregas e comissões
-            </p>
-          </div>
-          {/* Period buttons */}
-          <div
-            className="flex rounded-xl overflow-hidden border"
-            style={{ borderColor: "var(--border)" }}
-          >
-            {PERIODS.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setPeriod(p.value)}
-                className="px-4 h-9 text-sm font-medium transition-all"
-                style={{
-                  backgroundColor: period === p.value ? "#7c5cf8" : "var(--surface)",
-                  color: period === p.value ? "#fff" : "var(--text-muted)",
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <PageHeader
+          title="Financeiro"
+          subtitle="Receita, entregas e comissões"
+          actions={
+            <div
+              className="flex rounded-xl overflow-hidden border"
+              style={{ borderColor: "var(--border)" }}
+            >
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setPeriod(p.value)}
+                  className="px-4 h-9 text-sm font-medium transition-all"
+                  style={{
+                    backgroundColor: period === p.value ? "#7c5cf8" : "var(--surface)",
+                    color: period === p.value ? "#fff" : "var(--text-muted)",
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
 
         {/* Error */}
         {isError && (

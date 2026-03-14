@@ -45,6 +45,8 @@ public class PurchaseReceivingService
             .Where(p => productIds.Contains(p.Id) && p.CompanyId == companyId)
             .ToDictionaryAsync(p => p.Id, ct);
 
+        var shortPoId = po.Id.ToString("N")[..8];
+
         foreach (var item in po.Items)
         {
             if (!products.TryGetValue(item.ProductId, out var product)) continue;
@@ -65,7 +67,7 @@ public class PurchaseReceivingService
                 UnitCostCents = item.UnitCostCents,
                 SaleOrderId   = null,
                 ActorName     = actorName,
-                Reason        = $"Compra #{po.Id:N8}" + (po.InvoiceNumber != null ? $" NF {po.InvoiceNumber}" : ""),
+                Reason        = $"Compra #{shortPoId}" + (po.InvoiceNumber != null ? $" NF {po.InvoiceNumber}" : ""),
             });
         }
 

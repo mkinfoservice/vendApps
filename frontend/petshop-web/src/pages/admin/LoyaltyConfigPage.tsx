@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { getLoyaltyConfig, updateLoyaltyConfig, type LoyaltyConfigDto } from "@/features/customers/customersApi";
 import { Star, Save } from "lucide-react";
 
-const INPUT = "border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand/30";
+const INPUT = "rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30";
+const inputStyle = { border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" };
 
 export default function LoyaltyConfigPage() {
   const qc = useQueryClient();
@@ -51,32 +51,30 @@ export default function LoyaltyConfigPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminNav />
-
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-5">
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(245,158,11,0.15)" }}>
             <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Programa de Fidelidade</h1>
-            <p className="text-sm text-gray-500">Configure o acúmulo e resgate de pontos</p>
+            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Programa de Fidelidade</h1>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>Configure o acúmulo e resgate de pontos</p>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400">Carregando...</div>
+          <div className="rounded-2xl border p-8 text-center" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }}>Carregando...</div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-sm p-6 space-y-5">
+          <div className="rounded-2xl border p-6 space-y-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
 
             {/* Enable toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium text-gray-800">Ativar programa de pontos</p>
-                <p className="text-sm text-gray-500">Clientes acumulam pontos a cada compra no PDV</p>
+                <p className="font-medium" style={{ color: "var(--text)" }}>Ativar programa de pontos</p>
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>Clientes acumulam pontos a cada compra no PDV</p>
               </div>
               <button
                 onClick={() => setForm(f => ({ ...f, isEnabled: !f.isEnabled }))}
@@ -86,56 +84,60 @@ export default function LoyaltyConfigPage() {
               </button>
             </div>
 
-            <hr className="border-gray-100" />
+            <hr style={{ borderColor: "var(--border)" }} />
 
             {/* Config fields */}
             <div className={`space-y-4 transition-opacity ${form.isEnabled ? "opacity-100" : "opacity-40 pointer-events-none"}`}>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                     Pontos por R$1,00 gasto
                   </label>
                   <input
                     type="number" step="0.1" min="0.1"
                     className={`mt-1 ${INPUT}`}
+                    style={inputStyle}
                     value={form.pointsPerReal}
                     onChange={e => setForm(f => ({ ...f, pointsPerReal: parseFloat(e.target.value) || 1 }))}
                   />
-                  <p className="text-xs text-gray-400 mt-1">Ex: 1 = 1 ponto por real</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Ex: 1 = 1 ponto por real</p>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                     Pontos para resgatar R$1,00
                   </label>
                   <input
                     type="number" min="1"
                     className={`mt-1 ${INPUT}`}
+                    style={inputStyle}
                     value={form.pointsPerReais}
                     onChange={e => setForm(f => ({ ...f, pointsPerReais: parseInt(e.target.value) || 100 }))}
                   />
-                  <p className="text-xs text-gray-400 mt-1">Ex: 100 = 100 pts = R$1</p>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Ex: 100 = 100 pts = R$1</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                     Mínimo para resgate (pts)
                   </label>
                   <input
                     type="number" min="0"
                     className={`mt-1 ${INPUT}`}
+                    style={inputStyle}
                     value={form.minRedemptionPoints}
                     onChange={e => setForm(f => ({ ...f, minRedemptionPoints: parseInt(e.target.value) || 0 }))}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  <label className="text-xs font-medium uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                     Desconto máximo por venda (%)
                   </label>
                   <input
                     type="number" min="1" max="100"
                     className={`mt-1 ${INPUT}`}
+                    style={inputStyle}
                     value={form.maxDiscountPercent}
                     onChange={e => setForm(f => ({ ...f, maxDiscountPercent: parseInt(e.target.value) || 50 }))}
                   />

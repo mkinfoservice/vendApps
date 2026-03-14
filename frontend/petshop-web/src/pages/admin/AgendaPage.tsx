@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { PageHeader } from "@/components/ui/PageHeader";
 import type {
   ServiceTypeDto,
   ServiceAppointmentDto,
@@ -1206,44 +1206,32 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-              Agenda
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              Agendamentos de banho, tosa e serviços veterinários
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowServices(true)}
-              className="px-3 py-2 rounded-xl text-sm font-semibold border transition-colors"
-              style={{
-                borderColor: "var(--border)",
-                backgroundColor: "var(--surface)",
-                color: "var(--text-muted)",
-              }}
-            >
-              ⚙ Serviços
-            </button>
-            <button
-              onClick={() => {
-                setEditAppt(null);
-                setShowForm(true);
-              }}
-              className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "#7c5cf8" }}
-            >
-              + Agendar
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Agenda"
+          subtitle="Agendamentos de banho, tosa e serviços veterinários"
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowServices(true)}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl border text-sm font-semibold transition-all hover:bg-[var(--surface-2)]"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                ⚙ Serviços
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditAppt(null); setShowForm(true); }}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+              >
+                + Agendar
+              </button>
+            </div>
+          }
+        />
 
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-5 flex-wrap">

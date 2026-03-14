@@ -53,7 +53,11 @@ function NavLink({
 
 export function AdminNav() {
   const navigate = useNavigate();
+  const loc = useLocation();
   const { connected, printStation } = usePrintStatus();
+
+  // Dentro do AppShell (/app/*) o AppHeader já está presente — não renderizar
+  if (loc.pathname.startsWith("/app")) return null;
 
   const visibleItems = ALL_NAV_ITEMS.filter(
     (item) => item.roles === null || hasRole(...item.roles),

@@ -2694,8 +2694,6 @@ namespace Petshop.Api.Migrations
                         .HasColumnType("decimal(14,3)");
 
                     b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
                     b.Property<string>("ScaleBarcodeMode")

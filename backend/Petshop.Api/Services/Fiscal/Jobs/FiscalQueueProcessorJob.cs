@@ -181,9 +181,14 @@ public class FiscalQueueProcessorJob
                 Payments         = fiscalPayments,
             };
 
-            // Chama motor fiscal
+            // Chama motor fiscal — prefere base64 (cloud-friendly), fallback para path (legado)
             FiscalEngineResult engineResult;
-            if (!string.IsNullOrWhiteSpace(fiscalConfig.CertificatePath))
+            if (!string.IsNullOrWhiteSpace(fiscalConfig.CertificateBase64))
+            {
+                var certBytes = Convert.FromBase64String(fiscalConfig.CertificateBase64);
+                engineResult = await _realEngine.IssueWithCertAsync(req, certBytes, fiscalConfig.CertificatePassword, ct);
+            }
+            else if (!string.IsNullOrWhiteSpace(fiscalConfig.CertificatePath))
                 engineResult = await _realEngine.IssueWithCertAsync(req, fiscalConfig.CertificatePath, fiscalConfig.CertificatePassword, ct);
             else
                 engineResult = await _fiscalEngine.IssueAsync(req, ct);

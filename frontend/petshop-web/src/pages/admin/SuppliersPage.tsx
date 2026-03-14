@@ -1,17 +1,35 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import {
   listSuppliers, createSupplier, updateSupplier, deactivateSupplier,
   type SupplierDto,
 } from "@/features/purchases/purchasesApi";
 import { Truck, Plus, Pencil, Trash2, Search } from "lucide-react";
 
+// ── Masks ──────────────────────────────────────────────────────────────────────
+
+function maskCNPJ(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  return d
+    .replace(/(\d{2})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) return d.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  return d.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+}
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+
 const EMPTY: Omit<SupplierDto, "id" | "isActive" | "createdAtUtc"> = {
   name: "", cnpj: null, email: null, phone: null, contactName: null, notes: null,
 };
 
-const INPUT = "border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand/30";
+const INPUT = "bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30";
 
 function SupplierModal({
   supplier,
@@ -25,6 +43,8 @@ function SupplierModal({
           phone: supplier.phone, contactName: supplier.contactName, notes: supplier.notes }
       : { ...EMPTY }
   );
+  const [cnpjDisplay, setCnpjDisplay] = useState(maskCNPJ(supplier?.cnpj ?? ""));
+  const [phoneDisplay, setPhoneDisplay] = useState(maskPhone(supplier?.phone ?? ""));
   const [error, setError] = useState<string | null>(null);
 
   function set(k: keyof typeof form, v: string) {
@@ -52,13 +72,21 @@ function SupplierModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">CNPJ</label>
-              <input className={`mt-1 ${INPUT}`} value={form.cnpj ?? ""} maxLength={14}
-                onChange={e => set("cnpj", e.target.value)} placeholder="00000000000000" />
+              <input className={`mt-1 ${INPUT}`} value={cnpjDisplay} placeholder="00.000.000/0000-00"
+                onChange={e => {
+                  const m = maskCNPJ(e.target.value);
+                  setCnpjDisplay(m);
+                  set("cnpj", m.replace(/\D/g, ""));
+                }} />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Telefone</label>
-              <input className={`mt-1 ${INPUT}`} value={form.phone ?? ""}
-                onChange={e => set("phone", e.target.value)} />
+              <input className={`mt-1 ${INPUT}`} value={phoneDisplay} placeholder="(11) 99999-9999"
+                onChange={e => {
+                  const m = maskPhone(e.target.value);
+                  setPhoneDisplay(m);
+                  set("phone", m.replace(/\D/g, ""));
+                }} />
             </div>
           </div>
           <div>
@@ -117,9 +145,7 @@ export default function SuppliersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminNav />
-
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       {editSupplier !== undefined && (
         <SupplierModal
           supplier={editSupplier}
@@ -132,12 +158,12 @@ export default function SuppliersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-              <Truck className="w-5 h-5 text-brand" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(124,92,248,0.12)" }}>
+              <Truck className="w-5 h-5" style={{ color: "#7c5cf8" }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Fornecedores</h1>
-              <p className="text-sm text-gray-500">{suppliers.length} cadastrado{suppliers.length !== 1 ? "s" : ""}</p>
+              <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Fornecedores</h1>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>{suppliers.length} cadastrado{suppliers.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
           <button
@@ -152,15 +178,16 @@ export default function SuppliersPage() {
         {/* Filters */}
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
             <input
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
+              className="w-full pl-9 pr-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
               placeholder="Buscar por nome ou CNPJ..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <label className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 cursor-pointer">
+          <label className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm cursor-pointer" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--text-muted)" }}>
             <input type="checkbox" checked={showInactive}
               onChange={e => setShowInactive(e.target.checked)} />
             Inativos
@@ -168,37 +195,41 @@ export default function SuppliersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+            <thead style={{ backgroundColor: "var(--surface-2)" }}>
               <tr>
-                <th className="px-4 py-3 text-left">Nome</th>
-                <th className="px-4 py-3 text-left hidden sm:table-cell">CNPJ</th>
-                <th className="px-4 py-3 text-left hidden md:table-cell">Contato</th>
-                <th className="px-4 py-3 text-left hidden md:table-cell">Telefone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Nome</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>CNPJ</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Contato</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Telefone</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {isLoading && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">Carregando...</td></tr>
+                <tr><td colSpan={5} className="px-4 py-10 text-center" style={{ color: "var(--text-muted)" }}>Carregando...</td></tr>
               )}
               {!isLoading && filtered.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">Nenhum fornecedor encontrado.</td></tr>
+                <tr><td colSpan={5} className="px-4 py-10 text-center" style={{ color: "var(--text-muted)" }}>Nenhum fornecedor encontrado.</td></tr>
               )}
               {filtered.map(s => (
-                <tr key={s.id} className={`hover:bg-gray-50 transition ${!s.isActive ? "opacity-50" : ""}`}>
+                <tr key={s.id} className={`transition border-t ${!s.isActive ? "opacity-50" : ""}`}
+                  style={{ borderColor: "var(--border)" }}
+                  onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "var(--surface-2)"}
+                  onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = ""}
+                >
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{s.name}</p>
-                    {s.email && <p className="text-xs text-gray-400">{s.email}</p>}
+                    <p className="font-medium" style={{ color: "var(--text)" }}>{s.name}</p>
+                    {s.email && <p className="text-xs" style={{ color: "var(--text-muted)" }}>{s.email}</p>}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs hidden sm:table-cell">
+                  <td className="px-4 py-3 font-mono text-xs hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>
                     {s.cnpj ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs hidden md:table-cell">
+                  <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: "var(--text-muted)" }}>
                     {s.contactName ?? "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs hidden md:table-cell">
+                  <td className="px-4 py-3 text-xs hidden md:table-cell" style={{ color: "var(--text-muted)" }}>
                     {s.phone ?? "—"}
                   </td>
                   <td className="px-4 py-3">

@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { useDashboard } from "@/features/admin/dashboard/queries";
 import { Headphones } from "lucide-react";
 import type { ReactNode } from "react";
@@ -185,14 +184,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
 
         {/* ── Botão Montar Pedido ─────────────────────────────────────────── */}
         <button
           type="button"
-          onClick={() => navigate("/admin/atendimento/pedido")}
+          onClick={() => navigate("/app/atendimento/pedido")}
           className="w-full flex items-center justify-center gap-3 mb-6 rounded-2xl py-4 text-white font-bold text-base transition-all active:scale-[0.98]"
           style={{
             background: "linear-gradient(135deg, #7c5cf8, #6d4df2)",
@@ -250,42 +247,42 @@ export default function Dashboard() {
                 label="Recebidos"
                 value={data.orders.recebido}
                 color="blue"
-                onClick={() => navigate("/admin/orders?status=RECEBIDO")}
+                onClick={() => navigate("/app/pedidos?status=RECEBIDO")}
               />
               <StatCard
                 icon="🍳"
                 label="Em preparo"
                 value={data.orders.emPreparo}
                 color="amber"
-                onClick={() => navigate("/admin/orders?status=EM_PREPARO")}
+                onClick={() => navigate("/app/pedidos?status=EM_PREPARO")}
               />
               <StatCard
                 icon="📦"
                 label="Prontos p/ entrega"
                 value={data.orders.prontoParaEntrega}
                 color="purple"
-                onClick={() => navigate("/admin/orders?status=PRONTO_PARA_ENTREGA")}
+                onClick={() => navigate("/app/pedidos?status=PRONTO_PARA_ENTREGA")}
               />
               <StatCard
                 icon="🚴"
                 label="Saiu p/ entrega"
                 value={data.orders.saiuParaEntrega}
                 color="amber"
-                onClick={() => navigate("/admin/orders?status=SAIU_PARA_ENTREGA")}
+                onClick={() => navigate("/app/pedidos?status=SAIU_PARA_ENTREGA")}
               />
               <StatCard
                 icon="✅"
                 label="Entregues"
                 value={data.orders.entregue}
                 color="green"
-                onClick={() => navigate("/admin/orders?status=ENTREGUE")}
+                onClick={() => navigate("/app/pedidos?status=ENTREGUE")}
               />
               <StatCard
                 icon="❌"
                 label="Cancelados"
                 value={data.orders.cancelado}
                 color="red"
-                onClick={() => navigate("/admin/orders?status=CANCELADO")}
+                onClick={() => navigate("/app/pedidos?status=CANCELADO")}
               />
             </div>
 
@@ -314,35 +311,35 @@ export default function Dashboard() {
                 label="Criadas"
                 value={data.routes.criada}
                 color="zinc"
-                onClick={() => navigate("/admin/routes?status=Criada")}
+                onClick={() => navigate("/app/logistica/rotas?status=Criada")}
               />
               <StatCard
                 icon="📋"
                 label="Atribuídas"
                 value={data.routes.atribuida}
                 color="blue"
-                onClick={() => navigate("/admin/routes?status=Atribuida")}
+                onClick={() => navigate("/app/logistica/rotas?status=Atribuida")}
               />
               <StatCard
                 icon="▶️"
                 label="Em andamento"
                 value={data.routes.emAndamento}
                 color="amber"
-                onClick={() => navigate("/admin/routes?status=EmAndamento")}
+                onClick={() => navigate("/app/logistica/rotas?status=EmAndamento")}
               />
               <StatCard
                 icon="🏁"
                 label="Concluídas"
                 value={data.routes.concluida}
                 color="green"
-                onClick={() => navigate("/admin/routes?status=Concluida")}
+                onClick={() => navigate("/app/logistica/rotas?status=Concluida")}
               />
               <StatCard
                 icon="🚫"
                 label="Canceladas"
                 value={data.routes.cancelada}
                 color="red"
-                onClick={() => navigate("/admin/routes?status=Cancelada")}
+                onClick={() => navigate("/app/logistica/rotas?status=Cancelada")}
               />
             </div>
 
