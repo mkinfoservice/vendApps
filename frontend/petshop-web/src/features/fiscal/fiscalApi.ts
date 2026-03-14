@@ -38,7 +38,8 @@ export interface FiscalDocumentListItem {
   saleOrderId: string;
   number: number;
   serie: number;
-  fiscalStatus: string;
+  fiscalStatus: string; // mapeado de "status" vindo do backend
+  status?: string;      // alias do backend
   accessKey: string | null;
   authorizationCode: string | null;
   rejectCode: string | null;
@@ -66,7 +67,10 @@ export async function getSefazStatus(): Promise<SefazStatusDto> {
 }
 
 export async function getFiscalDocuments(page = 1, pageSize = 20): Promise<FiscalDocumentListItem[]> {
-  return adminFetch<FiscalDocumentListItem[]>(
+  const res = await adminFetch<{ items: FiscalDocumentListItem[] } | FiscalDocumentListItem[]>(
     `/admin/fiscal/documents?page=${page}&pageSize=${pageSize}`
   );
+  // Backend retorna { total, page, items } (paginado)
+  if (res && !Array.isArray(res) && "items" in res) return res.items;
+  return res as FiscalDocumentListItem[];
 }
