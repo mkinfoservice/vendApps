@@ -45,13 +45,16 @@ function DeviceRow({
   }
 
   return (
-    <tr className="border-b last:border-0 hover:bg-gray-50 text-sm">
-      <td className="px-4 py-2 font-medium">{device.name}</td>
-      <td className="px-3 py-2 text-gray-500">{device.scaleModel}</td>
-      <td className="px-3 py-2 text-gray-500">{device.portName} / {device.baudRate}</td>
-      <td className="px-3 py-2 text-gray-400 text-xs">{timeSince(device.lastSyncUtc)}</td>
+    <tr className="border-b last:border-0 text-sm" style={{ borderColor: "var(--border)" }}
+      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "var(--surface-2)"}
+      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = ""}
+    >
+      <td className="px-4 py-2 font-medium" style={{ color: "var(--text)" }}>{device.name}</td>
+      <td className="px-3 py-2" style={{ color: "var(--text-muted)" }}>{device.scaleModel}</td>
+      <td className="px-3 py-2" style={{ color: "var(--text-muted)" }}>{device.portName} / {device.baudRate}</td>
+      <td className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>{timeSince(device.lastSyncUtc)}</td>
       <td className="px-3 py-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${device.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${device.isActive ? "bg-green-900/30 text-green-400" : "bg-gray-900/30 text-gray-400"}`}>
           {device.isActive ? "ativo" : "inativo"}
         </span>
       </td>
@@ -116,18 +119,18 @@ function AgentCard({
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
       {/* Header */}
       <div
         className="flex items-center gap-3 px-5 py-4 cursor-pointer select-none"
         onClick={() => setExpanded(v => !v)}
       >
-        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${agent.isOnline ? "bg-green-400" : "bg-gray-300"}`} />
-        <span className="font-semibold text-gray-800">{agent.machineName}</span>
-        <span className="text-xs text-gray-400 ml-1">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${agent.isOnline ? "bg-green-400" : "bg-gray-400"}`} />
+        <span className="font-semibold" style={{ color: "var(--text)" }}>{agent.machineName}</span>
+        <span className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>
           {agent.isOnline ? "online" : `offline — ${timeSince(agent.lastSeenUtc)}`}
         </span>
-        <span className="ml-auto text-xs text-gray-400">{agent.deviceCount} dispositivo(s)</span>
+        <span className="ml-auto text-xs" style={{ color: "var(--text-muted)" }}>{agent.deviceCount} dispositivo(s)</span>
         <button
           onClick={e => { e.stopPropagation(); handleDelete(); }}
           className="text-red-400 hover:text-red-600 text-sm ml-2"
@@ -139,11 +142,11 @@ function AgentCard({
 
       {/* Detail */}
       {expanded && detail && (
-        <div className="border-t px-5 py-4 space-y-4">
+        <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: "var(--border)" }}>
           {/* AgentKey */}
-          <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-            <span className="text-xs text-gray-500 font-medium w-24">AgentKey</span>
-            <code className="flex-1 text-xs font-mono text-gray-700 break-all">
+          <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ backgroundColor: "var(--surface-2)" }}>
+            <span className="text-xs font-medium w-24" style={{ color: "var(--text-muted)" }}>AgentKey</span>
+            <code className="flex-1 text-xs font-mono break-all" style={{ color: "var(--text)" }}>
               {showKey ? detail.agentKey : "••••••••••••••••••••••••••••••••"}
             </code>
             <button
@@ -163,8 +166,8 @@ function AgentCard({
           {/* Devices table */}
           {detail.devices.length > 0 ? (
             <table className="w-full text-sm">
-              <thead className="border-b">
-                <tr className="text-left text-xs text-gray-400">
+              <thead className="border-b" style={{ borderColor: "var(--border)" }}>
+                <tr className="text-left text-xs" style={{ color: "var(--text-muted)" }}>
                   <th className="px-4 py-2">Nome</th>
                   <th className="px-3 py-2">Modelo</th>
                   <th className="px-3 py-2">Porta / Baud</th>
@@ -180,7 +183,7 @@ function AgentCard({
               </tbody>
             </table>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-2">Nenhum dispositivo cadastrado.</p>
+            <p className="text-sm text-center py-2" style={{ color: "var(--text-muted)" }}>Nenhum dispositivo cadastrado.</p>
           )}
 
           {/* Add device form */}
@@ -189,12 +192,14 @@ function AgentCard({
               <input
                 required
                 placeholder="Nome (ex: Balança Açougue)"
-                className="col-span-2 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+                className="col-span-2 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               />
               <select
-                className="border rounded-xl px-3 py-2 text-sm focus:outline-none"
+                className="rounded-xl px-3 py-2 text-sm focus:outline-none"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 value={form.scaleModel}
                 onChange={e => setForm(f => ({ ...f, scaleModel: e.target.value }))}
               >
@@ -202,14 +207,16 @@ function AgentCard({
               </select>
               <input
                 placeholder="Porta (COM1)"
-                className="border rounded-xl px-3 py-2 text-sm focus:outline-none"
+                className="rounded-xl px-3 py-2 text-sm focus:outline-none"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 value={form.portName}
                 onChange={e => setForm(f => ({ ...f, portName: e.target.value }))}
               />
               <input
                 type="number"
                 placeholder="Baudrate"
-                className="border rounded-xl px-3 py-2 text-sm focus:outline-none"
+                className="rounded-xl px-3 py-2 text-sm focus:outline-none"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 value={form.baudRate}
                 onChange={e => setForm(f => ({ ...f, baudRate: Number(e.target.value) }))}
               />
@@ -224,7 +231,8 @@ function AgentCard({
                 <button
                   type="button"
                   onClick={() => setAddingDevice(false)}
-                  className="px-4 py-2 rounded-xl border text-sm text-gray-500"
+                  className="px-4 py-2 rounded-xl text-sm"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-muted)" }}
                 >
                   Cancelar
                 </button>
@@ -271,11 +279,11 @@ export default function ScaleAgentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen p-6" style={{ backgroundColor: "var(--bg)" }}>
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">Agentes de Balança</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>Agentes de Balança</h1>
           <button
             onClick={() => setShowNew(v => !v)}
             className="ml-auto px-4 py-2 rounded-xl text-white text-sm font-medium"
@@ -287,13 +295,14 @@ export default function ScaleAgentsPage() {
 
         {/* New agent form */}
         {showNew && (
-          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
-            <h2 className="font-semibold text-gray-700">Registrar novo agente</h2>
+          <div className="rounded-2xl border p-5 space-y-3" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+            <h2 className="font-semibold" style={{ color: "var(--text)" }}>Registrar novo agente</h2>
             <form onSubmit={handleCreate} className="flex gap-3">
               <input
                 required
                 placeholder="Nome do PC (ex: PC Frente de Caixa)"
-                className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+                className="flex-1 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
               />
@@ -317,9 +326,9 @@ export default function ScaleAgentsPage() {
 
         {/* List */}
         {loading ? (
-          <p className="text-center text-gray-400 py-8">Carregando...</p>
+          <p className="text-center py-8" style={{ color: "var(--text-muted)" }}>Carregando...</p>
         ) : agents.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-400">
+          <div className="rounded-2xl border p-8 text-center" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
             <p className="text-lg mb-2">Nenhum agente registrado</p>
             <p className="text-sm">Instale o serviço Windows em um PC da loja e registre-o aqui.</p>
           </div>

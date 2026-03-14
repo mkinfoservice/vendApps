@@ -6,7 +6,6 @@ import { OrderStatusSelect } from "@/features/admin/orders/components/OrderStatu
 import { OrderStatusBadge } from "@/features/admin/orders/components/OrderStatusBadge";
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { paymentLabel } from "@/features/admin/orders/payment";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { reprintOrder } from "@/features/admin/print/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import { hasRole } from "@/features/admin/auth/auth";
@@ -77,7 +76,6 @@ export default function OrderDetail() {
 
   return (
     <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
-      <AdminNav />
       <div className="mx-auto max-w-2xl px-4 pb-10 pt-6 space-y-4">
 
         {/* Header */}
@@ -102,7 +100,7 @@ export default function OrderDetail() {
             )}
             <button
               className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition"
-              onClick={() => navigate("/admin/orders")}
+              onClick={() => navigate("/app/pedidos")}
             >
               Voltar
             </button>

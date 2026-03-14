@@ -1,9 +1,11 @@
-import { useNavigate } from "react-router-dom";
-import { AdminNav } from "@/components/admin/AdminNav";
-import { Phone, Users, UserPlus, ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Phone, Users, UserPlus, ClipboardList, ArrowRight } from "lucide-react";
 
 type HubItem = {
-  icon: React.ReactNode;
+  icon: React.ElementType;
+  iconColor: string;
+  iconBg: string;
   label: string;
   description: string;
   to: string;
@@ -12,73 +14,140 @@ type HubItem = {
 
 const items: HubItem[] = [
   {
-    icon: <Phone size={28} />,
+    icon: Phone,
+    iconColor: "#ffffff",
+    iconBg: "rgba(255,255,255,0.2)",
     label: "Montar pedido",
     description: "Atendimento por telefone — busca cliente, monta carrinho e confirma.",
-    to: "/admin/atendimento/pedido",
+    to: "/app/atendimento/pedido",
     highlight: true,
   },
   {
-    icon: <Users size={28} />,
+    icon: Users,
+    iconColor: "#0ea5e9",
+    iconBg: "rgba(14,165,233,0.12)",
     label: "Clientes",
     description: "Lista e busca de clientes cadastrados.",
-    to: "/admin/atendimento/clientes",
+    to: "/app/atendimento/clientes",
   },
   {
-    icon: <UserPlus size={28} />,
+    icon: UserPlus,
+    iconColor: "#10b981",
+    iconBg: "rgba(16,185,129,0.12)",
     label: "Novo cliente",
     description: "Cadastrar um novo cliente na base.",
-    to: "/admin/atendimento/clientes/novo",
+    to: "/app/atendimento/clientes/novo",
   },
   {
-    icon: <ClipboardList size={28} />,
+    icon: ClipboardList,
+    iconColor: "#7c5cf8",
+    iconBg: "rgba(124,92,248,0.12)",
     label: "Todos os pedidos",
     description: "Histórico completo de pedidos da loja.",
-    to: "/admin/orders",
+    to: "/app/pedidos",
   },
 ];
 
+function HighlightCard({ item }: { item: HubItem }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      className="group flex items-center gap-5 rounded-2xl p-6 transition-all active:scale-[0.99] hover:-translate-y-0.5"
+      style={{
+        background: "linear-gradient(135deg, #7c5cf8 0%, #6d4df2 100%)",
+        boxShadow: "0 4px 24px rgba(124,92,248,0.35)",
+        textDecoration: "none",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow =
+          "0 8px 32px rgba(124,92,248,0.5)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.boxShadow =
+          "0 4px 24px rgba(124,92,248,0.35)";
+      }}
+    >
+      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 bg-white/20">
+        <Icon size={28} color="#fff" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-lg font-bold text-white">{item.label}</p>
+        <p className="text-sm mt-0.5 text-white/75">{item.description}</p>
+      </div>
+      <ArrowRight
+        size={20}
+        className="shrink-0 text-white/60 transition-transform group-hover:translate-x-1"
+      />
+    </Link>
+  );
+}
+
+function ActionCard({ item }: { item: HubItem }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      className="group flex items-center gap-4 rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]"
+      style={{
+        backgroundColor: "var(--surface)",
+        borderColor: "var(--border)",
+        textDecoration: "none",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor =
+          item.iconColor + "55";
+        (e.currentTarget as HTMLElement).style.boxShadow = `0 6px 20px ${item.iconColor}18`;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+      }}
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+        style={{ backgroundColor: item.iconBg }}
+      >
+        <Icon size={22} style={{ color: item.iconColor }} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-sm" style={{ color: "var(--text)" }}>
+          {item.label}
+        </p>
+        <p
+          className="text-xs mt-0.5 leading-snug"
+          style={{ color: "var(--text-muted)" }}
+        >
+          {item.description}
+        </p>
+      </div>
+      <ArrowRight
+        size={15}
+        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ color: "var(--text-muted)" }}
+      />
+    </Link>
+  );
+}
+
 export default function AtendimentoHub() {
-  const navigate = useNavigate();
+  const [highlight, ...rest] = items;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-      <main className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="text-xl font-bold mb-2" style={{ color: "var(--text)" }}>Atendimento</h1>
-        <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-          Central de atendimento ao cliente — pedidos telefônicos e cadastros.
-        </p>
+    <div style={{ backgroundColor: "var(--bg)" }}>
+      <div className="mx-auto max-w-2xl px-4 pb-12 pt-6">
+        <PageHeader
+          title="Atendimento"
+          subtitle="Central de atendimento ao cliente — pedidos e cadastros"
+        />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {items.map(item => (
-            <button
-              key={item.to}
-              onClick={() => navigate(item.to)}
-              className={`text-left rounded-2xl border p-5 hover:brightness-105 active:scale-[0.99] transition flex items-start gap-4 ${
-                item.highlight ? "bg-brand text-white border-brand" : ""
-              }`}
-              style={
-                item.highlight
-                  ? {}
-                  : { borderColor: "var(--border)", backgroundColor: "var(--surface)" }
-              }
-            >
-              <div className={item.highlight ? "text-white" : undefined} style={item.highlight ? {} : { color: "var(--brand, #7c5cf8)" }}>
-                {item.icon}
-              </div>
-              <div>
-                <p className={`font-bold text-sm ${item.highlight ? "text-white" : ""}`} style={item.highlight ? {} : { color: "var(--text)" }}>
-                  {item.label}
-                </p>
-                <p className={`text-xs mt-1 ${item.highlight ? "text-white/80" : ""}`} style={item.highlight ? {} : { color: "var(--text-muted)" }}>
-                  {item.description}
-                </p>
-              </div>
-            </button>
+        <div className="space-y-3">
+          <HighlightCard item={highlight} />
+          {rest.map((item) => (
+            <ActionCard key={item.to} item={item} />
           ))}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

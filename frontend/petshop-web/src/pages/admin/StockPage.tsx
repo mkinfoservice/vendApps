@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   listStock, getAlerts, getMovements, adjustStock, setReorderPoint,
   type StockItemDto, type StockMovementDto,
@@ -61,7 +64,7 @@ function AdjustModal({
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo</label>
             <select
-              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={type}
               onChange={e => setType(e.target.value as StockMovementType)}
             >
@@ -80,7 +83,7 @@ function AdjustModal({
             <input
               type="number"
               step="0.001"
-              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={delta}
               onChange={e => setDelta(e.target.value)}
               placeholder={type === "Loss" ? "-5" : "10"}
@@ -90,7 +93,7 @@ function AdjustModal({
           <div>
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Motivo (opcional)</label>
             <input
-              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+              className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="ex: Nota fiscal NF-e 001234"
@@ -210,19 +213,24 @@ function StockRow({
     : null;
 
   return (
-    <tr className="hover:bg-gray-50 transition">
+    <tr
+      className="transition"
+      style={{ borderBottom: "1px solid var(--border)" }}
+      onMouseEnter={(e) => ((e.currentTarget as HTMLTableRowElement).style.backgroundColor = "rgba(124,92,248,0.04)")}
+      onMouseLeave={(e) => ((e.currentTarget as HTMLTableRowElement).style.backgroundColor = "transparent")}
+    >
       <td className="px-4 py-3">
-        <div className="font-medium text-gray-900 text-sm">{item.name}</div>
-        {item.internalCode && <div className="text-xs text-gray-400">{item.internalCode}</div>}
+        <div className="font-medium text-sm" style={{ color: "var(--text)" }}>{item.name}</div>
+        {item.internalCode && <div className="text-xs" style={{ color: "var(--text-muted)" }}>{item.internalCode}</div>}
       </td>
-      <td className="px-4 py-3 text-xs text-gray-500">{item.barcode ?? "—"}</td>
+      <td className="px-4 py-3 text-xs hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>{item.barcode ?? "—"}</td>
       <td className="px-4 py-3 text-right">
-        <div className={`text-sm font-semibold ${isOut ? "text-red-600" : isLow ? "text-orange-600" : "text-gray-900"}`}>
+        <div className={`text-sm font-semibold ${isOut ? "text-red-500" : isLow ? "text-orange-500" : ""}`} style={!isOut && !isLow ? { color: "var(--text)" } : {}}>
           {item.stockQty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {item.unit}
         </div>
         {statusBadge}
       </td>
-      <td className="px-4 py-3 text-right text-xs text-gray-500">
+      <td className="px-4 py-3 text-right text-xs hidden md:table-cell" style={{ color: "var(--text-muted)" }}>
         {item.reorderPoint != null
           ? item.reorderPoint.toLocaleString("pt-BR", { maximumFractionDigits: 3 })
           : "—"}
@@ -284,7 +292,7 @@ function ReorderModal({ product, onClose }: { product: StockItemDto; onClose: ()
           <input
             type="number"
             step="0.001"
-            className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full"
+            className="mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
             value={val}
             onChange={e => setVal(e.target.value)}
             placeholder="ex: 5"
@@ -331,9 +339,7 @@ export default function StockPage() {
   const alertCount = alerts.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       {adjustProduct && (
         <AdjustModal product={adjustProduct} onClose={() => setAdjustProduct(null)} />
       )}
@@ -344,22 +350,18 @@ export default function StockPage() {
         <ReorderModal product={reorderProduct} onClose={() => setReorderProduct(null)} />
       )}
 
-      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-5">
+      <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6 space-y-4">
+        <PageHeader
+          title="Estoque"
+          subtitle={`${total} produto${total !== 1 ? "s" : ""}`}
+        />
 
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-            <Package className="w-5 h-5 text-brand" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Estoque</h1>
-            <p className="text-sm text-gray-500">Controle de estoque e movimentações</p>
-          </div>
-        </div>
-
-        {/* Alert summary */}
+        {/* Alert banner */}
         {alertCount > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-orange-50 border border-orange-200 rounded-xl text-sm text-orange-700">
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl border text-sm"
+            style={{ backgroundColor: "rgba(249,115,22,0.08)", borderColor: "rgba(249,115,22,0.3)", color: "#f97316" }}
+          >
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
               <span className="font-semibold">{alertCount}</span> produto{alertCount > 1 ? "s" : ""} com estoque baixo ou zerado
@@ -374,16 +376,21 @@ export default function StockPage() {
         )}
 
         {/* Filter tabs */}
-        <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1 w-fit">
+        <div
+          className="flex gap-1 rounded-xl border p-1 w-fit"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
           {FILTER_TABS.map(t => (
             <button
               key={t.value}
+              type="button"
               onClick={() => { setFilter(t.value); setPage(1); }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+              className="px-4 py-1.5 rounded-lg text-sm font-medium transition"
+              style={
                 filter === t.value
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
+                  ? { backgroundColor: "var(--brand)", color: "#fff" }
+                  : { color: "var(--text-muted)" }
+              }
             >
               {t.label}
             </button>
@@ -391,70 +398,52 @@ export default function StockPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                <tr>
-                  <th className="px-4 py-3 text-left">Produto</th>
-                  <th className="px-4 py-3 text-left">Cód. barras</th>
-                  <th className="px-4 py-3 text-right">Estoque atual</th>
-                  <th className="px-4 py-3 text-right">Reposição</th>
-                  <th className="px-4 py-3 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {isLoading && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-sm">
-                      Carregando...
-                    </td>
-                  </tr>
-                )}
-                {!isLoading && items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-gray-400 text-sm">
-                      Nenhum produto encontrado.
-                    </td>
-                  </tr>
-                )}
-                {items.map(item => (
-                  <StockRow
-                    key={item.id}
-                    item={item}
-                    onAdjust={setAdjustProduct}
-                    onHistory={setHistoryProduct}
-                    onSetReorder={setReorderProduct}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Produto</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>Cód. barras</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Estoque atual</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Reposição</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading && <TableSkeleton rows={8} cols={5} />}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 text-sm text-gray-500">
-              <span>{total} produto{total !== 1 ? "s" : ""}</span>
-              <div className="flex gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => p - 1)}
-                  className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition"
-                >
-                  ←
-                </button>
-                <span className="px-3 py-1">{page} / {totalPages}</span>
-                <button
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                  className="px-3 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 transition"
-                >
-                  →
-                </button>
-              </div>
-            </div>
-          )}
+              {!isLoading && items.length === 0 && (
+                <tr>
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={Package}
+                      title="Nenhum produto encontrado"
+                      description={filter !== "all" ? "Tente mudar o filtro." : "Nenhum produto com estoque cadastrado."}
+                    />
+                  </td>
+                </tr>
+              )}
+
+              {items.map(item => (
+                <StockRow
+                  key={item.id}
+                  item={item}
+                  onAdjust={setAdjustProduct}
+                  onHistory={setHistoryProduct}
+                  onSetReorder={setReorderProduct}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPrev={() => setPage(p => Math.max(1, p - 1))}
+          onNext={() => setPage(p => Math.min(totalPages, p + 1))}
+        />
       </div>
     </div>
   );

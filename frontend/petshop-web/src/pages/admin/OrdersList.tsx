@@ -3,11 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrders } from "@/features/admin/orders/queries";
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { OrderStatusBadge } from "@/features/admin/orders/components/OrderStatusBadge";
-import { AdminNav } from "@/components/admin/AdminNav";
-import { Plus } from "lucide-react";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
+import { Plus, ShoppingBag, Search } from "lucide-react";
 
 function formatBRL(cents: number) {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 function formatDate(iso: string) {
@@ -16,12 +22,24 @@ function formatDate(iso: string) {
   return d.toLocaleString("pt-BR");
 }
 
+const STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
+  { value: "", label: "Todos os status" },
+  { value: "RECEBIDO", label: "Recebido" },
+  { value: "EM_PREPARO", label: "Em preparo" },
+  { value: "PRONTO_PARA_ENTREGA", label: "Pronto para entrega" },
+  { value: "SAIU_PARA_ENTREGA", label: "Saiu para entrega" },
+  { value: "ENTREGUE", label: "Entregue" },
+  { value: "CANCELADO", label: "Cancelado" },
+];
+
 export default function OrdersList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<OrderStatus | "">((searchParams.get("status") as OrderStatus) || "");
+  const [status, setStatus] = useState<OrderStatus | "">(
+    (searchParams.get("status") as OrderStatus) || "",
+  );
   const [search, setSearch] = useState("");
 
   const ordersQuery = useOrders(page, 20, status || undefined, search || undefined);
@@ -35,46 +53,59 @@ export default function OrdersList() {
   const total = ordersQuery.data?.total ?? 0;
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>
-              Pedidos
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {ordersQuery.isLoading ? "Carregando..." : `${total} pedido(s) encontrado(s)`}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate("/admin/routes/planner")}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          >
-            <Plus size={16} />
-            Criar rota
-          </button>
-        </div>
+        <PageHeader
+          title="Pedidos"
+          subtitle={
+            ordersQuery.isLoading
+              ? "Carregando..."
+              : `${total} pedido${total !== 1 ? "s" : ""} encontrado${total !== 1 ? "s" : ""}`
+          }
+          actions={
+            <button
+              type="button"
+              onClick={() => navigate("/app/logistica/rotas/planner")}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{
+                background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)",
+              }}
+            >
+              <Plus size={15} />
+              Criar rota
+            </button>
+          }
+        />
 
         {/* Filters */}
         <div
           className="rounded-2xl border p-4 mb-4 flex flex-col sm:flex-row gap-3"
-          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+          style={{
+            backgroundColor: "var(--surface)",
+            borderColor: "var(--border)",
+          }}
         >
-          <input
-            className="h-10 flex-1 rounded-xl border px-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
-            style={{
-              backgroundColor: "var(--surface-2)",
-              borderColor: "var(--border)",
-              color: "var(--text)",
-            }}
-            placeholder="Buscar por número do pedido..."
-            value={search}
-            onChange={(e) => { setPage(1); setSearch(e.target.value); }}
-          />
+          <div className="relative flex-1">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              className="h-10 w-full rounded-xl border pl-9 pr-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                borderColor: "var(--border)",
+                color: "var(--text)",
+              }}
+              placeholder="Buscar por número do pedido..."
+              value={search}
+              onChange={(e) => {
+                setPage(1);
+                setSearch(e.target.value);
+              }}
+            />
+          </div>
           <select
             className="h-10 rounded-xl border px-3.5 text-sm outline-none"
             style={{
@@ -83,15 +114,16 @@ export default function OrdersList() {
               color: "var(--text)",
             }}
             value={status}
-            onChange={(e) => { setPage(1); setStatus(e.target.value as OrderStatus | ""); }}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value as OrderStatus | "");
+            }}
           >
-            <option value="">Todos os status</option>
-            <option value="RECEBIDO">Recebido</option>
-            <option value="EM_PREPARO">Em preparo</option>
-            <option value="PRONTO_PARA_ENTREGA">Pronto para entrega</option>
-            <option value="SAIU_PARA_ENTREGA">Saiu para entrega</option>
-            <option value="ENTREGUE">Entregue</option>
-            <option value="CANCELADO">Cancelado</option>
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -104,58 +136,120 @@ export default function OrdersList() {
 
         {/* Table */}
         <div
-          className="rounded-2xl border overflow-hidden"
+          className="rounded-2xl border overflow-hidden mb-4"
           style={{ borderColor: "var(--border)" }}
         >
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Pedido</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>Cliente</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Status</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Valor</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: "var(--text-muted)" }}>Data</th>
+              <tr
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Pedido
+                </th>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Cliente
+                </th>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Status
+                </th>
+                <th
+                  className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Valor
+                </th>
+                <th
+                  className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden lg:table-cell"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Data
+                </th>
               </tr>
             </thead>
             <tbody>
-              {ordersQuery.isLoading && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Carregando pedidos...
-                  </td>
-                </tr>
-              )}
+              {ordersQuery.isLoading && <TableSkeleton rows={8} cols={5} />}
+
               {!ordersQuery.isLoading && items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Nenhum pedido encontrado.
+                  <td colSpan={5}>
+                    <EmptyState
+                      icon={ShoppingBag}
+                      title="Nenhum pedido encontrado"
+                      description={
+                        search || status
+                          ? "Tente ajustar os filtros de busca."
+                          : "Os pedidos do catálogo aparecerão aqui."
+                      }
+                    />
                   </td>
                 </tr>
               )}
+
               {items.map((o, i) => (
                 <tr
                   key={o.id}
-                  onClick={() => navigate(`/admin/orders/${o.orderNumber}`)}
-                  className="cursor-pointer transition-colors group"
+                  onClick={() => navigate(`/app/pedidos/${o.orderNumber}`)}
+                  className="cursor-pointer transition-colors"
                   style={{
-                    backgroundColor: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
+                    backgroundColor:
+                      i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
                     borderBottom: "1px solid var(--border)",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(124,92,248,0.06)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                      "rgba(124,92,248,0.06)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
+                      i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")
+                  }
                 >
-                  <td className="px-4 py-3">
-                    <span className="font-semibold" style={{ color: "var(--text)" }}>{o.orderNumber}</span>
-                    <div className="sm:hidden text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{o.customerName}</div>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className="font-semibold"
+                      style={{ color: "var(--text)" }}
+                    >
+                      {o.orderNumber}
+                    </span>
+                    <div
+                      className="sm:hidden text-xs mt-0.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {o.customerName}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 hidden sm:table-cell" style={{ color: "var(--text)" }}>{o.customerName}</td>
-                  <td className="px-4 py-3">
+                  <td
+                    className="px-4 py-3.5 hidden sm:table-cell"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {o.customerName}
+                  </td>
+                  <td className="px-4 py-3.5">
                     <OrderStatusBadge status={o.status as OrderStatus} />
                   </td>
-                  <td className="px-4 py-3 text-right hidden md:table-cell font-semibold" style={{ color: "var(--text)" }}>
+                  <td
+                    className="px-4 py-3.5 text-right hidden md:table-cell font-semibold"
+                    style={{ color: "var(--text)" }}
+                  >
                     {formatBRL(o.totalCents)}
                   </td>
-                  <td className="px-4 py-3 text-right hidden lg:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
+                  <td
+                    className="px-4 py-3.5 text-right hidden lg:table-cell text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     {formatDate(o.createdAtUtc)}
                   </td>
                 </tr>
@@ -164,28 +258,13 @@ export default function OrdersList() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium transition-all disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </button>
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Página {page} de {totalPages}
-          </span>
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium transition-all disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Próxima
-          </button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
     </div>
   );

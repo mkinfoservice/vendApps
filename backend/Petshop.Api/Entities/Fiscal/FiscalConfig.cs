@@ -36,16 +36,18 @@ public class FiscalConfig
     // ── Certificado Digital (A1) ──────────────────────────────────────
 
     /// <summary>
-    /// Caminho para o arquivo .pfx/.p12 do certificado digital.
-    /// O arquivo NÃO é armazenado no banco — apenas o path.
-    /// Fase futura: migrar para HSM ou Azure Key Vault.
+    /// Conteúdo do certificado .pfx/.p12 em Base64, armazenado no banco.
+    /// Substitui CertificatePath — compatível com infra cloud sem filesystem persistente (Render, Railway, etc.).
     /// </summary>
-    [MaxLength(500)]
-    public string? CertificatePath { get; set; }
+    public string? CertificateBase64 { get; set; }
 
-    /// <summary>Senha do certificado (fase futura: criptografar via Data Protection).</summary>
+    /// <summary>Senha do certificado.</summary>
     [MaxLength(200)]
     public string? CertificatePassword { get; set; }
+
+    /// <summary>Legado: caminho de arquivo. Mantido para migração gradual.</summary>
+    [MaxLength(500)]
+    public string? CertificatePath { get; set; }
 
     // ── NFC-e ─────────────────────────────────────────────────────────
 

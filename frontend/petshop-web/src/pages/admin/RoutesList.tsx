@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Pagination } from "@/components/ui/Pagination";
 import { fetchRoutes } from "@/features/admin/routes/api";
 import { ROUTE_STATUS_LABEL } from "@/features/admin/routes/status";
 import type { RouteStatus } from "@/features/admin/routes/types";
-import { Plus, Eye } from "lucide-react";
-
-// ── Helpers ────────────────────────────────────────────────────────────────
+import { Plus, Eye, Route } from "lucide-react";
 
 const STATUS_STYLE: Record<RouteStatus, { badge: string; dot: string }> = {
   Criada:      { badge: "bg-zinc-700/40 text-zinc-300",       dot: "#94a3b8" },
@@ -21,8 +22,6 @@ function fmtDate(iso?: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("pt-BR");
 }
-
-// ── Page ───────────────────────────────────────────────────────────────────
 
 export default function RoutesList() {
   const nav = useNavigate();
@@ -39,31 +38,33 @@ export default function RoutesList() {
   });
 
   const routes = q.data?.items ?? [];
-  const total = q.data?.total ?? 0;
-  const hasMore = q.data ? page * q.data.pageSize < q.data.total : false;
+  const total  = q.data?.total ?? 0;
+  const totalPages = q.data
+    ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize))
+    : 1;
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
+    <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Rotas</h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {q.isLoading ? "Carregando..." : `${total} rota(s) encontrada(s)`}
-            </p>
-          </div>
-          <button
-            onClick={() => nav("/admin/routes/planner")}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          >
-            <Plus size={16} />
-            Nova rota
-          </button>
-        </div>
+        <PageHeader
+          title="Rotas"
+          subtitle={
+            q.isLoading
+              ? "Carregando..."
+              : `${total} rota${total !== 1 ? "s" : ""} encontrada${total !== 1 ? "s" : ""}`
+          }
+          actions={
+            <button
+              type="button"
+              onClick={() => nav("/app/logistica/rotas/planner")}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+            >
+              <Plus size={15} />
+              Nova rota
+            </button>
+          }
+        />
 
         {/* Filters */}
         <div
@@ -72,11 +73,7 @@ export default function RoutesList() {
         >
           <select
             className="h-10 rounded-xl border px-3.5 text-sm outline-none"
-            style={{
-              backgroundColor: "var(--surface-2)",
-              borderColor: "var(--border)",
-              color: "var(--text)",
-            }}
+            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
             value={status}
             onChange={(e) => { setPage(1); setStatus(e.target.value); }}
           >
@@ -92,12 +89,12 @@ export default function RoutesList() {
         {/* Error */}
         {q.isError && (
           <div className="rounded-2xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-400 mb-4">
-            Erro ao carregar rotas.
+            Erro ao carregar rotas. Tente recarregar a página.
           </div>
         )}
 
         {/* Table */}
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        <div className="rounded-2xl border overflow-hidden mb-4" style={{ borderColor: "var(--border)" }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
@@ -110,20 +107,37 @@ export default function RoutesList() {
               </tr>
             </thead>
             <tbody>
-              {q.isLoading && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Carregando rotas...
-                  </td>
-                </tr>
-              )}
+              {q.isLoading && <TableSkeleton rows={6} cols={6} />}
+
               {!q.isLoading && routes.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm" style={{ color: "var(--text-muted)" }}>
-                    Nenhuma rota encontrada.
+                  <td colSpan={6}>
+                    <EmptyState
+                      icon={Route}
+                      title="Nenhuma rota encontrada"
+                      description={
+                        status
+                          ? "Tente outro filtro de status."
+                          : "Crie uma nova rota de entrega pelo planejador."
+                      }
+                      action={
+                        !status ? (
+                          <button
+                            type="button"
+                            onClick={() => nav("/app/logistica/rotas/planner")}
+                            className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white"
+                            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+                          >
+                            <Plus size={15} />
+                            Nova rota
+                          </button>
+                        ) : undefined
+                      }
+                    />
                   </td>
                 </tr>
               )}
+
               {routes.map((r, i) => {
                 const cfg = STATUS_STYLE[r.status as RouteStatus] ?? STATUS_STYLE.Criada;
                 return (
@@ -134,22 +148,29 @@ export default function RoutesList() {
                       borderBottom: "1px solid var(--border)",
                     }}
                   >
-                    <td className="px-4 py-3">
-                      <span className="font-semibold" style={{ color: "var(--text)" }}>{r.routeNumber}</span>
+                    <td className="px-4 py-3.5">
+                      <span className="font-semibold" style={{ color: "var(--text)" }}>
+                        {r.routeNumber}
+                      </span>
                       <div className="sm:hidden text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {r.delivererName ?? "Sem entregador"}
                       </div>
                     </td>
-                    <td className="px-4 py-3 hidden sm:table-cell" style={{ color: "var(--text)" }}>
+                    <td className="px-4 py-3.5 hidden sm:table-cell" style={{ color: "var(--text)" }}>
                       {r.delivererName ?? <span style={{ color: "var(--text-muted)" }}>—</span>}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.badge}`}>
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.badge}`}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cfg.dot }}
+                        />
                         {ROUTE_STATUS_LABEL[r.status as RouteStatus] ?? r.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-center hidden md:table-cell">
+                    <td className="px-4 py-3.5 text-center hidden md:table-cell">
                       <span
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold"
                         style={{ backgroundColor: "var(--surface-2)", color: "var(--text)" }}
@@ -157,12 +178,16 @@ export default function RoutesList() {
                         {r.totalStops}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right hidden lg:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
+                    <td
+                      className="px-4 py-3.5 text-right hidden lg:table-cell text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
                       {fmtDate(r.createdAtUtc)}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       <button
-                        onClick={() => nav(`/admin/routes/${r.id}`)}
+                        type="button"
+                        onClick={() => nav(`/app/logistica/rotas/${r.id}`)}
                         className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all hover:opacity-80"
                         style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
                       >
@@ -177,26 +202,13 @@ export default function RoutesList() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between mt-4">
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={page <= 1 || q.isLoading}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Anterior
-          </button>
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>Página {page}</span>
-          <button
-            className="h-9 px-4 rounded-xl border text-sm font-medium disabled:opacity-40"
-            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-            disabled={q.isLoading || !hasMore}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Próxima
-          </button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPrev={() => setPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+        />
       </div>
     </div>
   );

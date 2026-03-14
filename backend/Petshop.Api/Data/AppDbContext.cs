@@ -169,10 +169,8 @@ public class AppDbContext : DbContext
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Concurrency token
-        modelBuilder.Entity<Product>()
-            .Property(p => p.RowVersion)
-            .IsRowVersion();
+        // RowVersion concurrency token foi removido de Product.cs ([Timestamp] retirado).
+        // Sem optimistic concurrency no produto — atualizações de estoque são serializadas pela sessão.
 
         // ── ProductVariant ────────────────────────────────────
         modelBuilder.Entity<ProductVariant>()

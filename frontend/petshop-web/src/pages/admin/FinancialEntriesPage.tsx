@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   listEntries, getSummary, getCategories, createEntry, updateEntry,
   payEntry, unpayEntry, deleteEntry,
@@ -146,7 +147,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
               className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
                 type === t
                   ? t === "Receita" ? "bg-green-600 text-white" : "bg-red-500 text-white"
-                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  : "border border-gray-200 text-gray-600 bg-white hover:bg-gray-100"
               }`}
             >
               {t}
@@ -158,7 +159,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
           <div>
             <label className="text-xs text-gray-500">Descrição *</label>
             <input
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={title} onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Pagamento fornecedor XYZ"
               autoFocus
@@ -170,7 +171,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
               <label className="text-xs text-gray-500">Valor (R$) *</label>
               <input
                 type="number" min={0} step={0.01}
-                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
                 value={amount} onChange={(e) => setAmount(e.target.value)}
                 placeholder="0,00"
               />
@@ -179,7 +180,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
               <label className="text-xs text-gray-500">Vencimento *</label>
               <input
                 type="date"
-                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
                 value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               />
             </div>
@@ -189,7 +190,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
             <label className="text-xs text-gray-500">Categoria</label>
             <input
               list="fin-cats-list"
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
               value={category} onChange={(e) => setCategory(e.target.value)}
               placeholder="Ex: Aluguel, Salários, Estoque..."
             />
@@ -201,7 +202,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
           <div>
             <label className="text-xs text-gray-500">Observações</label>
             <textarea
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30 resize-none"
               rows={2}
               value={notes} onChange={(e) => setNotes(e.target.value)}
             />
@@ -211,7 +212,7 @@ function EntryModal({ entry, onClose }: EntryModalProps) {
         {error && <p className="text-xs text-red-500">{error}</p>}
 
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50">
+          <button onClick={onClose} className="flex-1 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-100 transition">
             Cancelar
           </button>
           <button
@@ -296,21 +297,21 @@ export default function FinancialEntriesPage() {
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 1;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-      <main className="mx-auto max-w-5xl px-4 py-8">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Financeiro</h1>
-          <button
-            onClick={() => setEditing(null)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl text-white transition hover:brightness-110"
-            style={{ background: "linear-gradient(135deg,#7c5cf8,#6d4df2)" }}
-          >
-            <Plus size={15} /> Lançamento
-          </button>
-        </div>
+    <div style={{ backgroundColor: "var(--bg)" }}>
+      <main className="mx-auto max-w-5xl px-4 pb-12 pt-6">
+        <PageHeader
+          title="Financeiro"
+          actions={
+            <button
+              type="button"
+              onClick={() => setEditing(null)}
+              className="flex items-center gap-2 h-9 px-4 text-sm font-semibold rounded-xl text-white transition hover:opacity-90 active:scale-95"
+              style={{ background: "linear-gradient(135deg,#7c5cf8,#9b7efa)" }}
+            >
+              <Plus size={15} /> Lançamento
+            </button>
+          }
+        />
 
         {/* Date range */}
         <div className="flex flex-wrap gap-3 mb-5 items-center">
@@ -468,20 +469,13 @@ export default function FinancialEntriesPage() {
               </table>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-4">
-                <button disabled={page === 1} onClick={() => setPage((p) => p - 1)}
-                  className="px-3 py-1 text-sm border rounded-lg disabled:opacity-40" style={{ borderColor: "var(--border)" }}>
-                  ‹ Anterior
-                </button>
-                <span className="px-3 py-1 text-sm" style={{ color: "var(--text-muted)" }}>{page} / {totalPages}</span>
-                <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-                  className="px-3 py-1 text-sm border rounded-lg disabled:opacity-40" style={{ borderColor: "var(--border)" }}>
-                  Próxima ›
-                </button>
-              </div>
-            )}
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              total={data?.total}
+              onPrev={() => setPage((p) => Math.max(1, p - 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+            />
           </>
         )}
       </main>

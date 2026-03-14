@@ -7,12 +7,14 @@ namespace Petshop.Api.Services.Stock;
 
 /// <summary>
 /// Gerencia movimentações de estoque.
-/// Atualiza Product.StockQty atomicamente e registra cada movimento no ledger StockMovement.
+/// Atualiza Product.StockQty via SQL direto (sem EF tracking) para evitar
+/// DbUpdateConcurrencyException causada pelo xmin shadow property do Npgsql.
+/// Os StockMovements são adicionados ao tracker e salvos pelo caller.
 /// </summary>
 public class StockService
 {
-    private readonly AppDbContext              _db;
-    private readonly ILogger<StockService>    _logger;
+    private readonly AppDbContext           _db;
+    private readonly ILogger<StockService> _logger;
 
     public StockService(AppDbContext db, ILogger<StockService> logger)
     {
@@ -22,16 +24,22 @@ public class StockService
 
     /// <summary>
     /// Debita o estoque de todos os itens de uma venda concluída.
-    /// Chamado dentro do mesmo SaveChangesAsync do Pay() para garantir atomicidade.
+    /// Usa SQL direto para o UPDATE do produto (sem EF tracking),
+    /// e registra cada movimento no ledger StockMovement via EF tracker.
+    /// Deve ser chamado dentro de uma transação explícita iniciada pelo caller.
     /// </summary>
     public async Task DecrementOnSaleAsync(SaleOrder sale, string actorName, CancellationToken ct)
     {
         var productIds = sale.Items.Select(i => i.ProductId).Distinct().ToList();
 
-        // Carrega produtos com bloqueio otimista via RowVersion
+        // AsNoTracking: carrega apenas para ler StockQty atual — não rastreia no EF
         var products = await _db.Products
+            .AsNoTracking()
             .Where(p => productIds.Contains(p.Id) && p.CompanyId == sale.CompanyId)
             .ToDictionaryAsync(p => p.Id, ct);
+
+        var shortSaleId = sale.Id.ToString("N")[..8];
+        var now         = DateTime.UtcNow;
 
         foreach (var item in sale.Items)
         {
@@ -45,8 +53,17 @@ public class StockService
             if (qty <= 0) continue;
 
             var before = product.StockQty;
-            product.StockQty  -= qty;
-            product.UpdatedAtUtc = DateTime.UtcNow;
+            var after  = before - qty;
+
+            // UPDATE direto: sem EF tracking, sem concurrency check, dentro da transação do caller
+            await _db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE "Products"
+                SET    "StockQty"     = "StockQty" - {qty},
+                       "UpdatedAtUtc" = {now}
+                WHERE  "Id"        = {product.Id}
+                  AND  "CompanyId" = {sale.CompanyId}
+                """, ct);
 
             _db.StockMovements.Add(new StockMovement
             {
@@ -55,10 +72,10 @@ public class StockService
                 MovementType  = StockMovementType.SaleExit,
                 Quantity      = -qty,
                 BalanceBefore = before,
-                BalanceAfter  = product.StockQty,
+                BalanceAfter  = after,
                 SaleOrderId   = sale.Id,
                 ActorName     = actorName,
-                Reason        = $"Venda PDV #{sale.Id:N8}",
+                Reason        = $"Venda PDV #{shortSaleId}",
             });
         }
 
@@ -76,12 +93,22 @@ public class StockService
         CancellationToken ct)
     {
         var product = await _db.Products
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == productId && p.CompanyId == companyId, ct)
             ?? throw new InvalidOperationException("Produto não encontrado.");
 
         var before = product.StockQty;
-        product.StockQty     += delta;
-        product.UpdatedAtUtc  = DateTime.UtcNow;
+        var after  = before + delta;
+        var now    = DateTime.UtcNow;
+
+        await _db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE "Products"
+            SET    "StockQty"     = "StockQty" + {delta},
+                   "UpdatedAtUtc" = {now}
+            WHERE  "Id"        = {productId}
+              AND  "CompanyId" = {companyId}
+            """, ct);
 
         var movement = new StockMovement
         {
@@ -90,16 +117,15 @@ public class StockService
             MovementType  = type,
             Quantity      = delta,
             BalanceBefore = before,
-            BalanceAfter  = product.StockQty,
+            BalanceAfter  = after,
             Reason        = reason,
             ActorName     = actorName,
         };
         _db.StockMovements.Add(movement);
-
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation("[Stock] Ajuste manual: Produto {ProductId} | {Before} → {After} | {Type} | {Actor}",
-            productId, before, product.StockQty, type, actorName);
+            productId, before, after, type, actorName);
 
         return movement;
     }

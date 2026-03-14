@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AdminNav } from "@/components/admin/AdminNav";
 import {
   useCreateDeliverer,
   useDeliverer,
   useUpdateDeliverer,
 } from "@/features/admin/deliverers/queries";
+
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 10) return d.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+  return d.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
+}
+function unmask(v: string) { return v.replace(/\D/g, ""); }
 
 type FormState = {
   name: string;
@@ -41,7 +47,7 @@ export default function DelivererForm() {
     if (!isNew && deliverer) {
       setForm({
         name: deliverer.name ?? "",
-        phone: deliverer.phone ?? "",
+        phone: maskPhone(deliverer.phone ?? ""),
         vehicle: deliverer.vehicle ?? "",
         isActive: !!deliverer.isActive,
         pin: "",
@@ -72,12 +78,12 @@ export default function DelivererForm() {
       try {
         await create.mutateAsync({
           name: form.name.trim(),
-          phone: form.phone.trim(),
+          phone: unmask(form.phone),
           vehicle: form.vehicle.trim() || null,
           pin: form.pin.trim(),
           isActive: form.isActive,
         });
-        navigate("/admin/deliverers");
+        navigate("/app/logistica/entregadores");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erro ao criar entregador.");
       }
@@ -89,12 +95,12 @@ export default function DelivererForm() {
         id: id!,
         data: {
           name: form.name.trim(),
-          phone: form.phone.trim(),
+          phone: unmask(form.phone),
           vehicle: form.vehicle.trim() || null,
           isActive: form.isActive,
         },
       });
-      navigate("/admin/deliverers");
+      navigate("/app/logistica/entregadores");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar entregador.");
     }
@@ -102,8 +108,6 @@ export default function DelivererForm() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
       <div className="mx-auto max-w-2xl px-4 pb-12 pt-6 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -119,7 +123,7 @@ export default function DelivererForm() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/admin/deliverers")}
+            onClick={() => navigate("/app/logistica/entregadores")}
             className="rounded-xl border px-3 py-2 text-xs transition hover:bg-[var(--surface)]"
             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
@@ -175,7 +179,7 @@ export default function DelivererForm() {
                 </label>
                 <input
                   value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
+                  onChange={(e) => set("phone", maskPhone(e.target.value))}
                   placeholder="(21) 99999-9999"
                   inputMode="tel"
                   className="w-full h-10 rounded-xl border px-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
@@ -274,7 +278,7 @@ export default function DelivererForm() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => navigate("/admin/deliverers")}
+                onClick={() => navigate("/app/logistica/entregadores")}
                 className="flex-1 h-11 rounded-2xl border text-sm font-semibold transition-all hover:bg-[var(--surface)]"
                 style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
               >

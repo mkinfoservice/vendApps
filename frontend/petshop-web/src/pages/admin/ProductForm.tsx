@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ImagePlus, Trash2, Star } from "lucide-react";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { fetchCategories } from "@/features/catalog/api";
 import {
   useAdminProductById,
@@ -160,10 +159,10 @@ export default function ProductForm() {
     try {
       if (isNew) {
         const res = await createMut.mutateAsync(payload);
-        navigate(`/admin/products/${res.id}`, { replace: true });
+        navigate(`/app/produtos/${res.id}`, { replace: true });
       } else {
         await updateMut.mutateAsync(payload);
-        navigate("/admin/products");
+        navigate("/app/produtos");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar produto.");
@@ -175,8 +174,6 @@ export default function ProductForm() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
       <div className="mx-auto max-w-2xl px-4 pb-12 pt-6 space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -192,7 +189,7 @@ export default function ProductForm() {
           </div>
           <button
             type="button"
-            onClick={() => navigate("/admin/products")}
+            onClick={() => navigate("/app/produtos")}
             className="rounded-xl border px-3 py-2 text-xs transition hover:bg-[var(--surface)]"
             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
           >
@@ -506,7 +503,7 @@ export default function ProductForm() {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => navigate("/admin/products")}
+                onClick={() => navigate("/app/produtos")}
                 className="flex-1 h-11 rounded-2xl border text-sm font-semibold transition-all hover:bg-[var(--surface)]"
                 style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
               >

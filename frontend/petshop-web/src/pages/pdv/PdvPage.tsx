@@ -132,7 +132,7 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
             <label className="text-xs text-gray-500">Valor (R$)</label>
             <input
               type="number" min={0} step={0.01} autoFocus
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0,00"
@@ -141,7 +141,7 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
           <div>
             <label className="text-xs text-gray-500">Descrição (opcional)</label>
             <input
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: Reforço de troco"}
@@ -266,7 +266,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
                 <label className="text-xs text-gray-500">Contagem física (R$)</label>
                 <input
                   type="number" min={0} step={0.01}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
                   value={closing}
                   onChange={(e) => setClosing(e.target.value)}
                   placeholder="0,00"
@@ -290,7 +290,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
             <div>
               <label className="text-xs text-gray-500">Observações (opcional)</label>
               <textarea
-                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none resize-none"
+                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none"
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -361,7 +361,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
         <input
           type="number"
           placeholder="Dinheiro recebido (R$)"
-          className="flex-1 border rounded-xl px-3 py-2 text-sm focus:outline-none"
+          className="flex-1 border rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
           value={cash}
           onChange={(e) => setCash(e.target.value)}
         />
@@ -523,30 +523,32 @@ export default function PdvPage() {
       )}
 
       {/* Top Bar */}
-      <div className="bg-white shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
-        <span className="font-bold text-lg" style={{ color: "#7c5cf8" }}>PDV</span>
-        <span className="text-sm text-gray-500">{session.registerName}</span>
-        <span className="ml-auto text-xs text-gray-400 hidden sm:block">
-          Operador: {session.openedByUserName}
+      <div className="bg-white shadow-sm px-4 py-2 flex items-center gap-2 flex-wrap min-h-[52px]">
+        <span className="font-bold text-base" style={{ color: "#7c5cf8" }}>PDV</span>
+        <span className="text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{session.registerName}</span>
+        <span className="hidden sm:block text-xs text-gray-400 ml-1">
+          · {session.openedByUserName}
         </span>
-        <button
-          onClick={() => setMovementType("Sangria")}
-          className="text-xs text-red-500 border border-red-200 px-3 py-1 rounded-full hover:bg-red-50 transition"
-        >
-          Sangria
-        </button>
-        <button
-          onClick={() => setMovementType("Suprimento")}
-          className="text-xs text-green-600 border border-green-200 px-3 py-1 rounded-full hover:bg-green-50 transition"
-        >
-          Suprimento
-        </button>
-        <button
-          onClick={() => setShowCloseModal(true)}
-          className="text-xs text-gray-500 border border-gray-200 px-3 py-1 rounded-full hover:bg-gray-50 transition"
-        >
-          Fechar Caixa
-        </button>
+        <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
+          <button
+            onClick={() => setMovementType("Sangria")}
+            className="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-50 transition whitespace-nowrap"
+          >
+            Sangria
+          </button>
+          <button
+            onClick={() => setMovementType("Suprimento")}
+            className="text-xs text-green-600 border border-green-200 px-2.5 py-1 rounded-full hover:bg-green-50 transition whitespace-nowrap"
+          >
+            Suprimento
+          </button>
+          <button
+            onClick={() => setShowCloseModal(true)}
+            className="text-xs text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-gray-50 transition whitespace-nowrap"
+          >
+            Fechar Caixa
+          </button>
+        </div>
       </div>
 
       {/* Feedback toast */}
@@ -560,9 +562,41 @@ export default function PdvPage() {
         </div>
       )}
 
-      <div className="flex flex-1 gap-4 p-4 overflow-hidden">
+      {/* ── Mobile: Payment panel overlay when showPay ──────────── */}
+      {showPay && (
+        <div className="lg:hidden fixed inset-0 z-30 bg-black/50 flex items-end" onClick={() => setShowPay(false)}>
+          <div
+            className="w-full bg-white rounded-t-3xl p-5 pb-8 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto" />
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Subtotal</span>
+                <span>{brl(currentSale?.subtotalCents ?? 0)}</span>
+              </div>
+              {(currentSale?.discountCents ?? 0) > 0 && (
+                <div className="flex justify-between text-sm text-red-500">
+                  <span>Desconto</span><span>-{brl(currentSale!.discountCents)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xl font-bold text-gray-800 border-t pt-2 mt-1">
+                <span>Total</span><span>{brl(currentSale?.totalCents ?? 0)}</span>
+              </div>
+            </div>
+            <PayPanel
+              totalCents={currentSale?.totalCents ?? 0}
+              onPay={handlePay}
+              onCancel={handleCancelSale}
+              paying={paying}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 p-3 sm:p-4 min-h-0">
         {/* ── Left: Barcode + Item list ───────────────────────── */}
-        <div className="flex-1 flex flex-col gap-4 min-w-0">
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
           <form onSubmit={handleScan} className="flex gap-2">
             <input
               ref={barcodeRef}
@@ -570,64 +604,92 @@ export default function PdvPage() {
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Código de barras..."
-              className="flex-1 border rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="flex-1 border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
             />
             <button
               type="submit"
               disabled={scanning || !barcode.trim()}
-              className="px-5 py-2 rounded-xl text-white text-sm font-medium transition active:scale-95"
+              className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50"
               style={{ background: "#7c5cf8" }}
             >
               {scanning ? "..." : "Ler"}
             </button>
           </form>
 
-          <div className="flex-1 bg-white rounded-2xl shadow-sm overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ minHeight: 200, flex: "1 1 0" }}>
             {!currentSale || currentSale.items.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-gray-300 text-sm">
+              <div className="h-full min-h-[160px] flex items-center justify-center text-gray-300 text-sm">
                 Nenhum item adicionado
               </div>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="border-b">
-                  <tr className="text-left text-xs text-gray-400">
-                    <th className="px-4 py-3">Produto</th>
-                    <th className="px-3 py-3 text-right">Qtd</th>
-                    <th className="px-3 py-3 text-right">Unit</th>
-                    <th className="px-3 py-3 text-right">Total</th>
-                    <th className="px-3 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentSale.items.map((item) => (
-                    <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="px-4 py-2 font-medium">{item.productNameSnapshot}</td>
-                      <td className="px-3 py-2 text-right text-gray-600">
-                        {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
-                      </td>
-                      <td className="px-3 py-2 text-right text-gray-500">
-                        {brl(item.unitPriceCentsSnapshot)}
-                        {item.isSoldByWeight && <span className="text-xs">/kg</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold">{brl(item.totalCents)}</td>
-                      <td className="px-3 py-2">
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-red-400 hover:text-red-600 text-xs"
-                        >
-                          ✕
-                        </button>
-                      </td>
+              <div className="overflow-y-auto h-full">
+                <table className="w-full text-sm text-gray-900">
+                  <thead className="border-b sticky top-0 bg-white z-10">
+                    <tr className="text-left text-xs text-gray-400">
+                      <th className="px-4 py-3">Produto</th>
+                      <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
+                      <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
+                      <th className="px-3 py-3 text-right">Total</th>
+                      <th className="px-3 py-3 w-8" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentSale.items.map((item) => (
+                      <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
+                        <td className="px-4 py-2.5 font-medium text-gray-900">
+                          <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
+                          <span className="sm:hidden text-xs text-gray-400 mt-0.5">
+                            {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
+                          {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
+                        </td>
+                        <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
+                          {brl(item.unitPriceCentsSnapshot)}
+                          {item.isSoldByWeight && <span className="text-xs">/kg</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
+                        <td className="px-3 py-2.5">
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="text-red-400 hover:text-red-600 text-sm leading-none"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
+          </div>
+
+          {/* Mobile: sticky cobrar bar */}
+          <div className="lg:hidden">
+            <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-gray-500">Total</div>
+                <div className="text-2xl font-black text-gray-800">{brl(currentSale?.totalCents ?? 0)}</div>
+                {currentSale?.publicId && (
+                  <div className="text-[10px] text-gray-400 mt-0.5">{currentSale.publicId}</div>
+                )}
+              </div>
+              <button
+                disabled={!currentSale || currentSale.items.length === 0}
+                onClick={() => setShowPay(true)}
+                className="shrink-0 px-6 py-3 rounded-xl text-white font-semibold transition active:scale-95 disabled:opacity-40 text-base"
+                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              >
+                Cobrar
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── Right: Totals + Payment ─────────────────────────── */}
-        <div className="w-72 flex flex-col gap-4">
+        {/* ── Right: Totals + Payment (desktop only) ──────────── */}
+        <div className="hidden lg:flex w-80 xl:w-96 flex-col gap-3 shrink-0">
           <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
             <div className="flex justify-between text-sm text-gray-500">
               <span>Subtotal</span>
@@ -639,7 +701,7 @@ export default function PdvPage() {
                 <span>-{brl(currentSale!.discountCents)}</span>
               </div>
             )}
-            <div className="flex justify-between text-xl font-bold text-gray-800 border-t pt-3">
+            <div className="flex justify-between text-2xl font-black text-gray-800 border-t pt-3">
               <span>Total</span>
               <span>{brl(currentSale?.totalCents ?? 0)}</span>
             </div>
@@ -648,7 +710,7 @@ export default function PdvPage() {
               <button
                 disabled={!currentSale || currentSale.items.length === 0}
                 onClick={() => setShowPay(true)}
-                className="w-full py-3 rounded-xl text-white font-semibold transition active:scale-95 disabled:opacity-40"
+                className="w-full py-3.5 rounded-xl text-white font-semibold text-base transition active:scale-95 disabled:opacity-40"
                 style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               >
                 Cobrar
@@ -663,7 +725,7 @@ export default function PdvPage() {
             )}
           </div>
 
-          {currentSale && currentSale.publicId && (
+          {currentSale?.publicId && (
             <p className="text-center text-xs text-gray-400">{currentSale.publicId}</p>
           )}
         </div>

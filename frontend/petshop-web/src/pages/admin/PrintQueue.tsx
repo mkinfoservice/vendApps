@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import { usePrintStatus } from "@/features/admin/print/PrintContext";
 import { fetchPrintJobs, markPrintedById, reprintOrder } from "@/features/admin/print/api";
 import type { PrintJobDto } from "@/features/admin/print/types";
@@ -63,7 +62,7 @@ function JobRow({ job, onMarkPrinted, onReprint, loadingId }: {
       <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
-          onClick={() => navigate(`/admin/orders/${job.orderId}`)}
+          onClick={() => navigate(`/app/pedidos/${job.orderId}`)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
           style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
           title="Ver pedido"
@@ -128,7 +127,6 @@ export default function PrintQueue() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       <div className="mx-auto max-w-3xl px-4 py-8">
 
         {/* ── Estação de Impressão toggle ──────────────────────────────── */}

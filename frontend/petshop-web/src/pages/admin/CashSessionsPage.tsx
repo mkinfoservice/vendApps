@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import {
   listAdminSessions, getSessionReport, getCashRegisters,
   type AdminSession, type SessionReport, type CashRegister,
@@ -62,7 +61,7 @@ function SessionReportModal({ session, onClose }: { session: AdminSession; onClo
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16"><Loader2 className="animate-spin text-gray-300" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} /></div>
         ) : report && (
           <div className="p-6 space-y-5">
             {/* Operators */}
@@ -180,7 +179,6 @@ export default function CashSessionsPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
       <main className="mx-auto max-w-5xl px-4 py-8">
         <h1 className="text-xl font-bold mb-6" style={{ color: "var(--text)" }}>Histórico de Sessões</h1>
 
@@ -211,7 +209,7 @@ export default function CashSessionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center py-16"><Loader2 className="animate-spin text-gray-300" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="animate-spin" style={{ color: "var(--text-muted)" }} /></div>
         ) : (
           <>
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
@@ -228,18 +226,20 @@ export default function CashSessionsPage() {
                 </thead>
                 <tbody>
                   {sessions.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400">Nenhuma sessão encontrada.</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-10 text-center" style={{ color: "var(--text-muted)" }}>Nenhuma sessão encontrada.</td></tr>
                   )}
                   {sessions.map((s) => (
                     <tr
                       key={s.id}
                       onClick={() => setSelected(s)}
-                      className="border-t hover:bg-gray-50 cursor-pointer transition"
+                      className="border-t cursor-pointer transition"
                       style={{ borderColor: "var(--border)" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = "var(--surface-2)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.backgroundColor = ""}
                     >
                       <td className="px-5 py-3 text-xs" style={{ color: "var(--text)" }}>
                         {fmtDateTime(s.openedAtUtc)}
-                        <span className="block text-gray-400">{duration(s.openedAtUtc, s.closedAtUtc)}</span>
+                        <span className="block" style={{ color: "var(--text-muted)" }}>{duration(s.openedAtUtc, s.closedAtUtc)}</span>
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell font-medium" style={{ color: "var(--text)" }}>{s.registerName}</td>
                       <td className="px-4 py-3 hidden md:table-cell text-xs" style={{ color: "var(--text-muted)" }}>{s.openedByUserName}</td>

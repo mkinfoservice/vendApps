@@ -96,8 +96,7 @@ public class Product
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 
-    // ── Concorrência ─────────────────────────────────────────
-    [Timestamp]
+    // ── Concorrência (desabilitada — xmin causava DbUpdateConcurrencyException nos seeds) ─
     public byte[]? RowVersion { get; set; }
 
     // ── Navegações ────────────────────────────────────────────

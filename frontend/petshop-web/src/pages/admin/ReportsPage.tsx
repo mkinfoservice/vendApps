@@ -4,7 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { AdminNav } from "@/components/admin/AdminNav";
+import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getSalesSummary, getSalesByDay, getTopProducts,
   getStockValuation, getFiscalSummary,
@@ -13,7 +13,7 @@ import {
   type StockValuation, type FiscalSummary,
 } from "@/features/reports/reportApi";
 import {
-  BarChart2, ShoppingCart, TrendingUp, Package,
+  ShoppingCart, TrendingUp, Package,
   FileText, Percent,
 } from "lucide-react";
 
@@ -65,14 +65,17 @@ function KpiCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-5 flex items-start gap-4">
-      <div className={`w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center shrink-0`}>
+    <div
+      className="rounded-2xl border p-5 flex items-start gap-4"
+      style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+    >
+      <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-brand" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{label}</p>
-        <p className="text-xl font-bold text-gray-900 mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+        <p className="text-xs uppercase tracking-wide font-medium" style={{ color: "var(--text-muted)" }}>{label}</p>
+        <p className="text-xl font-bold mt-0.5 truncate" style={{ color: "var(--text)" }}>{value}</p>
+        {sub && <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{sub}</p>}
       </div>
     </div>
   );
@@ -160,59 +163,58 @@ export default function ReportsPage() {
     ? fiscal.authorized + fiscal.rejected + fiscal.contingency + fiscal.pending
     : 0;
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminNav />
-      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-              <BarChart2 className="w-5 h-5 text-brand" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Relatórios</h1>
-              <p className="text-sm text-gray-500">Analytics de vendas e estoque</p>
-            </div>
-          </div>
-
-          {/* Date range selector */}
-          <div className="sm:ml-auto flex flex-wrap items-center gap-2">
-            <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1">
-              {PRESETS.map(p => (
-                <button
-                  key={p.value}
-                  onClick={() => setPreset(p.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    preset === p.value
-                      ? "bg-brand text-white shadow-sm"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {preset === "custom" && (
-              <div className="flex items-center gap-2 text-sm">
-                <input
-                  type="date"
-                  value={customFrom}
-                  onChange={e => setCustomFrom(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs"
-                />
-                <span className="text-gray-400">–</span>
-                <input
-                  type="date"
-                  value={customTo}
-                  onChange={e => setCustomTo(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs"
-                />
-              </div>
-            )}
-          </div>
+  const dateRangeActions = (
+    <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="flex gap-1 rounded-xl border p-1"
+        style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+      >
+        {PRESETS.map(p => (
+          <button
+            key={p.value}
+            type="button"
+            onClick={() => setPreset(p.value)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition"
+            style={
+              preset === p.value
+                ? { backgroundColor: "var(--brand)", color: "#fff" }
+                : { color: "var(--text-muted)" }
+            }
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {preset === "custom" && (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={e => setCustomFrom(e.target.value)}
+            className="rounded-lg border px-2 py-1.5 text-xs outline-none"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
+          />
+          <span style={{ color: "var(--text-muted)" }}>–</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={e => setCustomTo(e.target.value)}
+            className="rounded-lg border px-2 py-1.5 text-xs outline-none"
+            style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
+          />
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ backgroundColor: "var(--bg)" }}>
+      <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6 space-y-6">
+        <PageHeader
+          title="Relatórios"
+          subtitle="Analytics de vendas e estoque"
+          actions={dateRangeActions}
+        />
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -243,10 +245,10 @@ export default function ReportsPage() {
         </div>
 
         {/* Revenue chart */}
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Receita por dia</h2>
+        <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+          <h2 className="font-semibold mb-4" style={{ color: "var(--text)" }}>Receita por dia</h2>
           {chartData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
+            <div className="h-48 flex items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
               Sem dados no período.
             </div>
           ) : (
@@ -298,33 +300,36 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* Top products */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-5">
-            <h2 className="font-semibold text-gray-800 mb-4">Top produtos</h2>
+          <div
+            className="lg:col-span-2 rounded-2xl border p-5"
+            style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+          >
+            <h2 className="font-semibold mb-4" style={{ color: "var(--text)" }}>Top produtos</h2>
             {topProducts.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">Sem dados no período.</p>
+              <p className="text-sm text-center py-6" style={{ color: "var(--text-muted)" }}>Sem dados no período.</p>
             ) : (
               <div className="space-y-3">
                 {topProducts.map((p, i) => (
                   <div key={p.productId} className="flex items-center gap-3">
-                    <span className="w-5 text-xs font-semibold text-gray-400 shrink-0 text-right">
+                    <span className="w-5 text-xs font-semibold shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-800 truncate pr-2">
+                        <span className="text-sm font-medium truncate pr-2" style={{ color: "var(--text)" }}>
                           {p.name}
                         </span>
-                        <span className="text-sm font-semibold text-gray-900 shrink-0">
+                        <span className="text-sm font-semibold shrink-0" style={{ color: "var(--text)" }}>
                           {fmtCurrency(p.totalCents)}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--surface-2)" }}>
                         <div
                           className="h-full bg-brand/70 rounded-full"
                           style={{ width: `${(p.totalCents / maxRevenue) * 100}%` }}
                         />
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                         {p.totalQty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} un · {p.transactionCount} transações
                       </p>
                     </div>
@@ -338,10 +343,13 @@ export default function ReportsPage() {
           <div className="space-y-5">
 
             {/* Payment breakdown */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">Formas de pagamento</h2>
+            <div
+              className="rounded-2xl border p-5"
+              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+            >
+              <h2 className="font-semibold mb-4" style={{ color: "var(--text)" }}>Formas de pagamento</h2>
               {!summary?.byPaymentMethod?.length ? (
-                <p className="text-sm text-gray-400 text-center py-4">Sem dados.</p>
+                <p className="text-sm text-center py-4" style={{ color: "var(--text-muted)" }}>Sem dados.</p>
               ) : (
                 <div className="space-y-2.5">
                   {summary.byPaymentMethod.map(pm => {
@@ -351,16 +359,16 @@ export default function ReportsPage() {
                     return (
                       <div key={pm.method}>
                         <div className="flex items-center justify-between text-sm mb-1">
-                          <span className="text-gray-700">{methodLabel(pm.method)}</span>
-                          <span className="text-gray-500 text-xs">{pct}%</span>
+                          <span style={{ color: "var(--text)" }}>{methodLabel(pm.method)}</span>
+                          <span className="text-xs" style={{ color: "var(--text-muted)" }}>{pct}%</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--surface-2)" }}>
                           <div
                             className="h-full rounded-full bg-brand"
                             style={{ width: `${pct}%`, opacity: 0.6 + pct * 0.004 }}
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                           {fmtCurrency(pm.totalCents)} · {pm.count} transações
                         </p>
                       </div>
@@ -371,20 +379,23 @@ export default function ReportsPage() {
             </div>
 
             {/* Fiscal summary */}
-            <div className="bg-white rounded-2xl shadow-sm p-5">
+            <div
+              className="rounded-2xl border p-5"
+              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+            >
               <div className="flex items-center gap-2 mb-4">
-                <FileText className="w-4 h-4 text-gray-400" />
-                <h2 className="font-semibold text-gray-800">NFC-e no período</h2>
+                <FileText className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
+                <h2 className="font-semibold" style={{ color: "var(--text)" }}>NFC-e no período</h2>
               </div>
               {!fiscal ? (
-                <p className="text-sm text-gray-400 text-center py-2">Sem dados.</p>
+                <p className="text-sm text-center py-2" style={{ color: "var(--text-muted)" }}>Sem dados.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { label: "Autorizadas", value: fiscal.authorized, color: "text-green-600 bg-green-50" },
-                    { label: "Rejeitadas",  value: fiscal.rejected,   color: "text-red-600 bg-red-50" },
-                    { label: "Contingência",value: fiscal.contingency,color: "text-orange-600 bg-orange-50" },
-                    { label: "Pendentes",   value: fiscal.pending,    color: "text-yellow-600 bg-yellow-50" },
+                    { label: "Autorizadas", value: fiscal.authorized, color: "text-green-500 bg-green-500/10" },
+                    { label: "Rejeitadas",  value: fiscal.rejected,   color: "text-red-500 bg-red-500/10" },
+                    { label: "Contingência",value: fiscal.contingency,color: "text-orange-500 bg-orange-500/10" },
+                    { label: "Pendentes",   value: fiscal.pending,    color: "text-yellow-500 bg-yellow-500/10" },
                   ].map(item => (
                     <div key={item.label} className={`rounded-xl p-3 ${item.color}`}>
                       <p className="text-xs font-medium opacity-80">{item.label}</p>
@@ -394,7 +405,7 @@ export default function ReportsPage() {
                 </div>
               )}
               {totalFiscal > 0 && (
-                <p className="text-xs text-gray-400 mt-3 text-center">
+                <p className="text-xs mt-3 text-center" style={{ color: "var(--text-muted)" }}>
                   Total: {totalFiscal} documentos
                 </p>
               )}

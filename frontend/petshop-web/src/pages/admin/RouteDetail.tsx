@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import {
   fetchRouteById,
   startRoute,
@@ -108,13 +107,11 @@ export default function RouteDetail() {
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: "var(--bg)" }}>
-      <AdminNav />
-
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
         {/* Page header */}
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => nav("/admin/routes")}
+            onClick={() => nav("/app/logistica/rotas")}
             className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
             style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-muted)" }}
           >

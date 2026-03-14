@@ -15,7 +15,7 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 
 export const ROLE_COLORS: Record<string, string> = {
-  admin:     "bg-purple-100 text-purple-700",
-  gerente:   "bg-blue-100 text-blue-700",
-  atendente: "bg-green-100 text-green-700",
+  admin:     "bg-purple-900/30 text-purple-400",
+  gerente:   "bg-blue-900/30 text-blue-400",
+  atendente: "bg-green-900/30 text-green-400",
 };

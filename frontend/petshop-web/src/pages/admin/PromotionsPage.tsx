@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AdminNav } from "@/components/admin/AdminNav";
 import {
   listPromotions, createPromotion, updatePromotion,
   togglePromotion, deletePromotion,
@@ -9,7 +8,7 @@ import {
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import { Tag, Plus, Pencil, Power, Trash2, Search } from "lucide-react";
 
-const INPUT = "border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-brand/30";
+const INPUT = "bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30";
 
 // ── Catalog lookup types ──────────────────────────────────────────────────────
 
@@ -333,9 +332,7 @@ export default function PromotionsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AdminNav />
-
+    <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       {editPromo !== undefined && (
         <PromotionModal
           promo={editPromo}
@@ -348,12 +345,12 @@ export default function PromotionsPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center">
-              <Tag className="w-5 h-5 text-brand" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "rgba(124,92,248,0.12)" }}>
+              <Tag className="w-5 h-5" style={{ color: "#7c5cf8" }} />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">Promoções & Cupons</h1>
-              <p className="text-sm text-gray-500">{promos.length} cadastrada{promos.length !== 1 ? "s" : ""}</p>
+              <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>Promoções & Cupons</h1>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>{promos.length} cadastrada{promos.length !== 1 ? "s" : ""}</p>
             </div>
           </div>
           <button
@@ -368,21 +365,23 @@ export default function PromotionsPage() {
         {/* Filters */}
         <div className="flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--text-muted)" }} />
             <input
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+              className="w-full pl-9 pr-3 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
               placeholder="Buscar por nome ou código..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex gap-1 bg-white border border-gray-200 rounded-xl p-1">
+          <div className="flex gap-1 rounded-xl p-1" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
             {([undefined, true, false] as const).map(v => (
               <button key={String(v)}
                 onClick={() => setFilterActive(v)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                  filterActive === v ? "bg-brand text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"
-                }`}>
+                  filterActive === v ? "text-white shadow-sm" : ""
+                }`}
+                style={filterActive === v ? { backgroundColor: "#7c5cf8" } : { color: "var(--text-muted)" }}>
                 {v === undefined ? "Todas" : v ? "Ativas" : "Inativas"}
               </button>
             ))}
@@ -391,16 +390,15 @@ export default function PromotionsPage() {
 
         {/* Cards grid */}
         {isLoading ? (
-          <div className="text-center py-16 text-gray-400">Carregando...</div>
+          <div className="text-center py-16" style={{ color: "var(--text-muted)" }}>Carregando...</div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">Nenhuma promoção encontrada.</div>
+          <div className="text-center py-16" style={{ color: "var(--text-muted)" }}>Nenhuma promoção encontrada.</div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(p => (
               <div key={p.id}
-                className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${
-                  !p.isActive ? "opacity-60" : ""
-                } ${p.status === "expired" ? "border-red-100" : "border-transparent"}`}
+                className={`rounded-2xl border overflow-hidden ${!p.isActive ? "opacity-60" : ""}`}
+                style={{ backgroundColor: "var(--surface)", borderColor: p.status === "expired" ? "rgba(239,68,68,0.3)" : "var(--border)" }}
               >
                 {/* Color bar */}
                 <div className={`h-1 w-full ${
@@ -410,8 +408,8 @@ export default function PromotionsPage() {
                 <div className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{p.name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{fmtScope(p)}</p>
+                      <p className="font-semibold truncate" style={{ color: "var(--text)" }}>{p.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{fmtScope(p)}</p>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${STATUS[p.status]}`}>
                       {STATUS_LABEL[p.status]}
@@ -428,23 +426,26 @@ export default function PromotionsPage() {
                   </div>
 
                   {p.minOrderCents && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       Pedido mínimo: R${(p.minOrderCents / 100).toFixed(2)}
                     </p>
                   )}
 
                   {(p.startsAtUtc || p.expiresAtUtc) && (
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {p.startsAtUtc && `De ${new Date(p.startsAtUtc).toLocaleDateString("pt-BR")} `}
                       {p.expiresAtUtc && `até ${new Date(p.expiresAtUtc).toLocaleDateString("pt-BR")}`}
                     </p>
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center justify-end gap-1 pt-1 border-t border-gray-50">
+                  <div className="flex items-center justify-end gap-1 pt-1 border-t" style={{ borderColor: "var(--border)" }}>
                     <button
                       onClick={() => setEditPromo(p)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition"
+                      className="p-1.5 rounded-lg transition"
+                      style={{ color: "var(--text-muted)" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-2)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.backgroundColor = ""}
                       title="Editar"
                     >
                       <Pencil className="w-4 h-4" />

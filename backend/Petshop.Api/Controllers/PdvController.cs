@@ -42,8 +42,18 @@ public class PdvController : ControllerBase
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
-    private Guid UserId    => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-                                          ?? User.FindFirstValue("sub")!);
+    private Guid UserId
+    {
+        get
+        {
+            // Alguns tokens (ex.: admin estatico) usam sub=username e nao um GUID.
+            var raw = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                   ?? User.FindFirstValue("userId")
+                   ?? User.FindFirstValue("sub");
+
+            return Guid.TryParse(raw, out var id) ? id : Guid.Empty;
+        }
+    }
     private string UserName => User.FindFirstValue(ClaimTypes.Name) ?? "Operador";
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -394,9 +404,9 @@ public class PdvController : ControllerBase
                 WeightKg               = (decimal)(scaleResult.WeightKg ?? 0)
             };
 
-            sale.Items.Add(item);
-            RecalcSaleTotals(sale);
-            await _db.SaveChangesAsync(ct);
+            var persisted = await InsertSaleItemAndRecalcAsync(sale.Id, item, ct);
+            if (!persisted)
+                return StatusCode(500, "Falha ao adicionar item lido na venda.");
 
             return Ok(new { item.Id, item.ProductNameSnapshot, item.Qty,
                             item.TotalCents, IsScaleBarcode = true });
@@ -421,9 +431,9 @@ public class PdvController : ControllerBase
             TotalCents             = product.PriceCents
         };
 
-        sale.Items.Add(newItem);
-        RecalcSaleTotals(sale);
-        await _db.SaveChangesAsync(ct);
+        var persistedCommon = await InsertSaleItemAndRecalcAsync(sale.Id, newItem, ct);
+        if (!persistedCommon)
+            return StatusCode(500, "Falha ao adicionar item lido na venda.");
 
         return Ok(new { newItem.Id, newItem.ProductNameSnapshot, newItem.Qty,
                         newItem.TotalCents, IsScaleBarcode = false });
@@ -473,9 +483,9 @@ public class PdvController : ControllerBase
             WeightKg               = product.IsSoldByWeight ? req.WeightKg : null
         };
 
-        sale.Items.Add(item);
-        RecalcSaleTotals(sale);
-        await _db.SaveChangesAsync(ct);
+        var persistedManual = await InsertSaleItemAndRecalcAsync(sale.Id, item, ct);
+        if (!persistedManual)
+            return StatusCode(500, "Falha ao adicionar item na venda.");
 
         return Ok(new { item.Id, item.TotalCents });
     }
@@ -571,7 +581,12 @@ public class PdvController : ControllerBase
         sale.CompletedAtUtc = DateTime.UtcNow;
         if (req.Notes is not null) sale.Notes = req.Notes;
 
-        // Debita estoque (dentro do mesmo SaveChanges para atomicidade)
+        // Transação explícita: DecrementOnSaleAsync usa ExecuteSqlAsync (direto),
+        // enquanto Sale/Payment/StockMovements/FiscalQueue são salvos via SaveChangesAsync.
+        // Ambos participam da mesma conexão/transação para garantir atomicidade.
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        // Debita estoque via SQL direto (sem EF tracking, sem concurrency check)
         await _stock.DecrementOnSaleAsync(sale, UserName, ct);
 
         // Enfileira emissão fiscal (exceto contingência permanente)
@@ -591,6 +606,7 @@ public class PdvController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         // Dispara processamento assíncrono da fila fiscal
         if (sale.FiscalDecision != "PermanentContingency")
@@ -725,6 +741,40 @@ public class PdvController : ControllerBase
     {
         sale.SubtotalCents = sale.Items.Sum(i => i.TotalCents);
         sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
+    }
+
+    private async Task<bool> InsertSaleItemAndRecalcAsync(Guid saleId, SaleOrderItem item, CancellationToken ct)
+    {
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await _db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO ""SaleOrderItems""
+(""Id"", ""SaleOrderId"", ""ProductId"", ""ProductNameSnapshot"", ""ProductBarcodeSnapshot"", ""Qty"", ""UnitPriceCentsSnapshot"", ""TotalCents"", ""IsSoldByWeight"", ""WeightKg"")
+VALUES
+({item.Id}, {saleId}, {item.ProductId}, {item.ProductNameSnapshot}, {item.ProductBarcodeSnapshot}, {item.Qty}, {item.UnitPriceCentsSnapshot}, {item.TotalCents}, {item.IsSoldByWeight}, {item.WeightKg});", ct);
+
+            await _db.Database.ExecuteSqlInterpolatedAsync($@"
+UPDATE ""SaleOrders"" s
+SET
+  ""SubtotalCents"" = COALESCE(items.""Subtotal"", 0),
+  ""TotalCents""    = GREATEST(0, COALESCE(items.""Subtotal"", 0) - s.""DiscountCents"")
+FROM (
+  SELECT ""SaleOrderId"", SUM(""TotalCents"")::int AS ""Subtotal""
+  FROM ""SaleOrderItems""
+  WHERE ""SaleOrderId"" = {saleId}
+  GROUP BY ""SaleOrderId""
+) items
+WHERE s.""Id"" = {saleId};", ct);
+
+            await tx.CommitAsync(ct);
+            return true;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            return false;
+        }
     }
 
     private static Entities.Fiscal.FiscalPaymentMethod MapToFiscalPaymentMethod(string method) =>

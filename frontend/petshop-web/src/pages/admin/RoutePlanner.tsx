@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
-import { AdminNav } from "@/components/admin/AdminNav";
 
 import { fetchActiveDeliverers, fetchReadyOrders } from "@/features/admin/routes/plannerApi";
 import {
@@ -56,7 +55,7 @@ export default function RoutePlanner() {
         routeSide: selectedSide ?? undefined,
       }),
     onSuccess: (data) => {
-      nav(`/admin/routes/${data.routeId}`);
+      nav(`/app/logistica/rotas/${data.routeId}`);
     },
   });
 
@@ -79,8 +78,7 @@ export default function RoutePlanner() {
   const totalPages = Math.max(1, Math.ceil(total / 50));
 
   return (
-    <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
-      <AdminNav />
+    <div className="bg-[var(--bg)] text-[var(--text)]">
       <div className="mx-auto max-w-5xl px-4 pb-10 pt-6 space-y-4">
 
         {/* Header */}
@@ -91,7 +89,7 @@ export default function RoutePlanner() {
           </div>
           <button
             className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition"
-            onClick={() => nav("/admin/routes")}
+            onClick={() => nav("/app/logistica/rotas")}
           >
             Voltar
           </button>

@@ -340,7 +340,9 @@ app.UseExceptionHandler(errorApp =>
                 exceptionFeature.Error.Message);
         }
 
-        var response = new { error = "Erro interno do servidor. Tente novamente mais tarde." };
+        object response = (app.Environment.IsDevelopment() && exceptionFeature != null)
+            ? new { error = exceptionFeature.Error.Message, detail = exceptionFeature.Error.ToString() }
+            : (object)new { error = "Erro interno do servidor. Tente novamente mais tarde." };
         await context.Response.WriteAsync(JsonSerializer.Serialize(response));
     });
 });

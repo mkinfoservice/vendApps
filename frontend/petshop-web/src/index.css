@@ -40,6 +40,25 @@ body {
   min-width: 320px;
 }
 
+/* Inputs dentro de superficies brancas (ex.: popups/modais bg-white) */
+.bg-white input,
+.bg-white textarea,
+.bg-white select {
+  color: #0f172a;
+  caret-color: #0f172a;
+}
+
+.bg-white input::placeholder,
+.bg-white textarea::placeholder {
+  color: #64748b;
+  opacity: 1;
+}
+
+/* Em dark mode, conteudo em cards/popup brancos deve permanecer legivel */
+.dark .bg-white {
+  color: #0f172a;
+}
+
 /* ─── Scrollbar ──────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
