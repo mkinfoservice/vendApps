@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
   closeSession, getCupom, getSessionReport, addMovement, importDav,
   type Sale, type CupomData, type SessionReport,
 } from "@/features/pdv/api";
+import { adminFetch } from "@/features/admin/auth/adminFetch";
 import OpenSessionPage from "./OpenSessionPage";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -385,6 +387,65 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
   );
 }
 
+// ── DAV Search Modal ─────────────────────────────────────────────────────────
+
+interface DavSummary { id: string; publicId: string; customerName: string; totalCents: number; itemCount: number; }
+
+function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => void; onClose: () => void }) {
+  const [q, setQ]               = useState("");
+  const [results, setResults]   = useState<DavSummary[]>([]);
+  const [loading, setLoading]   = useState(false);
+
+  useEffect(() => {
+    const from = new Date(); from.setHours(0, 0, 0, 0);
+    setLoading(true);
+    adminFetch<{ items: DavSummary[] }>(`/admin/dav?origin=Manual&pageSize=50&from=${from.toISOString()}`)
+      .then((r) => setResults(r.items))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmt = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const filtered = q.trim()
+    ? results.filter((d) => d.publicId.toLowerCase().includes(q.toLowerCase()) || d.customerName?.toLowerCase().includes(q.toLowerCase()))
+    : results;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-3 pb-3 sm:pb-0">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[70vh]">
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+          <h3 className="font-semibold text-gray-800 text-sm">Buscar Orçamento (DAV)</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+        <div className="px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2">
+            <Search size={14} className="text-gray-400" />
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Código ou nome do cliente…"
+              className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400" />
+          </div>
+        </div>
+        <div className="overflow-y-auto flex-1 px-2 pb-3">
+          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregando…</p>}
+          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orçamento encontrado.</p>}
+          {filtered.map((d) => (
+            <button key={d.id} type="button"
+              onClick={() => { onSelect(d.publicId); onClose(); }}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-left transition"
+            >
+              <div>
+                <p className="text-sm font-semibold text-emerald-700">{d.publicId}</p>
+                <p className="text-xs text-gray-400">{d.customerName || "—"} · {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
+              </div>
+              <p className="text-sm font-bold text-gray-700">{fmt(d.totalCents)}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main PDV Page ─────────────────────────────────────────────────────────────
 
 export default function PdvPage() {
@@ -395,6 +456,7 @@ export default function PdvPage() {
   const [scanning, setScanning]             = useState(false);
   const [davCode, setDavCode]               = useState("");
   const [importingDav, setImportingDav]     = useState(false);
+  const [showDavSearch, setShowDavSearch]   = useState(false);
   const [paying, setPaying]                 = useState(false);
   const [showPay, setShowPay]               = useState(false);
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
@@ -450,8 +512,12 @@ export default function PdvPage() {
     e.preventDefault();
     if (!sale || !davCode.trim()) return;
     setImportingDav(true);
+    // Accept "DAV-XXXX" or just "XXXX" — backend stores with DAV- prefix
+    const code = davCode.trim().toUpperCase().startsWith("DAV-")
+      ? davCode.trim().toUpperCase()
+      : `DAV-${davCode.trim().toUpperCase()}`;
     try {
-      const res = await importDav(sale.id, davCode.trim());
+      const res = await importDav(sale.id, code);
       await refreshSale(sale.id);
       flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
       setDavCode("");
@@ -537,6 +603,12 @@ export default function PdvPage() {
           sessionId={session.id}
           defaultType={movementType}
           onClose={() => setMovementType(null)}
+        />
+      )}
+      {showDavSearch && (
+        <DavSearchModal
+          onSelect={(code) => setDavCode(code)}
+          onClose={() => setShowDavSearch(false)}
         />
       )}
 
@@ -634,20 +706,32 @@ export default function PdvPage() {
             </button>
           </form>
 
-          <form onSubmit={handleImportDav} className="flex gap-2">
-            <input
-              value={davCode}
-              onChange={(e) => setDavCode(e.target.value)}
-              placeholder="Orçamento DAV (cód. ou barcode)..."
-              className="flex-1 border border-emerald-300 rounded-xl px-4 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-            />
+          {/* ── DAV Import ─────────────────────────────────────────── */}
+          <form onSubmit={handleImportDav} className="flex gap-2 items-center">
+            <div className="flex-1 flex items-center border border-emerald-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-400 overflow-hidden">
+              <span className="pl-3 pr-1 text-xs font-bold text-emerald-600 select-none whitespace-nowrap">DAV-</span>
+              <input
+                value={davCode}
+                onChange={(e) => setDavCode(e.target.value.replace(/^DAV-/i, ""))}
+                placeholder="código ou escaneie…"
+                className="flex-1 py-2 pr-3 text-sm bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none"
+              />
+            </div>
             <button
               type="submit"
               disabled={importingDav || !davCode.trim()}
               className="px-4 py-2 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
               style={{ background: "#10b981" }}
             >
-              {importingDav ? "..." : "Importar DAV"}
+              {importingDav ? "…" : "Importar"}
+            </button>
+            <button
+              type="button"
+              title="Buscar orçamento"
+              onClick={() => setShowDavSearch(true)}
+              className="p-2 rounded-xl border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition"
+            >
+              <Search size={16} />
             </button>
           </form>
 

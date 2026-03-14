@@ -24,14 +24,15 @@ namespace Petshop.Api.Controllers;
 [Authorize(Roles = "admin,gerente,atendente")]
 public class PdvController : ControllerBase
 {
-    private readonly AppDbContext          _db;
-    private readonly ScaleBarcodeParser    _scale;
-    private readonly FiscalDecisionService _fiscal;
-    private readonly IBackgroundJobClient  _jobs;
-    private readonly StockService          _stock;
-    private readonly LoyaltyService        _loyalty;
+    private readonly AppDbContext                _db;
+    private readonly ScaleBarcodeParser          _scale;
+    private readonly FiscalDecisionService       _fiscal;
+    private readonly IBackgroundJobClient        _jobs;
+    private readonly StockService                _stock;
+    private readonly LoyaltyService              _loyalty;
+    private readonly ILogger<PdvController>      _logger;
 
-    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty)
+    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty, ILogger<PdvController> logger)
     {
         _db      = db;
         _scale   = scale;
@@ -39,6 +40,7 @@ public class PdvController : ControllerBase
         _jobs    = jobs;
         _stock   = stock;
         _loyalty = loyalty;
+        _logger  = logger;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -680,6 +682,7 @@ public class PdvController : ControllerBase
     /// <summary>
     /// Importa itens de um DAV (por PublicId) para uma venda aberta.
     /// O caixa escaneia o código de barras do orçamento impresso.
+    /// Usa raw SQL para todos os UPDATEs (evita DbUpdateConcurrencyException).
     /// </summary>
     [HttpPost("sale/{id:guid}/import-dav")]
     public async Task<IActionResult> ImportDav(
@@ -687,7 +690,11 @@ public class PdvController : ControllerBase
         [FromBody] ImportDavRequest req,
         CancellationToken ct)
     {
+        // Normaliza: aceita "DAV-XXXXXXXX" ou apenas "XXXXXXXX"
+        var quoteCode = req.QuoteCode.Trim();
+
         var sale = await _db.SaleOrders
+            .AsNoTracking()
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
@@ -695,62 +702,111 @@ public class PdvController : ControllerBase
         if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
 
         var dav = await _db.SalesQuotes
+            .AsNoTracking()
             .Include(q => q.Items)
-            .FirstOrDefaultAsync(q => q.PublicId == req.QuoteCode &&
+            .FirstOrDefaultAsync(q => q.PublicId == quoteCode &&
                                       q.CompanyId == CompanyId &&
                                       q.Status != SalesQuoteStatus.Converted &&
                                       q.Status != SalesQuoteStatus.Cancelled, ct);
 
         if (dav is null) return BadRequest("Orçamento não encontrado ou já utilizado.");
 
-        // Merge: add DAV items to existing sale
-        foreach (var item in dav.Items)
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+        try
         {
-            var existing = sale.Items.FirstOrDefault(i =>
-                i.ProductId == item.ProductId && !i.IsSoldByWeight);
+            int itemsAdded = 0;
 
-            if (existing != null)
+            // Merge DAV items → sale (INSERT novos / UPDATE qty existentes — via SQL)
+            foreach (var davItem in dav.Items)
             {
-                existing.Qty       += item.Qty;
-                existing.TotalCents = (int)Math.Round(existing.Qty * existing.UnitPriceCentsSnapshot);
-            }
-            else
-            {
-                sale.Items.Add(new SaleOrderItem
+                var existing = sale.Items.FirstOrDefault(i =>
+                    i.ProductId == davItem.ProductId && !i.IsSoldByWeight);
+
+                if (existing != null)
                 {
-                    ProductId              = item.ProductId,
-                    ProductNameSnapshot    = item.ProductNameSnapshot,
-                    ProductBarcodeSnapshot = item.ProductBarcodeSnapshot,
-                    Qty                    = item.Qty,
-                    UnitPriceCentsSnapshot = item.UnitPriceCentsSnapshot,
-                    TotalCents             = item.TotalCents,
-                    IsSoldByWeight         = item.IsSoldByWeight,
-                    WeightKg               = item.WeightKg
-                });
+                    var newQty   = existing.Qty + davItem.Qty;
+                    var newTotal = (int)Math.Round((double)newQty * (double)existing.UnitPriceCentsSnapshot);
+                    await _db.Database.ExecuteSqlAsync(
+                        $"""
+                        UPDATE "SaleOrderItems"
+                        SET "Qty" = {newQty}, "TotalCents" = {newTotal}
+                        WHERE "Id" = {existing.Id}
+                        """, ct);
+                }
+                else
+                {
+                    var newItem = new SaleOrderItem
+                    {
+                        SaleOrderId            = id,
+                        ProductId              = davItem.ProductId,
+                        ProductNameSnapshot    = davItem.ProductNameSnapshot,
+                        ProductBarcodeSnapshot = davItem.ProductBarcodeSnapshot,
+                        Qty                    = davItem.Qty,
+                        UnitPriceCentsSnapshot = davItem.UnitPriceCentsSnapshot,
+                        TotalCents             = davItem.TotalCents,
+                        IsSoldByWeight         = davItem.IsSoldByWeight,
+                        WeightKg               = davItem.WeightKg
+                    };
+                    _db.SaleOrderItems.Add(newItem);
+                    await _db.SaveChangesAsync(ct);
+                }
+                itemsAdded++;
             }
+
+            // Recalc totals via SQL
+            await _db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE "SaleOrders" s
+                SET "SubtotalCents" = COALESCE(items."Subtotal", 0),
+                    "TotalCents"    = GREATEST(0, COALESCE(items."Subtotal", 0) - s."DiscountCents"),
+                    "SalesQuoteId"  = {dav.Id},
+                    "CustomerName"  = CASE WHEN s."CustomerName" = '' OR s."CustomerName" IS NULL
+                                          THEN {dav.CustomerName ?? ""}
+                                          ELSE s."CustomerName"
+                                     END
+                FROM (
+                    SELECT "SaleOrderId", SUM("TotalCents")::int AS "Subtotal"
+                    FROM "SaleOrderItems" WHERE "SaleOrderId" = {id}
+                    GROUP BY "SaleOrderId"
+                ) items
+                WHERE s."Id" = {id}
+                """, ct);
+
+            // Marca DAV como Convertido via SQL
+            var now = DateTime.UtcNow;
+            await _db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE "SalesQuotes"
+                SET "Status"         = 'Converted',
+                    "SaleOrderId"    = {id},
+                    "ConvertedAtUtc" = {now},
+                    "UpdatedAtUtc"   = {now}
+                WHERE "Id" = {dav.Id}
+                """, ct);
+
+            await tx.CommitAsync(ct);
+
+            // Retorna totais atualizados
+            var updated = await _db.SaleOrders
+                .AsNoTracking()
+                .Select(o => new { o.Id, o.SubtotalCents, o.TotalCents })
+                .FirstOrDefaultAsync(o => o.Id == id, ct);
+
+            return Ok(new
+            {
+                sale.Id,
+                ItemsAdded   = itemsAdded,
+                dav.PublicId,
+                SubtotalCents = updated?.SubtotalCents ?? 0,
+                TotalCents    = updated?.TotalCents ?? 0,
+            });
         }
-
-        RecalcSaleTotals(sale);
-
-        if (string.IsNullOrWhiteSpace(sale.CustomerName) && !string.IsNullOrWhiteSpace(dav.CustomerName))
-            sale.CustomerName = dav.CustomerName;
-
-        sale.SalesQuoteId = dav.Id;
-        dav.Status        = SalesQuoteStatus.Converted;
-        dav.SaleOrderId   = sale.Id;
-        dav.ConvertedAtUtc = DateTime.UtcNow;
-        dav.UpdatedAtUtc   = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(ct);
-
-        return Ok(new
+        catch (Exception ex)
         {
-            sale.Id,
-            ItemsAdded   = dav.Items.Count,
-            dav.PublicId,
-            sale.SubtotalCents,
-            sale.TotalCents,
-        });
+            await tx.RollbackAsync(ct);
+            _logger.LogError(ex, "[ImportDav] Erro ao importar DAV {QuoteCode} para venda {SaleId}.", quoteCode, id);
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     // ── GET /pdv/sale/{id}/cupom ──────────────────────────────────────────────
