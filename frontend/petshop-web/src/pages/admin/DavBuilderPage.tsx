@@ -160,6 +160,17 @@ export default function DavBuilderPage() {
     );
   }
 
+  function setQty(productId: string, qty: number) {
+    if (isNaN(qty) || qty <= 0) { removeItem(productId); return; }
+    setItems((prev) =>
+      prev.map((i) =>
+        i.productId === productId
+          ? { ...i, qty, totalCents: qty * i.priceCents }
+          : i
+      )
+    );
+  }
+
   function removeItem(productId: string) {
     setItems((prev) => prev.filter((i) => i.productId !== productId));
   }
@@ -275,18 +286,25 @@ export default function DavBuilderPage() {
                         <div className="flex items-center gap-1 justify-center">
                           <button
                             onClick={() => updateQty(item.productId, -1)}
-                            className="w-7 h-7 rounded-lg border flex items-center justify-center transition hover:bg-red-50 hover:border-red-300 hover:text-red-500"
+                            className="w-6 h-6 rounded-lg border flex items-center justify-center transition hover:bg-red-50 hover:border-red-300 hover:text-red-500 shrink-0"
                             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
                           >
-                            <Minus size={10} />
+                            <Minus size={9} />
                           </button>
-                          <span className="w-8 text-center font-bold text-sm" style={{ color: "var(--text)" }}>{item.qty}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            value={item.qty}
+                            onChange={(e) => setQty(item.productId, parseInt(e.target.value, 10))}
+                            className="w-12 text-center font-bold text-sm border rounded-lg px-1 py-1 outline-none focus:ring-2 focus:ring-[#7c5cf8]/30"
+                            style={{ borderColor: "var(--border)", color: "var(--text)", backgroundColor: "var(--bg)" }}
+                          />
                           <button
                             onClick={() => updateQty(item.productId, +1)}
-                            className="w-7 h-7 rounded-lg border flex items-center justify-center transition hover:bg-green-50 hover:border-green-300 hover:text-green-600"
+                            className="w-6 h-6 rounded-lg border flex items-center justify-center transition hover:bg-green-50 hover:border-green-300 hover:text-green-600 shrink-0"
                             style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
                           >
-                            <Plus size={10} />
+                            <Plus size={9} />
                           </button>
                         </div>
                       </td>

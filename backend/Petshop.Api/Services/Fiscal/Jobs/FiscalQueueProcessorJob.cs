@@ -65,10 +65,27 @@ public class FiscalQueueProcessorJob
 
     private async Task ProcessItemAsync(FiscalQueue item, FiscalConfig? fallbackConfig, CancellationToken ct)
     {
-        item.Status         = FiscalQueueStatus.Processing;
-        item.RetryCount++;
-        item.ProcessedAtUtc = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        // Atomic claim: só avança se o item ainda está Waiting neste momento.
+        // Previne que múltiplos workers do Hangfire processem o mesmo item em paralelo.
+        var now = DateTime.UtcNow;
+        var claimed = await _db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE "FiscalQueues"
+            SET    "Status"         = 'Processing',
+                   "RetryCount"     = "RetryCount" + 1,
+                   "ProcessedAtUtc" = {now}
+            WHERE  "Id" = {item.Id} AND "Status" = 'Waiting'
+            """, ct);
+
+        if (claimed == 0)
+        {
+            _logger.LogDebug("[FiscalQueue] Item {Id} já reclamado por outro worker. Ignorando.", item.Id);
+            return;
+        }
+
+        // Recarrega item do banco para ter instância limpa no EF tracker
+        // (a instância anterior foi carregada antes do UPDATE atômico)
+        item = (await _db.FiscalQueues.FindAsync(new object[] { item.Id }, ct))!;
 
         try
         {
