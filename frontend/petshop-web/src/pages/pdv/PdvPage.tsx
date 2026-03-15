@@ -402,7 +402,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
 
 // ── DAV Search Modal ─────────────────────────────────────────────────────────
 
-interface DavSummary { id: string; publicId: string; customerName: string; totalCents: number; itemCount: number; }
+interface DavSummary { id: string; publicId: string; customerName: string; totalCents: number; itemCount: number; status: string; }
 
 function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => void; onClose: () => void }) {
   const [q, setQ]               = useState("");
@@ -412,8 +412,8 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
   useEffect(() => {
     const from = new Date(); from.setHours(0, 0, 0, 0);
     setLoading(true);
-    adminFetch<{ items: DavSummary[] }>(`/admin/dav?origin=Manual&pageSize=50&from=${from.toISOString()}`)
-      .then((r) => setResults(r.items))
+    adminFetch<{ items: DavSummary[] }>(`/admin/dav?origin=Manual&pageSize=100&from=${from.toISOString()}`)
+      .then((r) => setResults(r.items.filter((d) => d.status !== "Converted" && d.status !== "Cancelled")))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
