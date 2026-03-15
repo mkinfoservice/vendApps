@@ -21,53 +21,66 @@ const payMethodLabel = (m: string): string =>
 // ── Cupom ─────────────────────────────────────────────────────────────────────
 
 function printCupom(data: CupomData) {
-  const lines = data.items
-    .map(
-      (i) =>
-        `<tr>
-          <td>${i.productNameSnapshot}</td>
-          <td style="text-align:right">${i.isSoldByWeight ? `${i.weightKg?.toFixed(3)} kg` : `${i.qty}x`}</td>
-          <td style="text-align:right">${brl(i.totalCents)}</td>
-        </tr>`
-    )
-    .join("");
+  const itemRows = data.items.map((i) => {
+    const qtyLabel = i.isSoldByWeight ? `${i.weightKg?.toFixed(3)} kg` : `${i.qty}x`;
+    return `
+      <tr><td colspan="3" style="font-size:11px;font-weight:600;padding-top:4px">${i.productNameSnapshot}</td></tr>
+      <tr style="color:#555">
+        <td style="font-size:11px">${qtyLabel}</td>
+        <td style="font-size:11px;text-align:right">${brl(i.unitPriceCentsSnapshot)}</td>
+        <td style="font-size:11px;text-align:right;font-weight:bold;color:#111">${brl(i.totalCents)}</td>
+      </tr>
+      <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #ddd;margin:2px 0"></td></tr>`;
+  }).join("");
 
-  const pays = data.payments
-    .map((p) => `<tr><td>${payMethodLabel(p.paymentMethod)}</td><td style="text-align:right">${brl(p.amountCents)}</td></tr>`)
-    .join("");
+  const payRows = data.payments.map((p) =>
+    `<tr>
+      <td style="font-size:11px">${payMethodLabel(p.paymentMethod)}</td>
+      <td style="font-size:11px;text-align:right;font-weight:600">${brl(p.amountCents)}</td>
+      ${p.changeCents > 0 ? `<td style="font-size:10px;text-align:right;color:#555">troco ${brl(p.changeCents)}</td>` : "<td></td>"}
+    </tr>`
+  ).join("");
 
-  const html = `
-    <!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <style>
-      * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family: monospace; font-size: 11px; width: 80mm; padding: 4mm; }
-      h2 { text-align: center; font-size: 13px; margin-bottom: 4px; }
-      p  { text-align: center; font-size: 10px; color:#555; margin-bottom: 6px; }
-      hr { border: none; border-top: 1px dashed #999; margin: 6px 0; }
-      table { width: 100%; border-collapse: collapse; }
-      td { padding: 2px 0; }
-      .total { font-weight: bold; font-size: 13px; }
-      @media print { @page { margin: 0; } }
-    </style></head><body>
-    <h2>${data.companyName}</h2>
-    <p>Cupom #${data.publicId}</p>
-    <p>${new Date(data.createdAtUtc).toLocaleString("pt-BR")}</p>
-    <hr/>
-    <table>${lines}</table>
-    <hr/>
-    <table>
-      <tr><td>Subtotal</td><td style="text-align:right">${brl(data.subtotalCents)}</td></tr>
-      ${data.discountCents > 0 ? `<tr><td>Desconto</td><td style="text-align:right">-${brl(data.discountCents)}</td></tr>` : ""}
-      <tr class="total"><td>Total</td><td style="text-align:right">${brl(data.totalCents)}</td></tr>
-    </table>
-    <hr/>
-    <table>${pays}</table>
-    ${data.fiscalDecision === "PermanentContingency" ? "<hr/><p style='font-size:9px'>Venda em contingência — NFC-e não emitida</p>" : ""}
-    <hr/>
-    <p style="margin-top:6px">Obrigado pela preferência!</p>
-    </body></html>`;
+  const contingNote = data.fiscalDecision === "PermanentContingency"
+    ? `<p style="font-size:9px;color:#c00;text-align:center;margin-top:4px">⚠ VENDA EM CONTINGÊNCIA — NFC-e não emitida</p>` : "";
 
-  const win = window.open("", "_blank", "width=360,height=600");
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',monospace;font-size:11px;width:80mm;padding:6px 8px 10px}
+  .co{font-size:14px;font-weight:bold;text-align:center;letter-spacing:.5px}
+  .sub{font-size:10px;text-align:center;color:#555;margin-bottom:2px}
+  .sep-solid{border:none;border-top:2px solid #000;margin:5px 0}
+  .sep-dash{border:none;border-top:1px dashed #aaa;margin:5px 0}
+  table{width:100%;border-collapse:collapse}
+  .total-row td{font-size:14px;font-weight:bold;padding-top:3px}
+  .thanks{font-size:10px;text-align:center;color:#555;margin-top:6px}
+  @media print{@page{margin:0}body{padding:3px}}
+</style>
+</head><body>
+<p class="co">${data.companyName}</p>
+<p class="sub">CUPOM NÃO FISCAL</p>
+<p class="sub">${data.publicId}</p>
+<p class="sub">${new Date(data.createdAtUtc).toLocaleString("pt-BR")}</p>
+${data.customerName ? `<p class="sub">Cliente: ${data.customerName}</p>` : ""}
+<hr class="sep-solid">
+<table><tbody>${itemRows}</tbody></table>
+<hr class="sep-solid">
+<table>
+  ${data.discountCents > 0 ? `<tr><td style="font-size:11px">Subtotal</td><td style="font-size:11px;text-align:right">${brl(data.subtotalCents)}</td><td></td></tr>
+  <tr><td style="font-size:11px">Desconto</td><td style="font-size:11px;text-align:right;color:#c00">-${brl(data.discountCents)}</td><td></td></tr>` : ""}
+  <tr class="total-row">
+    <td>TOTAL</td><td style="text-align:right">${brl(data.totalCents)}</td><td></td>
+  </tr>
+</table>
+<hr class="sep-dash">
+<table><tbody>${payRows}</tbody></table>
+${contingNote}
+<p class="thanks">Obrigado pela preferência!</p>
+</body></html>`;
+
+  const win = window.open("", "_blank", "width=380,height=640");
   if (!win) return;
   win.document.write(html);
   win.document.close();
