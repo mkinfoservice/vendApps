@@ -212,14 +212,14 @@ public class DbProductProvider : IProductProvider
         ExternalProductQuery query, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(_config.FilePath))
-            throw new InvalidOperationException("FilePath não configurado para modo dump.");
+            throw new InvalidOperationException("FilePath n�o configurado para modo dump.");
         var resolvedPath = SyncFilePathResolver.ResolveDumpPath(_config.FilePath);
 
         var offset = (query.Page - 1) * query.BatchSize;
         var table  = _config.TableName;
 
         var columnNames = new List<string>();
-        var rows        = new List<List<string>>();
+        var rows        = new List<(List<string> Values, List<string> Columns)>();
         int rowCount    = 0;
 
         var createTableRegex = new Regex(
@@ -227,62 +227,85 @@ public class DbProductProvider : IProductProvider
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         var insertRegex = new Regex(
-            $@"INSERT\s+INTO\s+[`""\[]?{Regex.Escape(table)}[`""\]]?.*?VALUES\s*\((.+)\)\s*;?$",
+            $@"^INSERT\s+INTO\s+[`""\[]?{Regex.Escape(table)}[`""\]]?\s*(\((?<cols>[^)]*)\))?\s*VALUES\s*(?<vals>.+)\s*;?\s*$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Singleline);
 
+        // Passo 1: descobre colunas no CREATE TABLE
         bool inCreate = false;
-
-        await using var fs     = File.OpenRead(resolvedPath);
-        using var       reader = new StreamReader(fs, Encoding.UTF8);
-
-        string? line;
-        while ((line = await reader.ReadLineAsync(ct)) != null)
+        await using (var fs = File.OpenRead(resolvedPath))
+        using (var reader = new StreamReader(fs, Encoding.UTF8))
         {
-            if (ct.IsCancellationRequested) break;
-
-            if (!inCreate && createTableRegex.IsMatch(line))
+            string? line;
+            while ((line = await reader.ReadLineAsync(ct)) != null)
             {
-                inCreate = true;
-                columnNames.Clear();
-                continue;
-            }
+                if (ct.IsCancellationRequested) break;
 
-            if (inCreate)
-            {
-                // Fim do CREATE TABLE
+                if (!inCreate && createTableRegex.IsMatch(line))
+                {
+                    inCreate = true;
+                    columnNames.Clear();
+                    continue;
+                }
+
+                if (!inCreate) continue;
+
                 if (line.TrimStart().StartsWith(')'))
                 {
                     inCreate = false;
                     continue;
                 }
 
-                // Extrai nome da coluna (primeira palavra entre backticks ou identificador)
                 var colMatch = Regex.Match(line.Trim(), @"^[`""\[]?(\w+)[`""\]]?");
-                if (colMatch.Success)
+                if (!colMatch.Success) continue;
+
+                var colName = colMatch.Groups[1].Value;
+                if (!colName.Equals("PRIMARY", StringComparison.OrdinalIgnoreCase) &&
+                    !colName.Equals("KEY", StringComparison.OrdinalIgnoreCase) &&
+                    !colName.Equals("UNIQUE", StringComparison.OrdinalIgnoreCase) &&
+                    !colName.Equals("INDEX", StringComparison.OrdinalIgnoreCase) &&
+                    !colName.Equals("CONSTRAINT", StringComparison.OrdinalIgnoreCase))
                 {
-                    var colName = colMatch.Groups[1].Value;
-                    if (!colName.Equals("PRIMARY", StringComparison.OrdinalIgnoreCase) &&
-                        !colName.Equals("KEY", StringComparison.OrdinalIgnoreCase) &&
-                        !colName.Equals("UNIQUE", StringComparison.OrdinalIgnoreCase) &&
-                        !colName.Equals("INDEX", StringComparison.OrdinalIgnoreCase) &&
-                        !colName.Equals("CONSTRAINT", StringComparison.OrdinalIgnoreCase))
-                    {
-                        columnNames.Add(colName);
-                    }
+                    columnNames.Add(colName);
                 }
-                continue;
             }
+        }
 
-            // Detectar INSERT INTO
-            var insertMatch = insertRegex.Match(line);
-            if (!insertMatch.Success) continue;
+        // Passo 2: processa INSERT INTO (multi-linha e multi-tupla)
+        await using (var fs = File.OpenRead(resolvedPath))
+        using (var reader = new StreamReader(fs, Encoding.UTF8))
+        {
+            var statement = new StringBuilder();
+            string? line;
+            while ((line = await reader.ReadLineAsync(ct)) != null)
+            {
+                if (ct.IsCancellationRequested) break;
 
-            rowCount++;
-            if (rowCount <= offset) continue;
-            if (rows.Count >= query.BatchSize) break;
+                statement.AppendLine(line);
+                if (!line.TrimEnd().EndsWith(';')) continue;
 
-            var values = ParseSqlValues(insertMatch.Groups[1].Value);
-            rows.Add(values);
+                var rawStmt = statement.ToString().Trim();
+                statement.Clear();
+                if (rawStmt.Length == 0) continue;
+
+                var insertMatch = insertRegex.Match(rawStmt);
+                if (!insertMatch.Success) continue;
+
+                var insertColumns = ParseInsertColumns(
+                    insertMatch.Groups["cols"].Success ? insertMatch.Groups["cols"].Value : null,
+                    columnNames);
+
+                var tupleValues = ExtractValueTuples(insertMatch.Groups["vals"].Value);
+                foreach (var tuple in tupleValues)
+                {
+                    rowCount++;
+                    if (rowCount <= offset) continue;
+                    if (rows.Count >= query.BatchSize) break;
+
+                    rows.Add((ParseSqlValues(tuple), insertColumns));
+                }
+
+                if (rows.Count >= query.BatchSize) break;
+            }
         }
 
         var inv = _config.ColumnMapping.ToDictionary(
@@ -290,20 +313,19 @@ public class DbProductProvider : IProductProvider
             kv => kv.Key,
             StringComparer.OrdinalIgnoreCase);
 
-        // Índice: nome da coluna → posição
-        var colIndex = columnNames
-            .Select((c, i) => (c, i))
-            .ToDictionary(x => x.c, x => x.i, StringComparer.OrdinalIgnoreCase);
-
         var results = new List<ExternalProductDto>();
 
         foreach (var row in rows)
         {
+            var colIndex = row.Columns
+                .Select((c, i) => (c, i))
+                .ToDictionary(x => x.c, x => x.i, StringComparer.OrdinalIgnoreCase);
+
             string? Get(string dtoField)
             {
                 if (!inv.TryGetValue(dtoField, out var col)) return null;
                 if (!colIndex.TryGetValue(col, out var idx)) return null;
-                return idx < row.Count ? row[idx] : null;
+                return idx < row.Values.Count ? row.Values[idx] : null;
             }
 
             var name = Get("Name");
@@ -336,6 +358,87 @@ public class DbProductProvider : IProductProvider
         }
 
         return results;
+    }
+
+    private static List<string> ParseInsertColumns(string? colsRaw, List<string> fallbackColumns)
+    {
+        if (string.IsNullOrWhiteSpace(colsRaw))
+            return fallbackColumns;
+
+        return colsRaw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(c => c.Trim().Trim('`', '"', '[', ']'))
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .ToList();
+    }
+
+    private static List<string> ExtractValueTuples(string valuesSql)
+    {
+        var tuples = new List<string>();
+        var current = new StringBuilder();
+        bool inStr = false;
+        int depth = 0;
+
+        for (int i = 0; i < valuesSql.Length; i++)
+        {
+            var c = valuesSql[i];
+
+            if (inStr)
+            {
+                if (depth > 0) current.Append(c);
+
+                if (c == '\'' && i + 1 < valuesSql.Length && valuesSql[i + 1] == '\'')
+                {
+                    if (depth > 0) current.Append(valuesSql[i + 1]);
+                    i++;
+                    continue;
+                }
+
+                if (c == '\'' && !IsEscaped(valuesSql, i))
+                    inStr = false;
+
+                continue;
+            }
+
+            if (c == '\'')
+            {
+                inStr = true;
+                if (depth > 0) current.Append(c);
+                continue;
+            }
+
+            if (c == '(')
+            {
+                depth++;
+                if (depth > 1) current.Append(c);
+                continue;
+            }
+
+            if (c == ')')
+            {
+                if (depth > 1) current.Append(c);
+                depth--;
+                if (depth == 0)
+                {
+                    tuples.Add(current.ToString());
+                    current.Clear();
+                }
+                continue;
+            }
+
+            if (depth > 0)
+                current.Append(c);
+        }
+
+        return tuples;
+    }
+
+    private static bool IsEscaped(string text, int quoteIndex)
+    {
+        int backslashes = 0;
+        for (int i = quoteIndex - 1; i >= 0 && text[i] == '\\'; i--)
+            backslashes++;
+        return (backslashes % 2) == 1;
     }
 
     /// <summary>
