@@ -58,11 +58,12 @@ public class DbSchemaDiscoveryService
     {
         if (string.IsNullOrWhiteSpace(config.FilePath))
             return [];
+        var resolvedPath = SyncFilePathResolver.ResolveDumpPath(config.FilePath);
 
         var tables  = new List<DbTableInfo>();
         var pattern = new Regex(@"CREATE\s+TABLE\s+[`""\[]?(\w+)[`""\]]?", RegexOptions.IgnoreCase);
 
-        await using var fs     = File.OpenRead(config.FilePath);
+        await using var fs     = File.OpenRead(resolvedPath);
         using var       reader = new StreamReader(fs, Encoding.UTF8);
 
         string? line;
@@ -167,6 +168,7 @@ public class DbSchemaDiscoveryService
     {
         if (string.IsNullOrWhiteSpace(config.FilePath))
             return [];
+        var resolvedPath = SyncFilePathResolver.ResolveDumpPath(config.FilePath);
 
         var createRegex = new Regex(
             $@"CREATE\s+TABLE\s+[`""\[]?{Regex.Escape(tableName)}[`""\]]?\s*\(",
@@ -179,7 +181,7 @@ public class DbSchemaDiscoveryService
         var columns   = new List<DbColumnInfo>();
         bool inCreate = false;
 
-        await using var fs     = File.OpenRead(config.FilePath);
+        await using var fs     = File.OpenRead(resolvedPath);
         using var       reader = new StreamReader(fs, Encoding.UTF8);
 
         string? line;

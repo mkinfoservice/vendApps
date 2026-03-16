@@ -250,11 +250,23 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
 
   function handleStep3Next() {
     setError(null);
-    const nameMapped = Object.values(mapping).some(
-      (v) => v === "Name"
+    const mappedValues = Object.values(mapping);
+    const nameMapped = mappedValues.some((v) => v === "Name");
+    const priceMapped = mappedValues.some((v) => v === "PriceCents");
+    const hasIdentifier = mappedValues.some(
+      (v) => v === "ExternalId" || v === "InternalCode" || v === "Barcode"
     );
+
     if (!nameMapped) {
       setError("Mapeie ao menos uma coluna para o campo 'Name'.");
+      return;
+    }
+    if (!priceMapped) {
+      setError("Mapeie ao menos uma coluna para o campo 'PriceCents' (preço de venda).");
+      return;
+    }
+    if (!hasIdentifier) {
+      setError("Mapeie ao menos um identificador: 'InternalCode', 'Barcode' ou 'ExternalId'.");
       return;
     }
     setStep(4);
@@ -584,6 +596,10 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
 
           {columnsQuery.data && !Object.values(mapping).some((v) => v === "PriceCents") && (
             <WarningBox message="PriceCents não está mapeado — produtos importarão sem preço." />
+          )}
+          {columnsQuery.data && !Object.values(mapping).some((v) =>
+            v === "ExternalId" || v === "InternalCode" || v === "Barcode") && (
+            <WarningBox message="Nenhum identificador mapeado — use InternalCode, Barcode ou ExternalId para evitar produtos duplicados." />
           )}
           {columnsQuery.data && !Object.values(mapping).some((v) => v === "StockQty") && (
             <WarningBox message="StockQty não está mapeado — produtos importarão sem estoque." />

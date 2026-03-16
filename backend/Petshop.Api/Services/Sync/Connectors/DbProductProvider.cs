@@ -213,6 +213,7 @@ public class DbProductProvider : IProductProvider
     {
         if (string.IsNullOrWhiteSpace(_config.FilePath))
             throw new InvalidOperationException("FilePath não configurado para modo dump.");
+        var resolvedPath = SyncFilePathResolver.ResolveDumpPath(_config.FilePath);
 
         var offset = (query.Page - 1) * query.BatchSize;
         var table  = _config.TableName;
@@ -231,7 +232,7 @@ public class DbProductProvider : IProductProvider
 
         bool inCreate = false;
 
-        await using var fs     = File.OpenRead(_config.FilePath);
+        await using var fs     = File.OpenRead(resolvedPath);
         using var       reader = new StreamReader(fs, Encoding.UTF8);
 
         string? line;
