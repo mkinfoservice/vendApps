@@ -6,6 +6,7 @@ import {
   updateAdminProduct,
   toggleAdminProductStatus,
   deleteAdminProduct,
+  bulkDeleteAdminProducts,
   uploadAdminProductImage,
   deleteAdminProductImage,
   type CreateProductRequest,
@@ -18,6 +19,7 @@ export function useAdminProducts(params?: {
   search?: string;
   categoryId?: string;
   active?: boolean;
+  withoutOrders?: boolean;
 }) {
   return useQuery({
     queryKey: ["admin-products", params],
@@ -64,6 +66,14 @@ export function useDeleteProduct() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteAdminProduct(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-products"] }); },
+  });
+}
+
+export function useBulkDeleteProducts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteAdminProducts(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-products"] }); },
   });
 }

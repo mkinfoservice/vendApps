@@ -27,6 +27,15 @@ export type ProductListResponse = {
   items: ProductListItem[];
 };
 
+export type BulkDeleteProductsResponse = {
+  requested: number;
+  deleted: number;
+  blocked: number;
+  notFound: number;
+  blockedIds: string[];
+  notFoundIds: string[];
+};
+
 export type ProductDetail = {
   id: string;
   companyId: string;
@@ -78,6 +87,7 @@ export async function fetchAdminProducts(params?: {
   search?: string;
   categoryId?: string;
   active?: boolean;
+  withoutOrders?: boolean;
 }): Promise<ProductListResponse> {
   const qs = new URLSearchParams();
   if (params?.page)      qs.set("page",       String(params.page));
@@ -85,6 +95,7 @@ export async function fetchAdminProducts(params?: {
   if (params?.search)    qs.set("search",     params.search);
   if (params?.categoryId) qs.set("categoryId", params.categoryId);
   if (params?.active !== undefined) qs.set("active", String(params.active));
+  if (params?.withoutOrders !== undefined) qs.set("withoutOrders", String(params.withoutOrders));
   const q = qs.toString();
   return adminFetch<ProductListResponse>(`/admin/products${q ? `?${q}` : ""}`);
 }
@@ -115,6 +126,14 @@ export async function toggleAdminProductStatus(id: string): Promise<void> {
 
 export async function deleteAdminProduct(id: string): Promise<void> {
   return adminFetch(`/admin/products/${id}`, { method: "DELETE" });
+}
+
+export async function bulkDeleteAdminProducts(productIds: string[]): Promise<BulkDeleteProductsResponse> {
+  return adminFetch<BulkDeleteProductsResponse>("/admin/products/bulk-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ productIds }),
+  });
 }
 
 export async function uploadAdminProductImage(

@@ -34,6 +34,7 @@ public class AdminProductsController : ControllerBase
         [FromQuery] Guid? categoryId,
         [FromQuery] Guid? brandId,
         [FromQuery] bool? active,
+        [FromQuery] bool? withoutOrders,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -56,6 +57,12 @@ public class AdminProductsController : ControllerBase
         if (categoryId.HasValue) q = q.Where(p => p.CategoryId == categoryId.Value);
         if (brandId.HasValue)    q = q.Where(p => p.BrandId == brandId.Value);
         if (active.HasValue)     q = q.Where(p => p.IsActive == active.Value);
+        if (withoutOrders == true)
+        {
+            q = q.Where(p =>
+                !_db.OrderItems.Any(i => i.ProductId == p.Id) &&
+                !_db.SaleOrderItems.Any(i => i.ProductId == p.Id));
+        }
 
         var total = await q.CountAsync(ct);
         var items = await q
@@ -230,7 +237,7 @@ public class AdminProductsController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == CompanyId, ct);
         if (product == null) return NotFound("Produto não encontrado.");
 
-        var hasOrders = await _db.OrderItems.AnyAsync(i => i.ProductId == id, ct);
+        var hasOrders = await _db.OrderItems.AnyAsync(i => i.ProductId == id, ct) || await _db.SaleOrderItems.AnyAsync(i => i.ProductId == id, ct);
         if (hasOrders)
             return Conflict(new { error = "Produto possui pedidos vinculados e não pode ser excluído. Inative-o se necessário." });
 
@@ -243,6 +250,59 @@ public class AdminProductsController : ControllerBase
         _db.Products.Remove(product);
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    // â”€â”€ POST /admin/products/bulk-delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    [HttpPost("bulk-delete")]
+    public async Task<IActionResult> BulkDelete([FromBody] BulkDeleteProductsRequest req, CancellationToken ct)
+    {
+        if (req.ProductIds is null || req.ProductIds.Count == 0)
+            return BadRequest(new { error = "Nenhum produto informado para exclusÃ£o." });
+
+        var ids = req.ProductIds.Distinct().ToList();
+
+        var products = await _db.Products
+            .Include(p => p.Images)
+            .Where(p => p.CompanyId == CompanyId && ids.Contains(p.Id))
+            .ToListAsync(ct);
+
+        var foundIds = products.Select(p => p.Id).ToHashSet();
+        var notFoundIds = ids.Where(id => !foundIds.Contains(id)).ToList();
+
+        var blockedIds = await _db.Products
+            .Where(p => p.CompanyId == CompanyId && ids.Contains(p.Id))
+            .Where(p =>
+                _db.OrderItems.Any(i => i.ProductId == p.Id) ||
+                _db.SaleOrderItems.Any(i => i.ProductId == p.Id))
+            .Select(p => p.Id)
+            .ToListAsync(ct);
+
+        var blockedSet = blockedIds.ToHashSet();
+        var deletable = products.Where(p => !blockedSet.Contains(p.Id)).ToList();
+
+        foreach (var p in deletable)
+        {
+            foreach (var img in p.Images)
+                await _imageStorage.DeleteAsync(img.Url, ct);
+        }
+
+        var deletableIds = deletable.Select(p => p.Id).ToList();
+        if (deletableIds.Count > 0)
+        {
+            await _db.ProductPriceHistories.Where(h => deletableIds.Contains(h.ProductId)).ExecuteDeleteAsync(ct);
+            await _db.ProductChangeLogs.Where(l => deletableIds.Contains(l.ProductId)).ExecuteDeleteAsync(ct);
+            _db.Products.RemoveRange(deletable);
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new BulkDeleteProductsResponse(
+            Requested: ids.Count,
+            Deleted: deletableIds.Count,
+            Blocked: blockedIds.Count,
+            NotFound: notFoundIds.Count,
+            BlockedIds: blockedIds,
+            NotFoundIds: notFoundIds
+        ));
     }
 
     // ── POST /admin/products/{id}/clone ───────────────────────────────────────
@@ -373,3 +433,12 @@ public class AdminProductsController : ControllerBase
 }
 
 public record CloneProductRequest(string? NewInternalCode, string? NewBarcode, string? NewSlug);
+public record BulkDeleteProductsRequest(List<Guid> ProductIds);
+public record BulkDeleteProductsResponse(
+    int Requested,
+    int Deleted,
+    int Blocked,
+    int NotFound,
+    IReadOnlyList<Guid> BlockedIds,
+    IReadOnlyList<Guid> NotFoundIds
+);

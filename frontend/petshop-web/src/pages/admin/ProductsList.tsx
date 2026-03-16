@@ -5,7 +5,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Pagination } from "@/components/ui/Pagination";
-import { useAdminProducts, useToggleProductStatus, useDeleteProduct } from "@/features/admin/products/queries";
+import {
+  useAdminProducts,
+  useToggleProductStatus,
+  useDeleteProduct,
+  useBulkDeleteProducts,
+} from "@/features/admin/products/queries";
 import { SyncModal } from "@/features/admin/sync/SyncModal";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
@@ -15,9 +20,9 @@ function formatBRL(cents: number) {
 }
 
 function formatDate(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString("pt-BR");
 }
 
@@ -30,9 +35,11 @@ function imageUrl(url: string | null) {
 export default function ProductsList() {
   const navigate = useNavigate();
 
-  const [page, setPage]         = useState(1);
-  const [search, setSearch]     = useState("");
-  const [active, setActive]     = useState<"" | "true" | "false">("");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [active, setActive] = useState<"" | "true" | "false">("");
+  const [orderFilter, setOrderFilter] = useState<"all" | "withoutOrders">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSync, setShowSync] = useState(false);
 
   const productsQuery = useAdminProducts({
@@ -40,10 +47,12 @@ export default function ProductsList() {
     pageSize: 20,
     search: search || undefined,
     active: active === "" ? undefined : active === "true",
+    withoutOrders: orderFilter === "withoutOrders" ? true : undefined,
   });
 
   const toggle = useToggleProductStatus();
   const remove = useDeleteProduct();
+  const bulkRemove = useBulkDeleteProducts();
 
   const totalPages = useMemo(() => {
     if (!productsQuery.data) return 1;
@@ -52,6 +61,11 @@ export default function ProductsList() {
 
   const items = productsQuery.data?.items ?? [];
   const total = productsQuery.data?.total ?? 0;
+  const allVisibleSelected = items.length > 0 && items.every((p) => selectedIds.has(p.id));
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   function handleToggle(e: React.MouseEvent, id: string) {
     e.stopPropagation();
@@ -62,8 +76,51 @@ export default function ProductsList() {
     e.stopPropagation();
     if (!confirm(`Excluir "${name}"?`)) return;
     remove.mutate(id, {
+      onSuccess: () => {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      },
       onError: (err) => alert(err instanceof Error ? err.message : "Erro ao excluir produto."),
     });
+  }
+
+  function toggleSelect(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllVisible(checked: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const item of items) {
+        if (checked) next.add(item.id);
+        else next.delete(item.id);
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!confirm(`Excluir ${ids.length} produto(s) selecionado(s)?`)) return;
+
+    try {
+      const res = await bulkRemove.mutateAsync(ids);
+      clearSelection();
+      alert(
+        `Exclusao concluida.\nRemovidos: ${res.deleted}\nBloqueados (com pedidos): ${res.blocked}\nNao encontrados: ${res.notFound}`
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir produtos selecionados.");
+    }
   }
 
   return (
@@ -89,6 +146,16 @@ export default function ProductsList() {
               </button>
               <button
                 type="button"
+                onClick={handleBulkDelete}
+                disabled={selectedIds.size === 0 || bulkRemove.isPending}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl border text-sm font-semibold transition-all hover:bg-[var(--surface-2)] disabled:opacity-50"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <Trash2 size={15} />
+                Excluir selecionados ({selectedIds.size})
+              </button>
+              <button
+                type="button"
                 onClick={() => navigate("/app/produtos/new")}
                 className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
                 style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
@@ -100,7 +167,6 @@ export default function ProductsList() {
           }
         />
 
-        {/* Filters */}
         <div
           className="rounded-2xl border p-4 mb-4 flex flex-col sm:flex-row gap-3"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
@@ -114,62 +180,82 @@ export default function ProductsList() {
             <input
               className="h-10 w-full rounded-xl border pl-9 pr-3.5 text-sm outline-none transition-all focus:ring-2 focus:ring-[#7c5cf8]/40"
               style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
-              placeholder="Buscar por nome, código interno ou código de barras..."
+              placeholder="Buscar por nome, codigo interno ou codigo de barras..."
               value={search}
-              onChange={(e) => { setPage(1); setSearch(e.target.value); }}
+              onChange={(e) => {
+                setPage(1);
+                clearSelection();
+                setSearch(e.target.value);
+              }}
             />
           </div>
+
           <select
             className="h-10 rounded-xl border px-3.5 text-sm outline-none"
             style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
             value={active}
-            onChange={(e) => { setPage(1); setActive(e.target.value as "" | "true" | "false"); }}
+            onChange={(e) => {
+              setPage(1);
+              clearSelection();
+              setActive(e.target.value as "" | "true" | "false");
+            }}
           >
             <option value="">Todos os status</option>
             <option value="true">Ativos</option>
             <option value="false">Inativos</option>
           </select>
+
+          <select
+            className="h-10 rounded-xl border px-3.5 text-sm outline-none"
+            style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+            value={orderFilter}
+            onChange={(e) => {
+              setPage(1);
+              clearSelection();
+              setOrderFilter(e.target.value as "all" | "withoutOrders");
+            }}
+          >
+            <option value="all">Todos os produtos</option>
+            <option value="withoutOrders">Produtos que nao estao em pedidos</option>
+          </select>
         </div>
 
-        {/* Error */}
         {productsQuery.isError && (
           <div className="rounded-2xl border border-red-800 bg-red-950/30 p-4 text-sm text-red-400 mb-4">
-            Erro ao carregar produtos. Tente recarregar a página.
+            Erro ao carregar produtos. Tente recarregar a pagina.
           </div>
         )}
 
-        {/* Table */}
         <div className="rounded-2xl border overflow-hidden mb-4" style={{ borderColor: "var(--border)" }}>
           <table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: "var(--surface-2)", borderBottom: "1px solid var(--border)" }}>
+                <th className="text-center px-2 py-3 text-xs font-semibold uppercase tracking-wider w-10" style={{ color: "var(--text-muted)" }}>
+                  <input type="checkbox" checked={allVisibleSelected} onChange={(e) => toggleSelectAllVisible(e.target.checked)} />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-12" style={{ color: "var(--text-muted)" }} />
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Produto</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: "var(--text-muted)" }}>Categoria</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>Preço</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: "var(--text-muted)" }}>Preco</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: "var(--text-muted)" }}>Custo</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: "var(--text-muted)" }}>Margem</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: "var(--text-muted)" }}>Estoque</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider hidden xl:table-cell" style={{ color: "var(--text-muted)" }}>Atualizado</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Ações</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Acoes</th>
               </tr>
             </thead>
             <tbody>
-              {productsQuery.isLoading && <TableSkeleton rows={8} cols={9} />}
+              {productsQuery.isLoading && <TableSkeleton rows={8} cols={10} />}
 
               {!productsQuery.isLoading && items.length === 0 && (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <EmptyState
                       icon={Package}
                       title="Nenhum produto encontrado"
-                      description={
-                        search || active
-                          ? "Tente ajustar os filtros de busca."
-                          : "Cadastre o primeiro produto ou importe do seu sistema."
-                      }
+                      description={search || active || orderFilter !== "all" ? "Tente ajustar os filtros de busca." : "Cadastre o primeiro produto ou importe do seu sistema."}
                       action={
-                        !search && !active ? (
+                        !search && !active && orderFilter === "all" ? (
                           <button
                             type="button"
                             onClick={() => navigate("/app/produtos/new")}
@@ -195,100 +281,47 @@ export default function ProductsList() {
                     backgroundColor: i % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
                     borderBottom: "1px solid var(--border)",
                   }}
-                  onMouseEnter={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                      "rgba(124,92,248,0.06)")
-                  }
-                  onMouseLeave={(e) =>
-                    ((e.currentTarget as HTMLTableRowElement).style.backgroundColor =
-                      i % 2 === 0 ? "var(--surface)" : "var(--surface-2)")
-                  }
                 >
-                  {/* Thumb */}
+                  <td className="px-2 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(p.id)}
+                      onChange={(e) => toggleSelect(p.id, e.target.checked)}
+                    />
+                  </td>
+
                   <td className="px-3 py-2.5 w-12">
-                    <div
-                      className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
-                      style={{ backgroundColor: "var(--surface-2)" }}
-                    >
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0" style={{ backgroundColor: "var(--surface-2)" }}>
                       {imageUrl(p.imageUrl) ? (
-                        <img
-                          src={imageUrl(p.imageUrl)!}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <img src={imageUrl(p.imageUrl)!} alt={p.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div
-                          className="w-full h-full grid place-items-center text-[10px] font-black"
-                          style={{ color: "var(--text-muted)" }}
-                        >
+                        <div className="w-full h-full grid place-items-center text-[10px] font-black" style={{ color: "var(--text-muted)" }}>
                           {p.name.slice(0, 2).toUpperCase()}
                         </div>
                       )}
                     </div>
                   </td>
 
-                  {/* Nome + status */}
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold" style={{ color: "var(--text)" }}>
-                        {p.name}
-                      </span>
-                      {!p.isActive && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-900/30 text-red-400">
-                          Inativo
-                        </span>
-                      )}
+                      <span className="font-semibold" style={{ color: "var(--text)" }}>{p.name}</span>
+                      {!p.isActive && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-900/30 text-red-400">Inativo</span>}
                     </div>
-                    {p.internalCode && (
-                      <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        Cód: {p.internalCode}
-                      </div>
-                    )}
-                    <div className="md:hidden text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                      {p.categoryName ?? "—"}
-                    </div>
+                    {p.internalCode && <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>Cod: {p.internalCode}</div>}
+                    <div className="md:hidden text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{p.categoryName ?? "-"}</div>
                   </td>
 
-                  <td className="px-4 py-2.5 hidden md:table-cell" style={{ color: "var(--text-muted)" }}>
-                    {p.categoryName ?? "—"}
-                  </td>
-
-                  <td className="px-4 py-2.5 text-right hidden sm:table-cell font-semibold" style={{ color: "var(--text)" }}>
-                    {formatBRL(p.priceCents)}
-                  </td>
-
-                  <td className="px-4 py-2.5 text-right hidden lg:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
-                    {formatBRL(p.costCents)}
-                  </td>
-
-                  <td
-                    className="px-4 py-2.5 text-right hidden lg:table-cell text-xs font-semibold"
-                    style={{
-                      color:
-                        p.marginPercent >= 30
-                          ? "#4ade80"
-                          : p.marginPercent >= 10
-                            ? "#facc15"
-                            : "#f87171",
-                    }}
-                  >
+                  <td className="px-4 py-2.5 hidden md:table-cell" style={{ color: "var(--text-muted)" }}>{p.categoryName ?? "-"}</td>
+                  <td className="px-4 py-2.5 text-right hidden sm:table-cell font-semibold" style={{ color: "var(--text)" }}>{formatBRL(p.priceCents)}</td>
+                  <td className="px-4 py-2.5 text-right hidden lg:table-cell text-xs" style={{ color: "var(--text-muted)" }}>{formatBRL(p.costCents)}</td>
+                  <td className="px-4 py-2.5 text-right hidden lg:table-cell text-xs font-semibold" style={{ color: p.marginPercent >= 30 ? "#4ade80" : p.marginPercent >= 10 ? "#facc15" : "#f87171" }}>
                     {Number(p.marginPercent).toFixed(1)}%
                   </td>
+                  <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>{Number(p.stockQty).toFixed(0)} {p.unit}</td>
+                  <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(p.updatedAtUtc)}</td>
 
-                  <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
-                    {Number(p.stockQty).toFixed(0)} {p.unit}
-                  </td>
-
-                  <td className="px-4 py-2.5 text-right hidden xl:table-cell text-xs" style={{ color: "var(--text-muted)" }}>
-                    {formatDate(p.updatedAtUtc)}
-                  </td>
-
-                  {/* Ações */}
                   <td className="px-4 py-2.5 text-center">
-                    <div
-                      className="flex items-center justify-center gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         title={p.isActive ? "Desativar" : "Ativar"}
                         onClick={(e) => handleToggle(e, p.id)}
@@ -304,12 +337,6 @@ export default function ProductsList() {
                         disabled={remove.isPending}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-red-900/20"
                         style={{ color: "var(--text-muted)" }}
-                        onMouseEnter={(e) =>
-                          ((e.currentTarget as HTMLButtonElement).style.color = "#f87171")
-                        }
-                        onMouseLeave={(e) =>
-                          ((e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)")
-                        }
                       >
                         <Trash2 size={16} />
                       </button>
@@ -325,8 +352,14 @@ export default function ProductsList() {
           page={page}
           totalPages={totalPages}
           total={total}
-          onPrev={() => setPage((p) => Math.max(1, p - 1))}
-          onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          onPrev={() => {
+            setPage((p) => Math.max(1, p - 1));
+            clearSelection();
+          }}
+          onNext={() => {
+            setPage((p) => Math.min(totalPages, p + 1));
+            clearSelection();
+          }}
         />
       </div>
 
