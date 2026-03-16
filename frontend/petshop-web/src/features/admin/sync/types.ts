@@ -50,6 +50,13 @@ export type TestConnectionResponse = {
   sampleCount: number;
 };
 
+export type DumpUploadResponse = {
+  filePath: string;
+  fileName: string;
+  originalName: string;
+  sizeBytes: number;
+};
+
 export type DbTableInfo = { tableName: string; rowCount: number | null };
 export type DbColumnInfo = {
   columnName: string;

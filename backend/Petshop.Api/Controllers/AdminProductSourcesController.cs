@@ -7,6 +7,7 @@ using Petshop.Api.Entities.Sync;
 using Petshop.Api.Services.Sync;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Petshop.Api.Controllers;
 
@@ -15,18 +16,23 @@ namespace Petshop.Api.Controllers;
 [Authorize(Roles = "admin,gerente")]
 public class AdminProductSourcesController : ControllerBase
 {
+    private const long MaxDumpSizeBytes = 200L * 1024 * 1024; // 200 MB
+
     private readonly AppDbContext _db;
     private readonly ConnectorFactory _connectorFactory;
     private readonly DbSchemaDiscoveryService _schemaService;
+    private readonly IWebHostEnvironment _env;
 
     public AdminProductSourcesController(
         AppDbContext db,
         ConnectorFactory connectorFactory,
-        DbSchemaDiscoveryService schemaService)
+        DbSchemaDiscoveryService schemaService,
+        IWebHostEnvironment env)
     {
         _db = db;
         _connectorFactory = connectorFactory;
         _schemaService = schemaService;
+        _env = env;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -121,6 +127,45 @@ public class AdminProductSourcesController : ControllerBase
         }
     }
 
+    [HttpPost("dump-upload")]
+    [RequestSizeLimit(MaxDumpSizeBytes)]
+    public async Task<IActionResult> UploadDump([FromForm] IFormFile? file, CancellationToken ct)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { error = "Arquivo .sql não enviado." });
+
+        if (!file.FileName.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Formato inválido. Envie um arquivo .sql." });
+
+        if (file.Length > MaxDumpSizeBytes)
+            return BadRequest(new { error = $"Arquivo muito grande. Limite: {MaxDumpSizeBytes / (1024 * 1024)} MB." });
+
+        var uploadRoot = ResolveDumpUploadRoot();
+        Directory.CreateDirectory(uploadRoot);
+
+        var originalName = Path.GetFileNameWithoutExtension(file.FileName);
+        var safeName = Regex.Replace(originalName, @"[^a-zA-Z0-9\-_]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(safeName))
+            safeName = "dump";
+
+        var finalName = $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}-{safeName}.sql";
+        var finalPath = Path.Combine(uploadRoot, finalName);
+
+        await using (var output = new FileStream(finalPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+        await using (var input = file.OpenReadStream())
+        {
+            await input.CopyToAsync(output, ct);
+        }
+
+        return Ok(new
+        {
+            filePath = finalPath,
+            fileName = finalName,
+            originalName = file.FileName,
+            sizeBytes = file.Length
+        });
+    }
+
     [HttpGet("{id:guid}/db-schema/tables")]
     public async Task<IActionResult> GetDbTables(Guid id, CancellationToken ct)
     {
@@ -164,4 +209,24 @@ public class AdminProductSourcesController : ControllerBase
     private static DbConnectionConfig? DeserializeConfig(string? json) =>
         string.IsNullOrWhiteSpace(json) ? null :
         JsonSerializer.Deserialize<DbConnectionConfig>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+    private string ResolveDumpUploadRoot()
+    {
+        var configured = Environment.GetEnvironmentVariable("SYNC_DUMP_UPLOAD_DIR");
+        if (!string.IsNullOrWhiteSpace(configured))
+            return Path.GetFullPath(configured);
+
+        // Preferência: pasta local do app (útil para dev e containers com FS gravável)
+        var appDataRoot = Path.Combine(_env.ContentRootPath, "App_Data", "sync-dumps", CompanyId.ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(appDataRoot);
+            return appDataRoot;
+        }
+        catch
+        {
+            // Fallback para temp do sistema em ambientes restritos
+            return Path.Combine(Path.GetTempPath(), "vendapps-sync-dumps", CompanyId.ToString("N"));
+        }
+    }
 }

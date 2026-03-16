@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertTriangle, ChevronRight, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { useCreateSource } from "./queries";
-import { testConnection, updateSource } from "./api";
+import { testConnection, updateSource, uploadDumpFile } from "./api";
 import { useDbTables, useDbColumns } from "./queries";
 import { DTO_FIELDS, type DtoFieldName, type TestConnectionResponse } from "./types";
 import { UniversalConnectionBuilder } from "./UniversalConnectionBuilder";
@@ -106,6 +106,8 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
   const [saving, setSaving] = useState(false);
   const [testingConn, setTestingConn] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null);
+  const [uploadingDump, setUploadingDump] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Step 1
   const [s1, setS1] = useState<Step1State>({
@@ -272,6 +274,22 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
     setStep(4);
   }
 
+  async function handleDumpFileSelected(file: File | null) {
+    if (!file) return;
+    setError(null);
+    setTestResult(null);
+    setUploadingDump(true);
+    try {
+      const uploaded = await uploadDumpFile(file);
+      setS1((prev) => ({ ...prev, filePath: uploaded.filePath }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao enviar dump.");
+    } finally {
+      setUploadingDump(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   // ── Step 4: Salvar mapeamento final ───────────────────────────────────────
 
   async function handleFinalSave() {
@@ -412,6 +430,32 @@ export function DbSourceWizard({ onBack }: { onBack: () => void }) {
                 className={inputClass()}
                 style={inputStyle()}
               />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".sql"
+                className="hidden"
+                onChange={(e) => handleDumpFileSelected(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingDump}
+                className="w-full h-10 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                style={{
+                  borderColor: "var(--border)",
+                  backgroundColor: "var(--surface-2)",
+                  color: "var(--text-muted)",
+                  cursor: uploadingDump ? "not-allowed" : "pointer",
+                  opacity: uploadingDump ? 0.6 : 1,
+                }}
+              >
+                {uploadingDump ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                {uploadingDump ? "Enviando dump..." : "Selecionar e enviar dump.sql"}
+              </button>
+              <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                O arquivo é enviado para o servidor e o caminho é preenchido automaticamente.
+              </p>
             </div>
           )}
 

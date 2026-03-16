@@ -7,6 +7,7 @@ import type {
   SourceListItem,
   SyncJobResponse,
   TestConnectionResponse,
+  DumpUploadResponse,
 } from "./types";
 
 export async function fetchSources(): Promise<SourceListItem[]> {
@@ -62,4 +63,14 @@ export async function fetchDbColumns(sourceId: string, table: string) {
   return adminFetch<{ columns: DbColumnInfo[] }>(
     `/admin/product-sources/${sourceId}/db-schema/columns?table=${encodeURIComponent(table)}`
   );
+}
+
+export async function uploadDumpFile(file: File): Promise<DumpUploadResponse> {
+  const form = new FormData();
+  form.append("file", file);
+
+  return adminFetch<DumpUploadResponse>("/admin/product-sources/dump-upload", {
+    method: "POST",
+    body: form,
+  });
 }
