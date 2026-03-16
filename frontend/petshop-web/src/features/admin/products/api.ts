@@ -36,6 +36,11 @@ export type BulkDeleteProductsResponse = {
   notFoundIds: string[];
 };
 
+export type DeleteWithoutOrdersResponse = {
+  matched: number;
+  deleted: number;
+};
+
 export type ProductDetail = {
   id: string;
   companyId: string;
@@ -133,6 +138,20 @@ export async function bulkDeleteAdminProducts(productIds: string[]): Promise<Bul
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ productIds }),
+  });
+}
+
+export async function deleteWithoutOrders(params: {
+  search?: string;
+  active?: boolean;
+}): Promise<DeleteWithoutOrdersResponse> {
+  return adminFetch<DeleteWithoutOrdersResponse>("/admin/products/delete-without-orders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      search: params.search,
+      active: params.active,
+    }),
   });
 }
 

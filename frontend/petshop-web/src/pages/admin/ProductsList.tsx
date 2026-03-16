@@ -10,6 +10,7 @@ import {
   useToggleProductStatus,
   useDeleteProduct,
   useBulkDeleteProducts,
+  useDeleteWithoutOrders,
 } from "@/features/admin/products/queries";
 import { SyncModal } from "@/features/admin/sync/SyncModal";
 
@@ -53,6 +54,7 @@ export default function ProductsList() {
   const toggle = useToggleProductStatus();
   const remove = useDeleteProduct();
   const bulkRemove = useBulkDeleteProducts();
+  const deleteWithoutOrdersMut = useDeleteWithoutOrders();
 
   const totalPages = useMemo(() => {
     if (!productsQuery.data) return 1;
@@ -123,6 +125,27 @@ export default function ProductsList() {
     }
   }
 
+  async function handleDeleteWithoutOrders() {
+    if (orderFilter !== "withoutOrders") {
+      alert("Ative o filtro 'Produtos que nao estao em pedidos' para usar esta acao.");
+      return;
+    }
+
+    const countHint = total;
+    if (!confirm(`Apagar TODOS os produtos sem pedidos do filtro atual?\nQuantidade estimada: ${countHint}`)) return;
+
+    try {
+      const res = await deleteWithoutOrdersMut.mutateAsync({
+        search: search || undefined,
+        active: active === "" ? undefined : active === "true",
+      });
+      clearSelection();
+      alert(`Limpeza concluida.\nEncontrados: ${res.matched}\nExcluidos: ${res.deleted}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao apagar produtos sem pedidos.");
+    }
+  }
+
   return (
     <div style={{ backgroundColor: "var(--bg)" }}>
       <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-6">
@@ -153,6 +176,16 @@ export default function ProductsList() {
               >
                 <Trash2 size={15} />
                 Excluir selecionados ({selectedIds.size})
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteWithoutOrders}
+                disabled={orderFilter !== "withoutOrders" || deleteWithoutOrdersMut.isPending}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl border text-sm font-semibold transition-all hover:bg-[var(--surface-2)] disabled:opacity-50"
+                style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+              >
+                <Trash2 size={15} />
+                Apagar todos sem pedidos
               </button>
               <button
                 type="button"

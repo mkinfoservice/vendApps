@@ -305,6 +305,49 @@ public class AdminProductsController : ControllerBase
         ));
     }
 
+    [HttpPost("delete-without-orders")]
+    public async Task<IActionResult> DeleteWithoutOrders([FromBody] DeleteWithoutOrdersRequest req, CancellationToken ct)
+    {
+        var query = _db.Products
+            .Where(p => p.CompanyId == CompanyId)
+            .Where(p =>
+                !_db.OrderItems.Any(i => i.ProductId == p.Id) &&
+                !_db.SaleOrderItems.Any(i => i.ProductId == p.Id));
+
+        if (!string.IsNullOrWhiteSpace(req.Search))
+        {
+            var search = req.Search.Trim();
+            query = query.Where(p => EF.Functions.ILike(p.Name, $"%{search}%")
+                || (p.InternalCode != null && EF.Functions.ILike(p.InternalCode, $"%{search}%"))
+                || (p.Barcode != null && EF.Functions.ILike(p.Barcode, $"%{search}%")));
+        }
+
+        if (req.Active.HasValue)
+            query = query.Where(p => p.IsActive == req.Active.Value);
+
+        var candidateIds = await query.Select(p => p.Id).ToListAsync(ct);
+        if (candidateIds.Count == 0)
+            return Ok(new DeleteWithoutOrdersResponse(0, 0));
+
+        var imageUrls = await _db.ProductImages
+            .Where(i => candidateIds.Contains(i.ProductId))
+            .Select(i => i.Url)
+            .ToListAsync(ct);
+
+        foreach (var url in imageUrls)
+        {
+            try { await _imageStorage.DeleteAsync(url, ct); }
+            catch { /* best effort */ }
+        }
+
+        await _db.ProductPriceHistories.Where(h => candidateIds.Contains(h.ProductId)).ExecuteDeleteAsync(ct);
+        await _db.ProductChangeLogs.Where(l => candidateIds.Contains(l.ProductId)).ExecuteDeleteAsync(ct);
+        await _db.ProductImages.Where(i => candidateIds.Contains(i.ProductId)).ExecuteDeleteAsync(ct);
+        var deleted = await _db.Products.Where(p => candidateIds.Contains(p.Id)).ExecuteDeleteAsync(ct);
+
+        return Ok(new DeleteWithoutOrdersResponse(candidateIds.Count, deleted));
+    }
+
     // ── POST /admin/products/{id}/clone ───────────────────────────────────────
     [HttpPost("{id:guid}/clone")]
     public async Task<IActionResult> Clone(Guid id, [FromBody] CloneProductRequest? req, CancellationToken ct)
@@ -442,3 +485,5 @@ public record BulkDeleteProductsResponse(
     IReadOnlyList<Guid> BlockedIds,
     IReadOnlyList<Guid> NotFoundIds
 );
+public record DeleteWithoutOrdersRequest(string? Search, bool? Active);
+public record DeleteWithoutOrdersResponse(int Matched, int Deleted);
