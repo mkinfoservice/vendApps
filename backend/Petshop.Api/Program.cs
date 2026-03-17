@@ -18,6 +18,8 @@ using System.Text.Json.Serialization;
 using Petshop.Api.Hubs;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.Dav.Jobs;
+using Petshop.Api.Services.Enrichment;
+using Petshop.Api.Services.Enrichment.Jobs;
 using Petshop.Api.Services.Fiscal;
 using Petshop.Api.Services.Fiscal.Jobs;
 using Petshop.Api.Services.Scale;
@@ -200,6 +202,29 @@ builder.Services.AddScoped<DbSchemaDiscoveryService>();
 // Services — Imagens
 // ===============================
 builder.Services.AddScoped<IImageStorageProvider, LocalImageStorageProvider>();
+
+// ===============================
+// Services — Enriquecimento de Catálogo
+// ===============================
+builder.Services.AddScoped<ProductNormalizationService>();
+builder.Services.AddScoped<EnrichmentScoringService>();
+builder.Services.AddScoped<ProductImageMatchingService>();
+builder.Services.AddScoped<EnrichmentBatchService>();
+builder.Services.AddScoped<CatalogEnrichmentOrchestrator>();
+builder.Services.AddScoped<EnrichNormalizeProductsJob>();
+builder.Services.AddScoped<EnrichMatchImagesJob>();
+
+// OpenFoodFacts: HttpClient tipado com base URL e timeout
+builder.Services.AddHttpClient<OpenFoodFactsClient>(client =>
+{
+    client.BaseAddress = new Uri("https://world.openfoodfacts.org/");
+    client.Timeout     = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
+});
+
+// Registra OpenFoodFactsClient como implementação de IProductImageMatcher
+// (pode-se adicionar outros matchers aqui no futuro)
+builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
 
 // ===============================
 // Services — Master Admin

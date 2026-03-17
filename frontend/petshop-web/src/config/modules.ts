@@ -21,6 +21,7 @@ import {
   Settings,
   Monitor,
   FileText,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -355,6 +356,18 @@ export const APP_MODULES: AppModule[] = [
     group: "PLATAFORMA",
     roles: ["admin"],
     isActive: false,
+  },
+  {
+    id: "enriquecimento",
+    label: "Enriquecimento",
+    description: "Normaliza nomes e busca imagens automaticamente para o catálogo",
+    icon: Sparkles,
+    iconColor: "#7c5cf8",
+    iconBg: "rgba(124,92,248,0.12)",
+    route: "/app/enriquecimento",
+    group: "PLATAFORMA",
+    roles: ["admin", "gerente"],
+    isActive: true,
   },
   {
     id: "configuracoes",

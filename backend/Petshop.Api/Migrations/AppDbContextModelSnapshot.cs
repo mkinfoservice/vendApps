@@ -2861,6 +2861,293 @@ namespace Petshop.Api.Migrations
                     b.ToTable("Products");
                 });
 
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.EnrichmentBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("FailedItems")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ImagesApplied")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("NamesNormalized")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("PendingReview")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Processed")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("SyncJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TotalQueued")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Trigger")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "CreatedAtUtc");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.HasIndex("SyncJobId")
+                        .HasFilter("\"SyncJobId\" IS NOT NULL");
+
+                    b.ToTable("EnrichmentBatches");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.EnrichmentConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AutoApplyImageThreshold")
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<decimal>("AutoApplyNameThreshold")
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<int>("BatchSize")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DelayBetweenItemsMs")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("EnableImageMatching")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("EnableNameNormalization")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("ReviewImageThreshold")
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .IsUnique();
+
+                    b.ToTable("EnrichmentConfigs");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductEnrichmentResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("ImageProcessed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("NameProcessed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId", "Status");
+
+                    b.HasIndex("CompanyId", "ProductId");
+
+                    b.ToTable("ProductEnrichmentResults");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductImageCandidate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("AttemptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CandidateBarcode")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("CandidateBrand")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("CandidateName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("CandidateUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ConfidenceScore")
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocalUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ScoreBreakdownJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SearchQuery")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductImageCandidates");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductNameSuggestion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ConfidenceScore")
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizationStepsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("SuggestedName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
+
+                    b.HasIndex("CompanyId", "Status");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductNameSuggestions");
+                });
+
             modelBuilder.Entity("Petshop.Api.Entities.Agenda.ServiceAppointment", b =>
                 {
                     b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
@@ -3497,6 +3784,97 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Images");
 
                     b.Navigation("Variants");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.EnrichmentBatch", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Petshop.Api.Entities.Sync.ProductSyncJob", "SyncJob")
+                        .WithMany()
+                        .HasForeignKey("SyncJobId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Company");
+
+                    b.Navigation("SyncJob");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.EnrichmentConfig", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
+                        .WithOne()
+                        .HasForeignKey("Petshop.Api.Entities.Enrichment.EnrichmentConfig", "CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductEnrichmentResult", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Enrichment.EnrichmentBatch", "Batch")
+                        .WithMany("Results")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Petshop.Api.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductImageCandidate", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Enrichment.EnrichmentBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Petshop.Api.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.ProductNameSuggestion", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Enrichment.EnrichmentBatch", "Batch")
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Petshop.Api.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Enrichment.EnrichmentBatch", b =>
+                {
+                    b.Navigation("Results");
                 });
 #pragma warning restore 612, 618
         }

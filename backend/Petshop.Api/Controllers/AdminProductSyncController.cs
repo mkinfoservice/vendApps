@@ -1,9 +1,13 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Contracts.Admin.Sync;
 using Petshop.Api.Data;
+using Petshop.Api.Entities.Enrichment;
 using Petshop.Api.Entities.Sync;
+using Petshop.Api.Services.Enrichment;
+using Petshop.Api.Services.Enrichment.Jobs;
 using Petshop.Api.Services.Sync;
 using System.Security.Claims;
 
@@ -16,11 +20,19 @@ public class AdminProductSyncController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ProductSyncService _syncService;
+    private readonly EnrichmentBatchService _enrichmentBatchService;
+    private readonly IBackgroundJobClient _jobs;
 
-    public AdminProductSyncController(AppDbContext db, ProductSyncService syncService)
+    public AdminProductSyncController(
+        AppDbContext db,
+        ProductSyncService syncService,
+        EnrichmentBatchService enrichmentBatchService,
+        IBackgroundJobClient jobs)
     {
         _db = db;
         _syncService = syncService;
+        _enrichmentBatchService = enrichmentBatchService;
+        _jobs = jobs;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -37,6 +49,21 @@ public class AdminProductSyncController : ControllerBase
             CompanyId, req.SourceId, req.SyncType,
             req.UpdatedSince, req.BatchSize > 0 ? req.BatchSize : 100,
             SyncTriggeredBy.Manual, ct);
+
+        // Hook pós-sync: enfileira enriquecimento automaticamente se solicitado e sync foi bem-sucedido
+        if (req.AutoEnrich && job.Status == SyncJobStatus.Done && (job.Inserted + job.Updated) > 0)
+        {
+            var batch = await _enrichmentBatchService.CreateBatchAsync(
+                companyId:   CompanyId,
+                trigger:     EnrichmentTrigger.PostSync,
+                scope:       EnrichmentScope.RecentlyImported,
+                recentHours: 1,
+                syncJobId:   job.Id,
+                ct:          ct);
+
+            if (batch.TotalQueued > 0)
+                _jobs.Enqueue<EnrichNormalizeProductsJob>(j => j.ExecuteAsync(batch.Id, CancellationToken.None));
+        }
 
         return Ok(MapJob(job, source.Name));
     }

@@ -6,7 +6,12 @@ public record ManualSyncRequest(
     Guid SourceId,
     SyncType SyncType,
     DateTime? UpdatedSince,
-    int BatchSize = 100
+    int BatchSize = 100,
+    /// <summary>
+    /// Se true, cria automaticamente um lote de enriquecimento após o sync concluir.
+    /// Padrão: false — não altera comportamento existente.
+    /// </summary>
+    bool AutoEnrich = false
 );
 
 public record SyncJobResponse(

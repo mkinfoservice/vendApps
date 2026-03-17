@@ -12,6 +12,7 @@ using Petshop.Api.Entities.Promotions;
 using Petshop.Api.Entities.Financial;
 using Petshop.Api.Entities.Purchases;
 using Petshop.Api.Entities.Agenda;
+using Petshop.Api.Entities.Enrichment;
 using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
@@ -47,6 +48,13 @@ public class AppDbContext : DbContext
     public DbSet<Deliverer> Deliverers => Set<Deliverer>();
     public DbSet<DeliveryRoute> Routes => Set<DeliveryRoute>();
     public DbSet<RouteStop> RouteStops => Set<RouteStop>();
+
+    // ── Enriquecimento de Catálogo ────────────────────────────────────────
+    public DbSet<EnrichmentBatch>         EnrichmentBatches         => Set<EnrichmentBatch>();
+    public DbSet<ProductEnrichmentResult> ProductEnrichmentResults  => Set<ProductEnrichmentResult>();
+    public DbSet<ProductNameSuggestion>   ProductNameSuggestions    => Set<ProductNameSuggestion>();
+    public DbSet<ProductImageCandidate>   ProductImageCandidates    => Set<ProductImageCandidate>();
+    public DbSet<EnrichmentConfig>        EnrichmentConfigs         => Set<EnrichmentConfig>();
 
     // ── Sync ─────────────────────────────────────────────────
     public DbSet<ExternalSource> ExternalSources => Set<ExternalSource>();
@@ -848,5 +856,126 @@ public class AppDbContext : DbContext
         // Busca por empresa + status (painel de atendimento)
         modelBuilder.Entity<ServiceAppointment>()
             .HasIndex(a => new { a.CompanyId, a.Status });
+
+        // ══════════════════════════════════════════════════════
+        // ENRIQUECIMENTO DE CATÁLOGO
+        // ══════════════════════════════════════════════════════
+
+        // ── EnrichmentBatch ───────────────────────────────────
+        modelBuilder.Entity<EnrichmentBatch>()
+            .HasOne(b => b.Company)
+            .WithMany()
+            .HasForeignKey(b => b.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EnrichmentBatch>()
+            .HasOne(b => b.SyncJob)
+            .WithMany()
+            .HasForeignKey(b => b.SyncJobId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<EnrichmentBatch>()
+            .Property(b => b.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<EnrichmentBatch>()
+            .Property(b => b.Trigger)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // Busca rápida de lotes por empresa + status (dashboard)
+        modelBuilder.Entity<EnrichmentBatch>()
+            .HasIndex(b => new { b.CompanyId, b.Status });
+
+        modelBuilder.Entity<EnrichmentBatch>()
+            .HasIndex(b => new { b.CompanyId, b.CreatedAtUtc });
+
+        // ── ProductEnrichmentResult ───────────────────────────
+        modelBuilder.Entity<ProductEnrichmentResult>()
+            .HasOne(r => r.Batch)
+            .WithMany(b => b.Results)
+            .HasForeignKey(r => r.BatchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductEnrichmentResult>()
+            .HasOne(r => r.Product)
+            .WithMany()
+            .HasForeignKey(r => r.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductEnrichmentResult>()
+            .Property(r => r.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        // Busca de itens pendentes por batch
+        modelBuilder.Entity<ProductEnrichmentResult>()
+            .HasIndex(r => new { r.BatchId, r.Status });
+
+        // Busca de resultado de produto específico
+        modelBuilder.Entity<ProductEnrichmentResult>()
+            .HasIndex(r => new { r.CompanyId, r.ProductId });
+
+        // ── ProductNameSuggestion ─────────────────────────────
+        modelBuilder.Entity<ProductNameSuggestion>()
+            .HasOne(s => s.Product)
+            .WithMany()
+            .HasForeignKey(s => s.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductNameSuggestion>()
+            .HasOne(s => s.Batch)
+            .WithMany()
+            .HasForeignKey(s => s.BatchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductNameSuggestion>()
+            .Property(s => s.Status)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        modelBuilder.Entity<ProductNameSuggestion>()
+            .Property(s => s.Source)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        // Fila de revisão: empresa + status
+        modelBuilder.Entity<ProductNameSuggestion>()
+            .HasIndex(s => new { s.CompanyId, s.Status });
+
+        // ── ProductImageCandidate ─────────────────────────────
+        modelBuilder.Entity<ProductImageCandidate>()
+            .HasOne(c => c.Product)
+            .WithMany()
+            .HasForeignKey(c => c.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductImageCandidate>()
+            .HasOne(c => c.Batch)
+            .WithMany()
+            .HasForeignKey(c => c.BatchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductImageCandidate>()
+            .Property(c => c.Status)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        // Fila de revisão: empresa + status
+        modelBuilder.Entity<ProductImageCandidate>()
+            .HasIndex(c => new { c.CompanyId, c.Status });
+
+        // ── EnrichmentConfig (1:1 por empresa) ────────────────
+        modelBuilder.Entity<EnrichmentConfig>()
+            .HasOne(e => e.Company)
+            .WithOne()
+            .HasForeignKey<EnrichmentConfig>(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EnrichmentConfig>()
+            .HasIndex(e => e.CompanyId)
+            .IsUnique();
     }
 }
