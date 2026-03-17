@@ -99,7 +99,7 @@ function BatchCard({ batch }: { batch: EnrichmentBatchResponse }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusBadge status={batch.status} />
-          <span className="text-xs text-gray-500">{batch.trigger} · {batch.scope}</span>
+          <span className="text-xs text-gray-500">{batch.trigger}</span>
         </div>
         <span className="text-xs text-gray-400">{formatDate(batch.startedAtUtc)}</span>
       </div>
@@ -673,8 +673,7 @@ export default function CatalogEnrichmentPage() {
     <div className="p-4 md:p-6 space-y-5">
       <PageHeader
         title="Enriquecimento de Catálogo"
-        description="Normaliza nomes e busca imagens automaticamente para seus produtos"
-        icon={<Sparkles className="w-5 h-5 text-violet-600" />}
+        subtitle="Normaliza nomes e busca imagens automaticamente para seus produtos"
       />
 
       {/* Tab nav */}
