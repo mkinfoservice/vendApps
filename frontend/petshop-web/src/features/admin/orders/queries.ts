@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchOrders, fetchOrderById, updateOrderStatus } from "./api";
+import { deleteAllDeliveries, fetchOrders, fetchOrderById, updateOrderStatus } from "./api";
 
 // Lista de pedidos com paginação
 export function useOrders(page = 1, pageSize = 20, status?: string, search?: string) {
@@ -28,6 +28,17 @@ export function useUpdateOrderStatus() {
     onSuccess: (_, { idOrNumber }) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
       qc.invalidateQueries({ queryKey: ["order", idOrNumber] });
+    },
+  });
+}
+
+export function useDeleteAllDeliveries() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAllDeliveries,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["orders"] });
     },
   });
 }

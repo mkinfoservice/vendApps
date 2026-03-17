@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useOrders } from "@/features/admin/orders/queries";
+import { useDeleteAllDeliveries, useOrders } from "@/features/admin/orders/queries";
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { OrderStatusBadge } from "@/features/admin/orders/components/OrderStatusBadge";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Pagination } from "@/components/ui/Pagination";
-import { Plus, ShoppingBag, Search } from "lucide-react";
+import { Plus, ShoppingBag, Search, Trash2 } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -35,6 +36,7 @@ const STATUS_OPTIONS: { value: OrderStatus | ""; label: string }[] = [
 export default function OrdersList() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { role } = useCurrentUser();
 
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<OrderStatus | "">(
@@ -43,6 +45,7 @@ export default function OrdersList() {
   const [search, setSearch] = useState("");
 
   const ordersQuery = useOrders(page, 20, status || undefined, search || undefined);
+  const deleteAllDeliveriesMut = useDeleteAllDeliveries();
 
   const totalPages = useMemo(() => {
     if (!ordersQuery.data) return 1;
@@ -63,17 +66,41 @@ export default function OrdersList() {
               : `${total} pedido${total !== 1 ? "s" : ""} encontrado${total !== 1 ? "s" : ""}`
           }
           actions={
-            <button
-              type="button"
-              onClick={() => navigate("/app/logistica/rotas/planner")}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
-              style={{
-                background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)",
-              }}
-            >
-              <Plus size={15} />
-              Criar rota
-            </button>
+            <div className="flex items-center gap-2">
+              {role === "admin" && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm("Apagar TODOS os registros de entregas/pedidos desta empresa? Esta ação não pode ser desfeita.")) return;
+                    try {
+                      const res = await deleteAllDeliveriesMut.mutateAsync();
+                      alert(
+                        `Limpeza concluída.\nPedidos apagados: ${res.deletedOrders}\nParadas apagadas: ${res.deletedRouteStops}\nRotas órfãs apagadas: ${res.deletedRoutes}\nDAVs de entrega apagados: ${res.deletedDeliveryDavs}`,
+                      );
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : "Erro ao apagar registros de entregas.");
+                    }
+                  }}
+                  disabled={deleteAllDeliveriesMut.isPending}
+                  className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #b42318 0%, #ef4444 100%)" }}
+                >
+                  <Trash2 size={15} />
+                  {deleteAllDeliveriesMut.isPending ? "Apagando..." : "Apagar entregas"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate("/app/logistica/rotas/planner")}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
+                style={{
+                  background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)",
+                }}
+              >
+                <Plus size={15} />
+                Criar rota
+              </button>
+            </div>
           }
         />
 

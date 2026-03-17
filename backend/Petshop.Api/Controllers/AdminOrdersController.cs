@@ -211,6 +211,62 @@ public class AdminOrdersController : ControllerBase
 
         return Ok(new { orderId = order.Id, publicId = order.PublicId, oldStatus = oldStatus.ToString(), newStatus = newStatus.ToString() });
     }
+
+    // ── DELETE /admin/orders/deliveries ───────────────────────────────────────
+    /// <summary>
+    /// Limpa todos os registros de entregas/pedidos da empresa atual, independente do status.
+    /// Restrito ao perfil admin para uso em ambiente de testes/mostruário.
+    /// </summary>
+    [HttpDelete("deliveries")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DeleteAllDeliveries(CancellationToken ct = default)
+    {
+        // Captura os IDs de rotas que pertencem aos pedidos da empresa,
+        // para remover apenas rotas órfãs dessa limpeza.
+        var routeIds = await _db.RouteStops
+            .Where(rs => _db.Orders.Any(o => o.Id == rs.OrderId && o.CompanyId == CompanyId))
+            .Select(rs => rs.RouteId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var routeStopsToDelete = await _db.RouteStops
+            .CountAsync(rs => _db.Orders.Any(o => o.Id == rs.OrderId && o.CompanyId == CompanyId), ct);
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        // DAVs automáticos de delivery (OriginOrderId) não são necessários após purge.
+        var deletedDeliveryDavs = await _db.SalesQuotes
+            .Where(q => q.CompanyId == CompanyId &&
+                        q.OriginOrderId.HasValue &&
+                        _db.Orders.Any(o => o.Id == q.OriginOrderId.Value && o.CompanyId == CompanyId))
+            .ExecuteDeleteAsync(ct);
+
+        var deletedOrders = await _db.Orders
+            .Where(o => o.CompanyId == CompanyId)
+            .ExecuteDeleteAsync(ct);
+
+        var deletedRoutes = 0;
+        if (routeIds.Count > 0)
+        {
+            deletedRoutes = await _db.Routes
+                .Where(r => routeIds.Contains(r.Id) && !r.Stops.Any())
+                .ExecuteDeleteAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+
+        _logger.LogWarning(
+            "🧹 PURGE_DELIVERIES | CompanyId={CompanyId} | Orders={Orders} | RouteStops={RouteStops} | Routes={Routes} | DeliveryDavs={DeliveryDavs}",
+            CompanyId, deletedOrders, routeStopsToDelete, deletedRoutes, deletedDeliveryDavs);
+
+        return Ok(new
+        {
+            deletedOrders,
+            deletedRouteStops = routeStopsToDelete,
+            deletedRoutes,
+            deletedDeliveryDavs
+        });
+    }
 }
 
 public sealed class RetrogradeOrderRequest

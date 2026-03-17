@@ -19,6 +19,13 @@ export type ListOrdersResponse = {
   items: OrderListItem[];
 };
 
+export type DeleteAllDeliveriesResponse = {
+  deletedOrders: number;
+  deletedRouteStops: number;
+  deletedRoutes: number;
+  deletedDeliveryDavs: number;
+};
+
 // TIPOS DO DETALHE
 export type OrderItem = {
   productId: string;
@@ -84,4 +91,10 @@ export async function updateOrderStatus(
       body: JSON.stringify({ status }),
     }
   );
+}
+
+export async function deleteAllDeliveries(): Promise<DeleteAllDeliveriesResponse> {
+  return adminFetch<DeleteAllDeliveriesResponse>("/admin/orders/deliveries", {
+    method: "DELETE",
+  });
 }
