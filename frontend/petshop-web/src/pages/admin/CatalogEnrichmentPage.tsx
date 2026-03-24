@@ -517,7 +517,6 @@ function ConfigTab() {
 
   // Merge server values with local overrides — always a complete object when data is loaded
   const current = { ...(data ?? {}), ...overrides } as EnrichmentConfigResponse;
-  const isDirty = Object.keys(overrides).length > 0;
 
   function handleChange<K extends keyof EnrichmentConfigResponse>(
     key: K,
@@ -650,7 +649,7 @@ function ConfigTab() {
       <div className="flex items-center gap-3">
         <button
           onClick={handleSave}
-          disabled={update.isPending || !isDirty || !data}
+          disabled={update.isPending || !data}
           className="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 disabled:opacity-50"
         >
           {update.isPending ? "Salvando..." : "Salvar configurações"}
