@@ -7,13 +7,22 @@ type Category = {
 function categoryEmoji(name: string): string {
   const n = name.toLocaleLowerCase();
   if (n.includes("todos") || n === "") return "🏠";
-  if (n.includes("ração")) return "🍖";
+  if (n.includes("ração") || n.includes("racao") || n.includes("aliment") || n.includes("petisco")) return "🍖";
   if (n.includes("brinquedo")) return "🧸";
-  if (n.includes("remédio")) return "💊";
-  if (n.includes("acessório")) return "🛍️";
-  if (n.includes("higiene")) return "🧼";
-  if (n.includes("cama")) return "🐾";
-  return "🐾";
+  if (n.includes("remédio") || n.includes("remedio") || n.includes("medicament") || n.includes("analgés") || n.includes("antibi")) return "💊";
+  if (n.includes("acessório") || n.includes("acessorio") || n.includes("coleira") || n.includes("guia")) return "🛍️";
+  if (n.includes("higiene") || n.includes("shampoo") || n.includes("banho") || n.includes("tosa")) return "🧼";
+  if (n.includes("cama") || n.includes("casinha") || n.includes("conforto")) return "🛏️";
+  if (n.includes("adestrad") || n.includes("treino")) return "🎯";
+  if (n.includes("antiparasit") || n.includes("pulga") || n.includes("carrapath") || n.includes("vermíf") || n.includes("vermif")) return "🛡️";
+  if (n.includes("cirurg") || n.includes("curativo") || n.includes("hemor")) return "🩺";
+  if (n.includes("suplemento") || n.includes("vitamina") || n.includes("mineral")) return "💪";
+  if (n.includes("aquário") || n.includes("aquario") || n.includes("peixe")) return "🐠";
+  if (n.includes("ave") || n.includes("pássaro") || n.includes("passaro")) return "🦜";
+  if (n.includes("roedor") || n.includes("hamster") || n.includes("coelho")) return "🐹";
+  if (n.includes("gato") || n.includes("felino") || n.includes("gatil")) return "🐱";
+  if (n.includes("cão") || n.includes("cao") || n.includes("canino") || n.includes("cachorro")) return "🐕";
+  return "";
 }
 
 export function CategoryTile({
@@ -43,7 +52,7 @@ export function CategoryTile({
           : undefined
       }
     >
-      <span className="text-base leading-none">{emoji}</span>
+      {emoji && <span className="text-base leading-none">{emoji}</span>}
       <span>{c.name}</span>
     </button>
   );

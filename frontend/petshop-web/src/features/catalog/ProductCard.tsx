@@ -44,8 +44,8 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
       className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow group h-full min-w-0 flex flex-col cursor-pointer"
       onClick={() => (onCardClick ? onCardClick() : navigate(`/produto/${p.id}`))}
     >
-      {/* Imagem — altura responsiva por breakpoint */}
-      <div className="relative h-32 sm:h-40 lg:h-48 w-full overflow-hidden bg-gray-100 shrink-0">
+      {/* Imagem — aspect-ratio fixo para consistência em qualquer largura */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 shrink-0">
         <img
           src={img}
           alt={p.name}
@@ -79,7 +79,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
             <button
               type="button"
               onClick={handleAdd}
-              className="w-8 h-8 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shrink-0 shadow-sm"
+              className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shrink-0 shadow-sm"
               style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               aria-label="Adicionar ao carrinho"
             >

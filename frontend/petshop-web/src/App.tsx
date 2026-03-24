@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { ShoppingCart, Search, X, AlertTriangle } from "lucide-react";
@@ -43,6 +43,10 @@ export default function App() {
   const [categorySlug, setCategorySlug] = useState<string>("");
   const [search, setSearch] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(24);
+
+  // Reset paginação ao trocar filtro
+  useEffect(() => { setVisibleCount(24); }, [categorySlug, search]);
 
   const isDesktop = useMediaQuery("(min-width: 1280px)");
 
@@ -60,6 +64,8 @@ export default function App() {
 
   const categories = categoriesQuery.data ?? [];
   const products = productsQuery.data ?? [];
+  const visibleProducts = products.slice(0, visibleCount);
+  const hasMore = products.length > visibleCount;
   const isLoading = categoriesQuery.isLoading || productsQuery.isLoading;
 
   const cart = useCart();
@@ -128,7 +134,7 @@ export default function App() {
           <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 xl:gap-8 items-start">
 
             {/* Coluna esquerda: catálogo */}
-            <div className="pb-28 xl:pb-10 min-w-0">
+            <div className={`min-w-0 xl:pb-10 ${cart.totalItems > 0 ? "pb-28" : "pb-6"}`}>
 
               {/* Barra de busca */}
               <div className="mt-4 relative">
@@ -151,8 +157,11 @@ export default function App() {
                 )}
               </div>
 
-              {/* Categorias — pills horizontal scroll */}
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {/* Categorias — pills com fade nas bordas para indicar scroll */}
+              <div className="relative mt-4">
+                <div className="absolute left-0 top-0 bottom-1 w-6 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10" />
+                <div className="absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10" />
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 <CategoryTile
                   c={{ id: "all", name: "Todos", slug: "" }}
                   active={!categorySlug}
@@ -167,11 +176,12 @@ export default function App() {
                   />
                 ))}
               </div>
+              </div>
 
               {/* Grid de produtos */}
               <div className="mt-6 min-w-0" id="products">
                 {isLoading ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <ProductSkeleton key={i} />
                     ))}
@@ -194,15 +204,36 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-                    {products.map((p) => (
-                      <ProductCard
-                        key={p.id}
-                        p={p as any}
-                        onCardClick={isDesktop ? () => setSelectedProductId(p.id) : undefined}
-                      />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+                      {visibleProducts.map((p) => (
+                        <ProductCard
+                          key={p.id}
+                          p={p as any}
+                          onCardClick={isDesktop ? () => setSelectedProductId(p.id) : undefined}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Paginação — carregar mais */}
+                    {hasMore && (
+                      <div className="mt-8 flex flex-col items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setVisibleCount((n) => n + 24)}
+                          className="h-11 px-8 rounded-2xl border-2 text-sm font-bold transition-all hover:text-white hover:border-transparent active:scale-95"
+                          style={{ borderColor: "#7c5cf8", color: "#7c5cf8" }}
+                          onMouseEnter={e => (e.currentTarget.style.background = "linear-gradient(135deg,#7c5cf8,#6d4df2)")}
+                          onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "#7c5cf8"; }}
+                        >
+                          Ver mais produtos
+                        </button>
+                        <span className="text-xs text-gray-400">
+                          {visibleCount} de {products.length} produtos
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -215,30 +246,33 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom bar — visível abaixo de xl (sem sidebar) */}
-        <div className="xl:hidden fixed left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-          <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="font-black tabular-nums text-gray-900 text-base">
-                {formatBRL(cart.subtotalCents)}
+        {/* Bottom bar — visível abaixo de xl apenas quando há itens */}
+        {cart.totalItems > 0 && (
+          <div className="xl:hidden fixed left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="font-black tabular-nums text-gray-900 text-base">
+                  {formatBRL(cart.subtotalCents)}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {cart.totalItems} item{cart.totalItems !== 1 ? "s" : ""}
+                </div>
               </div>
-              <div className="text-xs text-gray-400">
-                {cart.totalItems} item{cart.totalItems !== 1 ? "s" : ""}
-              </div>
-            </div>
 
-            <CartSheet>
-              <button
-                type="button"
-                disabled={cart.totalItems === 0}
-                className="h-12 px-6 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-              >
-                Ver carrinho ({cart.totalItems})
-              </button>
-            </CartSheet>
+              <CartSheet>
+                <button
+                  type="button"
+                  className="h-12 px-6 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95"
+                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                >
+                  Ver carrinho ({cart.totalItems})
+                </button>
+              </CartSheet>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Quick View Modal — apenas desktop (xl+) */}
