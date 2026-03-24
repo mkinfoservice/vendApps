@@ -89,6 +89,16 @@ public class Product
     [MaxLength(500)]
     public string? ImageUrl { get; set; }
 
+    // ── Promoção / Destaque ───────────────────────────────────
+    /// <summary>Aparece na seção "Destaques do Dia" no catálogo.</summary>
+    public bool IsFeatured { get; set; } = false;
+
+    /// <summary>Aparece na seção "Mais Vendidos" no catálogo.</summary>
+    public bool IsBestSeller { get; set; } = false;
+
+    /// <summary>Percentual de desconto exibido no card (0–100). Null = sem desconto.</summary>
+    public int? DiscountPercent { get; set; }
+
     // ── Status ───────────────────────────────────────────────
     public bool IsActive { get; set; } = true;
 

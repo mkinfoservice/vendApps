@@ -9,6 +9,9 @@ import { CartSheet } from "@/features/cart/CartSheet";
 import { CartSidebar } from "@/features/cart/CartSidebar";
 import { CategoryTile } from "@/features/catalog/CategoryTile";
 import { ProductCard } from "@/features/catalog/ProductCard";
+import { ProductSection } from "@/features/catalog/ProductSection";
+import { HeroBanner } from "@/components/HeroBanner";
+import { TrustBar } from "@/components/TrustBar";
 import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal";
 import { TopBar } from "@/components/TopBar";
 import { ToastProvider } from "@/components/Toast";
@@ -67,6 +70,10 @@ export default function App() {
   const visibleProducts = products.slice(0, visibleCount);
   const hasMore = products.length > visibleCount;
   const isLoading = categoriesQuery.isLoading || productsQuery.isLoading;
+
+  const isFiltered = !!categorySlug || !!search;
+  const featuredProducts = isFiltered ? [] : products.filter((p) => p.isFeatured).slice(0, 8);
+  const bestSellers     = isFiltered ? [] : products.filter((p) => p.isBestSeller).slice(0, 8);
 
   const cart = useCart();
 
@@ -136,8 +143,14 @@ export default function App() {
             {/* Coluna esquerda: catálogo */}
             <div className={`min-w-0 xl:pb-10 ${cart.totalItems > 0 ? "pb-28" : "pb-6"}`}>
 
+              {/* Banner principal — oculto quando há filtro ativo */}
+              {!isFiltered && <HeroBanner onCategoryClick={setCategorySlug} />}
+
+              {/* Trust badges */}
+              {!isFiltered && <TrustBar />}
+
               {/* Barra de busca */}
-              <div className="mt-4 relative">
+              <div className="mt-5 relative">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   value={search}
@@ -178,8 +191,29 @@ export default function App() {
               </div>
               </div>
 
+              {/* Seções de destaque — só na homepage (sem filtro) */}
+              {!isLoading && (
+                <>
+                  <ProductSection
+                    title={<>🔥 Destaques do Dia</>}
+                    products={featuredProducts}
+                    onCardClick={setSelectedProductId}
+                    isDesktop={isDesktop}
+                  />
+                  <ProductSection
+                    title={<>📈 Mais Vendidos</>}
+                    products={bestSellers}
+                    onCardClick={setSelectedProductId}
+                    isDesktop={isDesktop}
+                  />
+                </>
+              )}
+
               {/* Grid de produtos */}
               <div className="mt-6 min-w-0" id="products">
+                {(featuredProducts.length > 0 || bestSellers.length > 0) && !isFiltered && (
+                  <h2 className="text-base font-black text-gray-900 mb-3">Todos os Produtos</h2>
+                )}
                 {isLoading ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
                     {[1, 2, 3, 4, 5, 6].map((i) => (

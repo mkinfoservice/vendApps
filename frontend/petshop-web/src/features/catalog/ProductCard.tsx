@@ -8,6 +8,9 @@ type Product = {
   name: string;
   priceCents: number;
   imageUrl?: string | null;
+  isFeatured?: boolean;
+  isBestSeller?: boolean;
+  discountPercent?: number | null;
   category?: { name: string } | null;
 };
 
@@ -22,6 +25,10 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
   const item = cart.items.find((x) => x.product.id === p.id);
   const qty = item?.qty ?? 0;
   const img = p.imageUrl || "https://picsum.photos/seed/pet/400/400";
+  const hasDiscount = p.discountPercent != null && p.discountPercent > 0;
+  const originalCents = hasDiscount
+    ? Math.round(p.priceCents / (1 - p.discountPercent! / 100))
+    : null;
 
   function handleAdd(e: React.MouseEvent) {
     e.stopPropagation();
@@ -52,6 +59,18 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
+        {/* Badge de desconto */}
+        {hasDiscount && (
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black text-white bg-red-500 shadow-sm leading-none">
+              PROMOÇÃO
+            </span>
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-black text-white bg-emerald-500 shadow-sm leading-none">
+              -{p.discountPercent}%
+            </span>
+          </div>
+        )}
+
         {qty > 0 && (
           <div className="absolute top-2 right-2">
             <span
@@ -71,9 +90,16 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
         </p>
 
         <div className="mt-auto pt-2 flex items-center justify-between">
-          <span className="text-sm font-semibold tabular-nums" style={{ color: "#7c5cf8" }}>
-            {formatBRL(p.priceCents)}
-          </span>
+          <div className="flex flex-col">
+            {originalCents && (
+              <span className="text-[11px] text-gray-400 line-through tabular-nums leading-tight">
+                {formatBRL(originalCents)}
+              </span>
+            )}
+            <span className="text-sm font-semibold tabular-nums" style={{ color: "#7c5cf8" }}>
+              {formatBRL(p.priceCents)}
+            </span>
+          </div>
 
           {qty === 0 ? (
             <button

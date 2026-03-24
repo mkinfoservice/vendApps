@@ -125,6 +125,9 @@ public class CatalogController : ControllerBase
                 p.Slug,
                 p.PriceCents,
                 p.ImageUrl,
+                p.IsFeatured,
+                p.IsBestSeller,
+                p.DiscountPercent,
                 Category = new { p.Category.Id, p.Category.Name, p.Category.Slug }
             })
             .ToListAsync(ct);

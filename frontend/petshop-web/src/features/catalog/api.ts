@@ -24,6 +24,9 @@ export type Product = {
   slug: string;
   priceCents: number;
   imageUrl: string | null;
+  isFeatured: boolean;
+  isBestSeller: boolean;
+  discountPercent: number | null;
   category: { id: string; name: string; slug: string };
 };
 
