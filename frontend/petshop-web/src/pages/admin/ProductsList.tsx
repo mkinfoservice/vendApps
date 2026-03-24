@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ToggleLeft, ToggleRight, Trash2, Download, Search, Package } from "lucide-react";
+import { Plus, ToggleLeft, ToggleRight, Trash2, Download, Search, Package, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
@@ -166,6 +166,15 @@ export default function ProductsList() {
               >
                 <Download size={15} />
                 Importar
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/app/enriquecimento")}
+                className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+              >
+                <Sparkles size={15} />
+                Enriquecer
               </button>
               <button
                 type="button"
