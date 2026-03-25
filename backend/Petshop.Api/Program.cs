@@ -237,9 +237,19 @@ builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
 });
 
+// Mercado Livre: melhor fonte para produtos pet brasileiros (sem API key)
+builder.Services.AddHttpClient<MercadoLivreImageMatcher>(client =>
+{
+    client.BaseAddress = new Uri("https://api.mercadolivre.com/");
+    client.Timeout     = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
+});
+
 // Registra todos os matchers de imagem (executados em ordem pelo ProductImageMatchingService)
-builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
+// ML primeiro (melhor cobertura para mercado BR), depois as bases pet food internacionais
+builder.Services.AddScoped<IProductImageMatcher, MercadoLivreImageMatcher>();
 builder.Services.AddScoped<IProductImageMatcher, OpenPetFoodFactsClient>();
+builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
 builder.Services.AddScoped<IProductImageMatcher, ProductNameImageSearchMatcher>();
 
 // ===============================

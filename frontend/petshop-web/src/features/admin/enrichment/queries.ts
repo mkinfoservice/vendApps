@@ -10,6 +10,7 @@ import {
   fetchConfig,
   fetchPendingImages,
   fetchPendingNames,
+  normalizeCategories,
   rejectImage,
   rejectName,
   reprocessWithoutImage,
@@ -113,6 +114,10 @@ export function useApproveAllNames() {
       qc.invalidateQueries({ queryKey: ["enrichment-pending-names"] });
     },
   });
+}
+
+export function useNormalizeCategories() {
+  return useMutation({ mutationFn: normalizeCategories });
 }
 
 // ── Image candidates ───────────────────────────────────────────────────────────

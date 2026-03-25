@@ -65,6 +65,13 @@ export function approveAllNames(): Promise<{ applied: number; message: string }>
   );
 }
 
+export function normalizeCategories(): Promise<{ changed: number; message: string }> {
+  return adminFetch<{ changed: number; message: string }>(
+    "/admin/enrichment/normalize-categories",
+    { method: "POST" }
+  );
+}
+
 // ── Image candidates ───────────────────────────────────────────────────────────
 
 export function fetchPendingImages(page = 1, pageSize = 20): Promise<ImageCandidateListResponse> {

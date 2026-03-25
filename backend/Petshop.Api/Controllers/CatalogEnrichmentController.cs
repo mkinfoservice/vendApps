@@ -444,6 +444,55 @@ public class CatalogEnrichmentController : ControllerBase
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // NORMALIZAÇÃO DE CATEGORIAS
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Normaliza nomes de todas as categorias da empresa usando as mesmas
+    /// regras determinísticas aplicadas aos produtos (title case, abreviações, etc).
+    /// Aplica diretamente sem fila de revisão.
+    /// </summary>
+    [HttpPost("normalize-categories")]
+    public async Task<IActionResult> NormalizeCategories(
+        [FromServices] ProductNormalizationService normalizer,
+        CancellationToken ct)
+    {
+        var categories = await _db.Categories
+            .Where(c => c.CompanyId == CompanyId)
+            .ToListAsync(ct);
+
+        int changed = 0;
+        foreach (var cat in categories)
+        {
+            var result = normalizer.Normalize(cat.Name);
+            if (!result.HasChanges) continue;
+
+            cat.Name = result.SuggestedName;
+            // Regenera slug a partir do novo nome
+            cat.Slug = GenerateSlug(result.SuggestedName);
+            changed++;
+        }
+
+        if (changed > 0)
+            await _db.SaveChangesAsync(ct);
+
+        return Ok(new { changed, message = $"{changed} categoria(s) normalizada(s)." });
+    }
+
+    private static string GenerateSlug(string name)
+    {
+        var normalized = name.ToLowerInvariant()
+            .Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized
+            .Where(c => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                        != System.Globalization.UnicodeCategory.NonSpacingMark)
+            .ToArray();
+        return System.Text.RegularExpressions.Regex.Replace(
+            new string(chars).Trim(),
+            @"[^a-z0-9]+", "-").Trim('-');
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // REPROCESSAMENTO
     // ═══════════════════════════════════════════════════════════════
 
