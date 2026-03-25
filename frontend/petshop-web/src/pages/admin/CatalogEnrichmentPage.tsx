@@ -22,6 +22,7 @@ import {
   useApproveName,
   useRejectName,
   useBulkApproveNames,
+  useApproveAllNames,
   usePendingImages,
   useApproveImage,
   useRejectImage,
@@ -293,6 +294,7 @@ function NamesTab() {
   const approve = useApproveName();
   const reject = useRejectName();
   const bulkApprove = useBulkApproveNames();
+  const approveAll = useApproveAllNames();
 
   const items = data?.items ?? [];
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 30)));
@@ -317,23 +319,35 @@ function NamesTab() {
 
   return (
     <div className="space-y-3">
-      {/* Bulk action bar */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-2">
-          <span className="text-sm text-violet-700 font-medium">{selected.size} selecionados</span>
+      {/* Action bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {(data?.total ?? 0) > 0 && (
           <button
-            onClick={handleBulkApprove}
-            disabled={bulkApprove.isPending}
-            className="flex items-center gap-1.5 px-3 py-1 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 disabled:opacity-50"
+            onClick={() => approveAll.mutate()}
+            disabled={approveAll.isPending}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
           >
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Aprovar selecionados
+            {approveAll.isPending ? "Aplicando..." : `Aprovar Todos (${data?.total ?? 0})`}
           </button>
-          <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">
-            Limpar
-          </button>
-        </div>
-      )}
+        )}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-xl px-3 py-1.5">
+            <span className="text-xs text-violet-700 font-medium">{selected.size} selecionados</span>
+            <button
+              onClick={handleBulkApprove}
+              disabled={bulkApprove.isPending}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700 disabled:opacity-50"
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Aprovar
+            </button>
+            <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">
+              Limpar
+            </button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="text-sm text-gray-500 py-8 text-center">Carregando...</div>
@@ -591,7 +605,7 @@ function ConfigTab() {
             {
               key: "autoApplyNameThreshold" as const,
               label: "Auto-aplicar nome",
-              hint: "Score mínimo para aplicar nome sem revisão (padrão 1.0 = nunca)",
+              hint: "Score mínimo para aplicar nome automaticamente (0.70 = aplica quase tudo)",
             },
           ] as const
         ).map(({ key, label, hint }) => (

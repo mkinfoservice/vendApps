@@ -133,6 +133,10 @@ public sealed partial class ProductNormalizationService
         if (string.Equals(original, suggested, StringComparison.Ordinal))
             return 1.0m;
 
+        // Mudança apenas de caixa (case-only) → altíssima confiança
+        if (string.Equals(original, suggested, StringComparison.OrdinalIgnoreCase))
+            return 0.98m;
+
         var ratio = SimilarityRatio(original, suggested);
         var penalty = Math.Min(stepCount * 0.015m, 0.12m);
         return Math.Max(0.70m, Math.Min(0.99m, ratio - penalty + 0.08m));

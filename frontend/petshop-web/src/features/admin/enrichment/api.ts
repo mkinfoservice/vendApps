@@ -58,6 +58,13 @@ export function bulkApproveNames(ids: string[]): Promise<{ approved: number; mes
   );
 }
 
+export function approveAllNames(): Promise<{ applied: number; message: string }> {
+  return adminFetch<{ applied: number; message: string }>(
+    "/admin/enrichment/review/names/approve-all",
+    { method: "POST" }
+  );
+}
+
 // ── Image candidates ───────────────────────────────────────────────────────────
 
 export function fetchPendingImages(page = 1, pageSize = 20): Promise<ImageCandidateListResponse> {

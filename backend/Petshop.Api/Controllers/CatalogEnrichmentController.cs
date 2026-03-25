@@ -213,6 +213,52 @@ public class CatalogEnrichmentController : ControllerBase
         return Ok(new { message = "Sugestão rejeitada." });
     }
 
+    /// <summary>Aprova TODAS as sugestões de nome pendentes da empresa.</summary>
+    [HttpPost("review/names/approve-all")]
+    public async Task<IActionResult> ApproveAllNames(CancellationToken ct)
+    {
+        const int batchSize = 200;
+        int applied = 0;
+
+        while (true)
+        {
+            var suggestions = await _db.ProductNameSuggestions
+                .Include(s => s.Product)
+                .Where(s => s.CompanyId == CompanyId && s.Status == NameSuggestionStatus.Pending)
+                .Take(batchSize)
+                .ToListAsync(ct);
+
+            if (suggestions.Count == 0) break;
+
+            foreach (var s in suggestions)
+            {
+                var oldName = s.Product.Name;
+                s.Product.Name       = s.SuggestedName;
+                s.Product.UpdatedAtUtc = DateTime.UtcNow;
+                s.Status             = NameSuggestionStatus.Approved;
+                s.ReviewedByUserId   = UserId;
+                s.ReviewedAtUtc      = DateTime.UtcNow;
+
+                _db.ProductChangeLogs.Add(new Entities.Audit.ProductChangeLog
+                {
+                    CompanyId       = CompanyId,
+                    ProductId       = s.ProductId,
+                    Source          = Entities.Audit.ChangeSource.Admin,
+                    FieldName       = "Name",
+                    OldValue        = oldName,
+                    NewValue        = s.SuggestedName,
+                    ChangedAtUtc    = DateTime.UtcNow,
+                    ChangedByUserId = UserId
+                });
+                applied++;
+            }
+
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return Ok(new { applied, message = $"{applied} nome(s) aprovado(s) e aplicado(s)." });
+    }
+
     /// <summary>Aprova múltiplas sugestões de nome em lote.</summary>
     [HttpPost("review/names/bulk-approve")]
     public async Task<IActionResult> BulkApproveNames(

@@ -214,7 +214,7 @@ builder.Services.AddScoped<CatalogEnrichmentOrchestrator>();
 builder.Services.AddScoped<EnrichNormalizeProductsJob>();
 builder.Services.AddScoped<EnrichMatchImagesJob>();
 
-// OpenFoodFacts: HttpClient tipado com base URL e timeout
+// OpenFoodFacts: HttpClient tipado (busca por barcode — alimentos em geral)
 builder.Services.AddHttpClient<OpenFoodFactsClient>(client =>
 {
     client.BaseAddress = new Uri("https://world.openfoodfacts.org/");
@@ -222,9 +222,25 @@ builder.Services.AddHttpClient<OpenFoodFactsClient>(client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
 });
 
-// Registra OpenFoodFactsClient como implementação de IProductImageMatcher
-// (pode-se adicionar outros matchers aqui no futuro)
+// OpenPetFoodFacts: HttpClient tipado (busca por barcode — pet food específico)
+builder.Services.AddHttpClient<OpenPetFoodFactsClient>(client =>
+{
+    client.BaseAddress = new Uri("https://world.openpetfoodfacts.org/");
+    client.Timeout     = TimeSpan.FromSeconds(8);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
+});
+
+// Busca por nome (named client — sem base URL fixa, usa OFF e OPFF)
+builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
+});
+
+// Registra todos os matchers de imagem (executados em ordem pelo ProductImageMatchingService)
 builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
+builder.Services.AddScoped<IProductImageMatcher, OpenPetFoodFactsClient>();
+builder.Services.AddScoped<IProductImageMatcher, ProductNameImageSearchMatcher>();
 
 // ===============================
 // Services — Master Admin

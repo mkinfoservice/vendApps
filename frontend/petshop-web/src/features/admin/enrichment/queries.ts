@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   approveName,
+  approveAllNames,
   approveImage,
   bulkApproveNames,
   createBatch,
@@ -98,6 +99,16 @@ export function useBulkApproveNames() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => bulkApproveNames(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["enrichment-pending-names"] });
+    },
+  });
+}
+
+export function useApproveAllNames() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: approveAllNames,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["enrichment-pending-names"] });
     },
