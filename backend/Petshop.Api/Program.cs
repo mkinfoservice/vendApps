@@ -399,6 +399,36 @@ var enableSwagger = app.Environment.IsDevelopment()
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    // Backfill: registra no __EFMigrationsHistory migrations que foram aplicadas via
+    // raw SQL fallback no Program.cs e nunca tiveram [Migration] attribute registrado.
+    // Sem isso o EF tenta reaplicá-las e falha com "already exists".
+    await db.Database.ExecuteSqlRawAsync("""
+        DO $$
+        BEGIN
+          IF EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_name = '__EFMigrationsHistory'
+          )
+          AND EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_name = 'CashRegisterFiscalConfigs'
+          )
+          THEN
+            INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+            SELECT t.mid, '8.0.0'
+            FROM (VALUES
+                ('20260314200001_AddFiscalCertBase64Column'),
+                ('20260314210000_AddCashRegisterFiscalConfig')
+            ) AS t(mid)
+            WHERE NOT EXISTS (
+                SELECT 1 FROM "__EFMigrationsHistory" h
+                WHERE h."MigrationId" = t.mid
+            );
+          END IF;
+        END $$;
+        """);
+
     await db.Database.MigrateAsync();
 
     // Garante colunas que podem ter ficado fora das migrations (idempotente)
