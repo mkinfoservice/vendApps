@@ -1,11 +1,15 @@
 using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Petshop.Api.Data;
 
 #nullable disable
 
 namespace Petshop.Api.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260317000001_AddCatalogEnrichmentModule")]
     public partial class AddCatalogEnrichmentModule : Migration
     {
         /// <inheritdoc />

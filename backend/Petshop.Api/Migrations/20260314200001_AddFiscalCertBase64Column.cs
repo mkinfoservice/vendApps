@@ -1,10 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Petshop.Api.Data;
 
 #nullable disable
 
 namespace Petshop.Api.Migrations
 {
-    /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260314200001_AddFiscalCertBase64Column")]
     public partial class AddFiscalCertBase64Column : Migration
     {
         /// <inheritdoc />
