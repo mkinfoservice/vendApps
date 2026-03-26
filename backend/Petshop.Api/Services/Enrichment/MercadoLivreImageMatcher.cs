@@ -169,8 +169,9 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         }
         catch (Exception ex)
         {
+            // Re-throw para o controller retornar o erro real ao frontend
             _logger.LogWarning(ex, "MercadoLivre picker search falhou para '{Query}'", query);
-            return [];
+            throw;
         }
     }
 

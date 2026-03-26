@@ -245,11 +245,14 @@ builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
 });
 
 // Mercado Livre: melhor fonte para produtos pet brasileiros (sem API key)
+// Usa o domínio internacional (mercadolibre.com) — o BR (mercadolivre.com) redireciona
+// e pode causar falhas silenciosas com HttpClient
 builder.Services.AddHttpClient<MercadoLivreImageMatcher>(client =>
 {
-    client.BaseAddress = new Uri("https://api.mercadolivre.com/");
-    client.Timeout     = TimeSpan.FromSeconds(8);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
+    client.BaseAddress = new Uri("https://api.mercadolibre.com/");
+    client.Timeout     = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; vendApps/1.0)");
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
 // Registra todos os matchers de imagem (executados em ordem pelo ProductImageMatchingService)

@@ -587,8 +587,19 @@ public class CatalogEnrichmentController : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return BadRequest(new { error = "Parâmetro 'q' é obrigatório." });
 
-        var results = await _mlMatcher.SearchForPickerAsync(q, ct);
-        return Ok(results);
+        try
+        {
+            var results = await _mlMatcher.SearchForPickerAsync(q, ct);
+            return Ok(results);
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(502, new { error = $"Erro ao consultar Mercado Livre: {ex.Message}", statusCode = (int?)ex.StatusCode });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     /// <summary>

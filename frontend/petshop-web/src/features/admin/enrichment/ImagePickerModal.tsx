@@ -26,8 +26,9 @@ export function ImagePickerModal({ productId, productName, onClose, onApplied }:
       const data = await searchImages(query.trim());
       setResults(data);
       if (data.length === 0) setError("Nenhuma imagem encontrada. Tente outros termos.");
-    } catch {
-      setError("Erro ao buscar imagens. Tente novamente.");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro desconhecido";
+      setError(`Erro ao buscar imagens: ${msg}`);
     } finally {
       setLoading(false);
     }
