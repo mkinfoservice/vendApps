@@ -62,6 +62,11 @@ export default function App() {
   const { data: storeFront } = useStoreFront();
   const brandColor = storeFront?.primaryColor ?? "#7c5cf8";
 
+  // Propaga a cor para o documento inteiro (Checkout, ProductDetail etc. herdam)
+  useEffect(() => {
+    document.documentElement.style.setProperty("--brand", brandColor);
+  }, [brandColor]);
+
   // Verifica status do tenant (só em subdomínio válido)
   const tenantQuery = useQuery({
     queryKey: ["tenant"],
@@ -130,7 +135,9 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh bg-gray-50 font-sans overflow-x-hidden">
+      <div
+        className="min-h-dvh bg-gray-50 font-sans overflow-x-hidden"
+      >
         {/* Sticky header */}
         <div className="sticky top-0 z-40">
           {/* Announcement bar rotativa */}
@@ -176,7 +183,7 @@ export default function App() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar produtos..."
-                  className="w-full h-12 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8] focus:border-[#7c5cf8] shadow-sm transition"
+                  className="w-full h-12 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] shadow-sm transition"
                 />
                 {(search || categorySlug) && (
                   <button
@@ -258,7 +265,7 @@ export default function App() {
                     <button
                       type="button"
                       className="mt-4 text-sm font-semibold underline underline-offset-2"
-                      style={{ color: "#7c5cf8" }}
+                      style={{ color: "var(--brand)" }}
                       onClick={() => { setSearch(""); setCategorySlug(""); }}
                     >
                       Limpar filtros
@@ -283,9 +290,9 @@ export default function App() {
                           type="button"
                           onClick={() => setVisibleCount((n) => n + 24)}
                           className="h-11 px-8 rounded-2xl border-2 text-sm font-bold transition-all hover:text-white hover:border-transparent active:scale-95"
-                          style={{ borderColor: "#7c5cf8", color: "#7c5cf8" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "linear-gradient(135deg,#7c5cf8,#6d4df2)")}
-                          onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "#7c5cf8"; }}
+                          style={{ borderColor: "var(--brand)", color: "var(--brand)" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = brandColor; e.currentTarget.style.color = "white"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = brandColor; }}
                         >
                           Ver mais produtos
                         </button>

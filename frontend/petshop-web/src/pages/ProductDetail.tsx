@@ -4,6 +4,7 @@ import { ChevronLeft, ShoppingCart, Minus, Plus } from "lucide-react";
 import { useProduct } from "@/features/catalog/queries";
 import { useCart } from "@/features/cart/cart";
 import { ToastProvider, useToast } from "@/components/Toast";
+import { useBrandVar } from "@/hooks/useBrandVar";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -33,6 +34,7 @@ function ProductDetailSkeleton() {
 }
 
 function ProductDetailContent() {
+  useBrandVar();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: product, isLoading } = useProduct(id ?? "");
@@ -64,7 +66,7 @@ function ProductDetailContent() {
             type="button"
             onClick={() => navigate("/")}
             className="text-sm font-semibold underline underline-offset-2"
-            style={{ color: "#7c5cf8" }}
+            style={{ color: "var(--brand)" }}
           >
             Voltar ao catálogo
           </button>
@@ -123,7 +125,7 @@ function ProductDetailContent() {
           <div className="mt-5 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs text-gray-400 mb-1">Preço</p>
-              <span className="text-2xl font-black tabular-nums" style={{ color: "#7c5cf8" }}>
+              <span className="text-2xl font-black tabular-nums" style={{ color: "var(--brand)" }}>
                 {formatBRL(product.priceCents)}
               </span>
             </div>
@@ -146,7 +148,7 @@ function ProductDetailContent() {
                   type="button"
                   onClick={() => setQty((q) => q + 1)}
                   className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
-                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                  style={{ background: "var(--brand)" }}
                   aria-label="Aumentar"
                 >
                   <Plus className="w-4 h-4" />
@@ -179,7 +181,7 @@ function ProductDetailContent() {
             type="button"
             onClick={handleAddToCart}
             className="w-full h-14 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "var(--brand)" }}
           >
             <ShoppingCart className="w-5 h-5" />
             Adicionar ao Carrinho

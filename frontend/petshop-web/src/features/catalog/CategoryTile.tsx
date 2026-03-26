@@ -44,11 +44,11 @@ export function CategoryTile({
         "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all shrink-0 select-none",
         active
           ? "text-white shadow-md"
-          : "bg-white text-gray-700 border border-gray-200 hover:border-[#7c5cf8] hover:text-[#7c5cf8] active:scale-95",
+          : "bg-white text-gray-700 border border-gray-200 hover:border-[var(--brand)] hover:text-[var(--brand)] active:scale-95",
       ].join(" ")}
       style={
         active
-          ? { background: "linear-gradient(135deg, #7c5cf8, #6d4df2)", boxShadow: "0 4px 12px rgba(124,92,248,0.3)" }
+          ? { background: "var(--brand)", boxShadow: "0 4px 12px color-mix(in srgb, var(--brand) 40%, transparent)" }
           : undefined
       }
     >

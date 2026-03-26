@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { CreateOrder, type CreateOrderRequest } from "@/features/orders/api";
 import { fetchAddressByCep } from "@/features/shipping/viacep";
 import { ArrowLeft, CheckCircle2, ChevronRight, MapPin, CreditCard, Banknote, QrCode, Package } from "lucide-react";
+import { useBrandVar } from "@/hooks/useBrandVar";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -87,7 +88,7 @@ function ConfirmationScreen({
           <div className="flex items-center gap-3">
             <div
               className="w-2.5 h-2.5 rounded-full shrink-0"
-              style={{ background: "#7c5cf8", boxShadow: "0 0 8px rgba(124,92,248,0.5)" }}
+              style={{ background: "var(--brand)", boxShadow: "0 0 8px color-mix(in srgb, var(--brand) 50%, transparent)" }}
             />
             <span className="font-bold text-gray-900 text-sm">Preparando seu pedido...</span>
           </div>
@@ -102,7 +103,7 @@ function ConfirmationScreen({
             type="button"
             onClick={onNewOrder}
             className="w-full py-3.5 rounded-2xl font-black text-base text-white transition hover:brightness-110 active:scale-[0.99]"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "var(--brand)" }}
           >
             Fazer Novo Pedido
           </button>
@@ -145,10 +146,11 @@ function FormField({
 }
 
 const inputCls =
-  "w-full h-11 px-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#7c5cf8] focus:border-transparent transition";
+  "w-full h-11 px-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-transparent transition";
 
 /* ─── Página de Checkout ─────────────────────────── */
 export default function Checkout() {
+  useBrandVar();
   const cart = useCart();
   const navigate = useNavigate();
 
@@ -347,7 +349,7 @@ function handleOpenReview() {
             <div className="h-px bg-gray-200" />
             <div className="flex justify-between text-base font-black">
               <span className="text-gray-900">Total</span>
-              <span className="tabular-nums" style={{ color: "#7c5cf8" }}>{formatBRL(totalCentsUI)}</span>
+              <span className="tabular-nums" style={{ color: "var(--brand)" }}>{formatBRL(totalCentsUI)}</span>
             </div>
           </div>
         </div>
@@ -430,9 +432,9 @@ function handleOpenReview() {
           {fullAddressUI && (
             <div
               className="flex items-start gap-2 rounded-xl px-3 py-2.5"
-              style={{ backgroundColor: "rgba(124,92,248,0.08)" }}
+              style={{ backgroundColor: "color-mix(in srgb, var(--brand) 8%, transparent)" }}
             >
-              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#7c5cf8" }} />
+              <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "var(--brand)" }} />
               <p className="text-xs text-gray-600 leading-relaxed">{fullAddressUI}</p>
             </div>
           )}
@@ -455,31 +457,31 @@ function handleOpenReview() {
                   onClick={() => setPayment(key)}
                   className={[
                     "w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all active:scale-[0.99]",
-                    active ? "border-[#7c5cf8]" : "border-gray-200 hover:border-gray-300",
+                    active ? "border-[var(--brand)]" : "border-gray-200 hover:border-gray-300",
                   ].join(" ")}
-                  style={active ? { backgroundColor: "rgba(124,92,248,0.07)" } : undefined}
+                  style={active ? { backgroundColor: "color-mix(in srgb, var(--brand) 7%, transparent)" } : undefined}
                 >
                   <div
                     className={[
                       "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all",
                       active ? "text-white" : "bg-gray-100 text-gray-500",
                     ].join(" ")}
-                    style={active ? { background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" } : undefined}
+                    style={active ? { background: "var(--brand)" } : undefined}
                   >
                     {icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={["text-sm font-bold", active ? "" : "text-gray-900"].join(" ")} style={active ? { color: "#7c5cf8" } : undefined}>
+                    <p className={["text-sm font-bold", active ? "" : "text-gray-900"].join(" ")} style={active ? { color: "var(--brand)" } : undefined}>
                       {label}
                     </p>
                     <p className="text-xs text-gray-400">{desc}</p>
                   </div>
                   <div
                     className={["w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all", active ? "" : "border-gray-300"].join(" ")}
-                    style={active ? { borderColor: "#7c5cf8" } : undefined}
+                    style={active ? { borderColor: "var(--brand)" } : undefined}
                   >
                     {active && (
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "#7c5cf8" }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: "var(--brand)" }} />
                     )}
                   </div>
                 </button>
@@ -531,7 +533,7 @@ function handleOpenReview() {
           <button
             type="button"
             className="w-full py-3.5 rounded-2xl font-black text-base text-white transition hover:brightness-110 active:scale-[0.99] disabled:opacity-40 flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "var(--brand)" }}
             disabled={!canSubmit}
             onClick={handleOpenReview}
           >
@@ -613,7 +615,7 @@ function handleOpenReview() {
                 <div className="h-px bg-gray-200" />
                 <div className="flex justify-between text-base font-black">
                   <span className="text-gray-900">Total</span>
-                  <span className="tabular-nums" style={{ color: "#7c5cf8" }}>{formatBRL(review.totalCentsUI)}</span>
+                  <span className="tabular-nums" style={{ color: "var(--brand)" }}>{formatBRL(review.totalCentsUI)}</span>
                 </div>
               </div>
 
@@ -656,7 +658,7 @@ function handleOpenReview() {
                   onClick={confirmOrder}
                   disabled={sending}
                   className="h-12 rounded-xl font-black text-sm text-white transition hover:brightness-110 disabled:opacity-50 active:scale-[0.99]"
-                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                  style={{ background: "var(--brand)" }}
                 >
                   {sending ? "Enviando..." : "Confirmar Pedido"}
                 </button>

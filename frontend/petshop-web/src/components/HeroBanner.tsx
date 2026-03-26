@@ -15,7 +15,7 @@ function DefaultSlide({ onCategoryClick }: { onCategoryClick?: (slug: string) =>
   return (
     <div
       className="relative rounded-2xl overflow-hidden min-h-[160px] sm:min-h-[200px] flex items-end"
-      style={{ background: "linear-gradient(135deg, #5b3fd4 0%, #7c5cf8 50%, #9b7efa 100%)" }}
+      style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--brand) 80%, black) 0%, var(--brand) 50%, color-mix(in srgb, var(--brand) 80%, white) 100%)" }}
     >
       <div className="absolute top-[-40px] right-[-40px] w-48 h-48 rounded-full opacity-10 bg-white" />
       <div className="absolute top-[20px] right-[60px] w-24 h-24 rounded-full opacity-10 bg-white" />
@@ -34,7 +34,7 @@ function DefaultSlide({ onCategoryClick }: { onCategoryClick?: (slug: string) =>
           type="button"
           onClick={() => onCategoryClick?.("")}
           className="self-start sm:self-auto shrink-0 h-10 px-6 rounded-xl bg-white text-sm font-bold transition hover:bg-white/90 active:scale-95"
-          style={{ color: "#7c5cf8" }}
+          style={{ color: "var(--brand)" }}
         >
           Ver Ofertas
         </button>

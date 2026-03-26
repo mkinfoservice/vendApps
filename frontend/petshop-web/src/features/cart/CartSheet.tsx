@@ -31,7 +31,7 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2.5">
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                style={{ background: "var(--brand)" }}
               >
                 <ShoppingBag className="w-4 h-4 text-white" />
               </div>
@@ -89,7 +89,7 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
                       <p className="text-sm font-semibold text-gray-900 line-clamp-1 leading-tight">
                         {item.product.name}
                       </p>
-                      <p className="text-sm font-black tabular-nums mt-0.5" style={{ color: "#7c5cf8" }}>
+                      <p className="text-sm font-black tabular-nums mt-0.5" style={{ color: "var(--brand)" }}>
                         {formatBRL(item.product.priceCents)}
                       </p>
                       {item.qty > 1 && (
@@ -126,7 +126,7 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
                         type="button"
                         onClick={() => cart.inc(item.product.id)}
                         className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
-                        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                        style={{ background: "var(--brand)" }}
                         aria-label="Aumentar quantidade"
                       >
                         <Plus className="w-4 h-4" />
@@ -153,7 +153,7 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
             disabled={!hasItems}
             onClick={() => navigate("/checkout")}
             className="w-full h-13 py-3.5 rounded-2xl font-black text-base text-white disabled:opacity-40 transition hover:brightness-110 active:scale-[0.99]"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "var(--brand)" }}
           >
             Finalizar Pedido
           </button>

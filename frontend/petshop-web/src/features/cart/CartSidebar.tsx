@@ -17,7 +17,7 @@ export function CartSidebar() {
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5" style={{ color: "#7c5cf8" }} />
+            <ShoppingBag className="w-5 h-5" style={{ color: "var(--brand)" }} />
             <h2 className="font-black text-gray-900 text-base">Seu Carrinho</h2>
             <span className="text-sm text-gray-400">({cart.totalItems} itens)</span>
           </div>
@@ -66,7 +66,7 @@ export function CartSidebar() {
                     <p className="text-sm font-semibold text-gray-900 line-clamp-1 leading-tight">
                       {item.product.name}
                     </p>
-                    <p className="text-sm font-black tabular-nums mt-0.5" style={{ color: "#7c5cf8" }}>
+                    <p className="text-sm font-black tabular-nums mt-0.5" style={{ color: "var(--brand)" }}>
                       {formatBRL(item.product.priceCents)}
                     </p>
                   </div>
@@ -98,7 +98,7 @@ export function CartSidebar() {
                       type="button"
                       onClick={() => cart.inc(item.product.id)}
                       className="w-7 h-7 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
-                      style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                      style={{ background: "var(--brand)" }}
                       aria-label="Aumentar"
                     >
                       <Plus className="w-3 h-3" />
@@ -125,7 +125,7 @@ export function CartSidebar() {
             type="button"
             onClick={() => navigate("/checkout")}
             className="w-full py-3.5 rounded-2xl font-black text-base text-white transition hover:brightness-110 active:scale-[0.99]"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "var(--brand)" }}
           >
             Finalizar Pedido
           </button>

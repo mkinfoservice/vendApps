@@ -75,7 +75,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
           <div className="absolute top-2 right-2">
             <span
               className="inline-flex items-center justify-center w-5 h-5 rounded-full text-white text-[10px] font-black shadow-md"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              style={{ background: "var(--brand)" }}
             >
               {qty}
             </span>
@@ -96,7 +96,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
                 {formatBRL(originalCents)}
               </span>
             )}
-            <span className="text-sm font-semibold tabular-nums" style={{ color: "#7c5cf8" }}>
+            <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--brand)" }}>
               {formatBRL(p.priceCents)}
             </span>
           </div>
@@ -106,7 +106,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
               type="button"
               onClick={handleAdd}
               className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shrink-0 shadow-sm"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              style={{ background: "var(--brand)" }}
               aria-label="Adicionar ao carrinho"
             >
               <Plus className="w-4 h-4" />
@@ -134,7 +134,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
                 type="button"
                 onClick={handleInc}
                 className="w-7 h-7 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-sm"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                style={{ background: "var(--brand)" }}
                 aria-label="Aumentar"
               >
                 <Plus className="w-3 h-3" />

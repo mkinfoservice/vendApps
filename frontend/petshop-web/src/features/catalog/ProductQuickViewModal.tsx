@@ -136,7 +136,7 @@ export function ProductQuickViewModal({ productId, onClose }: Props) {
                     <p className="text-xs text-gray-400 mb-1">Preço</p>
                     <span
                       className="text-2xl font-black tabular-nums"
-                      style={{ color: "#7c5cf8" }}
+                      style={{ color: "var(--brand)" }}
                     >
                       {formatBRL(product.priceCents)}
                     </span>
@@ -160,7 +160,7 @@ export function ProductQuickViewModal({ productId, onClose }: Props) {
                         type="button"
                         onClick={() => setQty((q) => q + 1)}
                         className="w-8 h-8 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
-                        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                        style={{ background: "var(--brand)" }}
                         aria-label="Aumentar"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export function ProductQuickViewModal({ productId, onClose }: Props) {
                   type="button"
                   onClick={handleAddToCart}
                   className="w-full h-12 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition"
-                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                  style={{ background: "var(--brand)" }}
                 >
                   <ShoppingCart className="w-5 h-5" />
                   Adicionar ao Carrinho
