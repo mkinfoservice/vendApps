@@ -109,7 +109,7 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "MercadoLivre search falhou para query '{Query}'", query);
+            _logger.LogWarning(ex, "MercadoLivre search falhou para query '{Query}'", query);
             return [];
         }
     }
@@ -169,7 +169,7 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "MercadoLivre picker search falhou para '{Query}'", query);
+            _logger.LogWarning(ex, "MercadoLivre picker search falhou para '{Query}'", query);
             return [];
         }
     }
