@@ -43,6 +43,48 @@ public sealed class ProductNameImageSearchMatcher : IProductImageMatcher
         _logger      = logger;
     }
 
+    /// <summary>
+    /// Versão para o picker manual: retorna List&lt;MlImageResult&gt; buscando por nome
+    /// nas bases Open Pet Food Facts e Open Food Facts.
+    /// </summary>
+    public async Task<List<MlImageResult>> SearchForPickerAsync(string query, CancellationToken ct)
+    {
+        var q = BuildSearchQuery(query);
+        if (string.IsNullOrWhiteSpace(q)) return [];
+
+        var results = new List<MlImageResult>();
+
+        foreach (var host in SearchHosts)
+        {
+            if (ct.IsCancellationRequested) break;
+            if (results.Count >= 10) break;
+
+            try
+            {
+                using var http = _httpFactory.CreateClient("EnrichmentNameSearch");
+                var encoded    = HttpUtility.UrlEncode(q);
+                var url        = $"{host}/cgi/search.pl?search_terms={encoded}&search_simple=1&action=process&json=1&fields=code,product_name,brands,image_front_url,image_url&page_size=5";
+
+                var response = await http.GetFromJsonAsync<OffSearchResponse>(url, ct);
+                if (response?.Products is null) continue;
+
+                foreach (var p in response.Products)
+                {
+                    var imgUrl = p.ImageFrontUrl ?? p.ImageUrl;
+                    if (string.IsNullOrWhiteSpace(imgUrl)) continue;
+                    var name   = p.ProductName ?? p.Brands ?? query;
+                    results.Add(new MlImageResult(p.Code ?? Guid.NewGuid().ToString(), name, [imgUrl]));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Picker fallback falhou em {Host}", host);
+            }
+        }
+
+        return results;
+    }
+
     public async Task<IReadOnlyList<ImageMatchCandidate>> FindCandidatesAsync(
         EnrichmentProductInput input,
         CancellationToken ct = default)

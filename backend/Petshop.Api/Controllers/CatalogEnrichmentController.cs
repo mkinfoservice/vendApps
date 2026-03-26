@@ -25,17 +25,23 @@ public class CatalogEnrichmentController : ControllerBase
     private readonly EnrichmentBatchService _batchService;
     private readonly IBackgroundJobClient _jobs;
     private readonly MercadoLivreImageMatcher _mlMatcher;
+    private readonly ProductNameImageSearchMatcher _offMatcher;
+    private readonly ILogger<CatalogEnrichmentController> _logger;
 
     public CatalogEnrichmentController(
         AppDbContext db,
         EnrichmentBatchService batchService,
         IBackgroundJobClient jobs,
-        MercadoLivreImageMatcher mlMatcher)
+        MercadoLivreImageMatcher mlMatcher,
+        ProductNameImageSearchMatcher offMatcher,
+        ILogger<CatalogEnrichmentController> logger)
     {
-        _db          = db;
+        _db           = db;
         _batchService = batchService;
         _jobs         = jobs;
         _mlMatcher    = mlMatcher;
+        _offMatcher   = offMatcher;
+        _logger       = logger;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -587,19 +593,20 @@ public class CatalogEnrichmentController : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return BadRequest(new { error = "Parâmetro 'q' é obrigatório." });
 
+        // Tenta ML primeiro (melhor cobertura para produtos BR)
         try
         {
-            var results = await _mlMatcher.SearchForPickerAsync(q, ct);
-            return Ok(results);
-        }
-        catch (HttpRequestException ex)
-        {
-            return StatusCode(502, new { error = $"Erro ao consultar Mercado Livre: {ex.Message}", statusCode = (int?)ex.StatusCode });
+            var mlResults = await _mlMatcher.SearchForPickerAsync(q, ct);
+            if (mlResults.Count > 0) return Ok(mlResults);
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { error = ex.Message });
+            _logger.LogWarning("ML picker falhou ({Msg}), usando fallback OFF", ex.Message);
         }
+
+        // Fallback: Open Pet Food Facts + Open Food Facts (não bloqueiam IPs de servidor)
+        var offResults = await _offMatcher.SearchForPickerAsync(q, ct);
+        return Ok(offResults);
     }
 
     /// <summary>

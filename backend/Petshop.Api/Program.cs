@@ -261,6 +261,8 @@ builder.Services.AddScoped<IProductImageMatcher, MercadoLivreImageMatcher>();
 builder.Services.AddScoped<IProductImageMatcher, OpenPetFoodFactsClient>();
 builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
 builder.Services.AddScoped<IProductImageMatcher, ProductNameImageSearchMatcher>();
+// Registro direto para injeção no CatalogEnrichmentController (picker fallback)
+builder.Services.AddScoped<ProductNameImageSearchMatcher>();
 
 // ===============================
 // Services — Master Admin
