@@ -1,14 +1,14 @@
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 
-export type MlImageResult = {
+export type ImageSearchResult = {
   itemId: string;
   title: string;
   pictures: string[];
 };
 
-export async function searchImages(q: string): Promise<MlImageResult[]> {
+export async function searchImages(q: string): Promise<ImageSearchResult[]> {
   const params = new URLSearchParams({ q });
-  return adminFetch<MlImageResult[]>(`/admin/enrichment/image-search?${params}`);
+  return adminFetch<ImageSearchResult[]>(`/admin/enrichment/image-search?${params}`);
 }
 
 export async function setProductImage(productId: string, url: string): Promise<void> {

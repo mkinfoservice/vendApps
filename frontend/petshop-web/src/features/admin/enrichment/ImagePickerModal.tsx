@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Search, Loader2, Image, CheckCircle2 } from "lucide-react";
-import { searchImages, setProductImage, type MlImageResult } from "./imageSearchApi";
+import { searchImages, setProductImage, type ImageSearchResult } from "./imageSearchApi";
 
 type Props = {
   productId: string;
@@ -21,7 +21,7 @@ function simplifyQuery(name: string): string {
 
 export function ImagePickerModal({ productId, productName, onClose, onApplied }: Props) {
   const [query, setQuery] = useState(() => simplifyQuery(productName));
-  const [results, setResults] = useState<MlImageResult[]>([]);
+  const [results, setResults] = useState<ImageSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
   const [applied, setApplied] = useState<string | null>(null);
@@ -106,7 +106,7 @@ export function ImagePickerModal({ productId, productName, onClose, onApplied }:
             </button>
           </div>
           <p className="text-[11px] text-gray-400 mt-1.5">
-            Fonte: Mercado Livre · clique em uma imagem para aplicar ao produto
+            Fonte: Google Images · clique em uma imagem para aplicar ao produto
           </p>
         </div>
 
@@ -167,7 +167,7 @@ export function ImagePickerModal({ productId, productName, onClose, onApplied }:
         {allPictures.length > 0 && (
           <div className="px-5 py-3 border-t border-gray-100 shrink-0">
             <p className="text-xs text-gray-400 text-center">
-              {allPictures.length} imagem{allPictures.length !== 1 ? "ns" : ""} de {results.length} produto{results.length !== 1 ? "s" : ""} no Mercado Livre
+              {allPictures.length} imagem{allPictures.length !== 1 ? "ns" : ""} encontrada{allPictures.length !== 1 ? "s" : ""} no Google Images
             </p>
           </div>
         )}

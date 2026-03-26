@@ -221,52 +221,14 @@ builder.Services.AddScoped<CatalogEnrichmentOrchestrator>();
 builder.Services.AddScoped<EnrichNormalizeProductsJob>();
 builder.Services.AddScoped<EnrichMatchImagesJob>();
 
-// OpenFoodFacts: HttpClient tipado (busca por barcode — alimentos em geral)
-builder.Services.AddHttpClient<OpenFoodFactsClient>(client =>
-{
-    client.BaseAddress = new Uri("https://world.openfoodfacts.org/");
-    client.Timeout     = TimeSpan.FromSeconds(8);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
-});
-
-// OpenPetFoodFacts: HttpClient tipado (busca por barcode — pet food específico)
-builder.Services.AddHttpClient<OpenPetFoodFactsClient>(client =>
-{
-    client.BaseAddress = new Uri("https://world.openpetfoodfacts.org/");
-    client.Timeout     = TimeSpan.FromSeconds(8);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
-});
-
-// Busca por nome (named client — sem base URL fixa, usa OFF e OPFF)
-builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
+// Google Custom Search API — picker manual de imagens do admin
+// Requer GOOGLE_API_KEY e GOOGLE_CSE_ID nas variáveis de ambiente
+builder.Services.AddHttpClient<GoogleImageSearchMatcher>(client =>
 {
     client.Timeout = TimeSpan.FromSeconds(10);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
 });
-
-// ML Token Service — obtém e armazena em cache o access token via client credentials
-builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<MlTokenService>();
-
-// Named HttpClient compartilhado para chamadas ao Mercado Livre
-// MercadoLivreImageMatcher usa IHttpClientFactory + CreateClient("MercadoLivre")
-// e injeta o Bearer token por request (não em DefaultRequestHeaders do singleton)
-builder.Services.AddHttpClient("MercadoLivre", client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(15);
-    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; vendApps/1.0)");
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
-
-// Registra todos os matchers de imagem (executados em ordem pelo ProductImageMatchingService)
-// ML primeiro (melhor cobertura para mercado BR), depois as bases pet food internacionais
-builder.Services.AddScoped<MercadoLivreImageMatcher>(); // registro direto para injeção no controller
-builder.Services.AddScoped<IProductImageMatcher, MercadoLivreImageMatcher>();
-builder.Services.AddScoped<IProductImageMatcher, OpenPetFoodFactsClient>();
-builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
-builder.Services.AddScoped<IProductImageMatcher, ProductNameImageSearchMatcher>();
-// Registro direto para injeção no CatalogEnrichmentController (picker fallback)
-builder.Services.AddScoped<ProductNameImageSearchMatcher>();
+builder.Services.AddScoped<GoogleImageSearchMatcher>();
 
 // ===============================
 // Services — Master Admin

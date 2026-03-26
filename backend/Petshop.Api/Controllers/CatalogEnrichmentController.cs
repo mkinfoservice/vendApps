@@ -24,24 +24,21 @@ public class CatalogEnrichmentController : ControllerBase
     private readonly AppDbContext _db;
     private readonly EnrichmentBatchService _batchService;
     private readonly IBackgroundJobClient _jobs;
-    private readonly MercadoLivreImageMatcher _mlMatcher;
-    private readonly ProductNameImageSearchMatcher _offMatcher;
+    private readonly GoogleImageSearchMatcher _googleMatcher;
     private readonly ILogger<CatalogEnrichmentController> _logger;
 
     public CatalogEnrichmentController(
         AppDbContext db,
         EnrichmentBatchService batchService,
         IBackgroundJobClient jobs,
-        MercadoLivreImageMatcher mlMatcher,
-        ProductNameImageSearchMatcher offMatcher,
+        GoogleImageSearchMatcher googleMatcher,
         ILogger<CatalogEnrichmentController> logger)
     {
-        _db           = db;
-        _batchService = batchService;
-        _jobs         = jobs;
-        _mlMatcher    = mlMatcher;
-        _offMatcher   = offMatcher;
-        _logger       = logger;
+        _db            = db;
+        _batchService  = batchService;
+        _jobs          = jobs;
+        _googleMatcher = googleMatcher;
+        _logger        = logger;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -585,21 +582,6 @@ public class CatalogEnrichmentController : ControllerBase
     /// Busca imagens no Mercado Livre para o picker manual do admin.
     /// Retorna até 5 itens, cada um com múltiplas fotos.
     /// </summary>
-    /// <summary>Diagnóstico: testa conectividade com ML API e status do token.</summary>
-    [HttpGet("image-search/ping")]
-    public async Task<IActionResult> ImageSearchPing(
-        [FromServices] MlTokenService tokenService,
-        CancellationToken ct)
-    {
-        var token = await tokenService.GetTokenAsync(ct);
-        return Ok(new
-        {
-            mlConfigured  = tokenService.IsConfigured,
-            mlTokenObtained = token is not null,
-            tokenPreview  = token is null ? null : token[..Math.Min(20, token.Length)] + "...",
-        });
-    }
-
     [HttpGet("image-search")]
     public async Task<IActionResult> ImageSearch(
         [FromQuery] string q,
@@ -608,20 +590,8 @@ public class CatalogEnrichmentController : ControllerBase
         if (string.IsNullOrWhiteSpace(q))
             return BadRequest(new { error = "Parâmetro 'q' é obrigatório." });
 
-        // Tenta ML primeiro (melhor cobertura para produtos BR)
-        try
-        {
-            var mlResults = await _mlMatcher.SearchForPickerAsync(q, ct);
-            if (mlResults.Count > 0) return Ok(mlResults);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("ML picker falhou ({Msg}), usando fallback OFF", ex.Message);
-        }
-
-        // Fallback: Open Pet Food Facts + Open Food Facts (não bloqueiam IPs de servidor)
-        var offResults = await _offMatcher.SearchForPickerAsync(q, ct);
-        return Ok(offResults);
+        var results = await _googleMatcher.SearchForPickerAsync(q, ct);
+        return Ok(results);
     }
 
     /// <summary>
