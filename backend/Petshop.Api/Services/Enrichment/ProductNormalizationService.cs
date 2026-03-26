@@ -118,6 +118,10 @@ public sealed partial class ProductNormalizationService
         // 6. Restaurar acrônimos conhecidos em maiúsculas
         title = AcronymRegex().Replace(title, static m => m.Value.ToUpperInvariant());
 
+        // 7. Unidades de medida: sem espaço e sempre minúsculas — "30 Kg" → "30kg"
+        title = UnitSpaceRegex().Replace(title,
+            m => m.Groups[1].Value + m.Groups[2].Value.ToLowerInvariant());
+
         if (!string.Equals(name, title, StringComparison.Ordinal))
             steps.Add("normalize-title-case");
 
@@ -167,6 +171,10 @@ public sealed partial class ProductNormalizationService
     private static partial Regex MultiSpaceRegex();
 
     // Acrônimos comuns em nomes de produtos (pet, alimentos, fiscal, tech)
-    [GeneratedRegex(@"\b(Usa|Pet|Nfc|Pdv|Sku|Drf|Api|Sql|Ean|Gtin|Un|Pis|Cofins|Csosn|Icms)\b")]
+    [GeneratedRegex(@"\b(Usa|Pet|Nfc|Pdv|Sku|Drf|Api|Sql|Ean|Gtin|Pis|Cofins|Csosn|Icms)\b")]
     private static partial Regex AcronymRegex();
+
+    // Número + unidade com espaço opcional → sem espaço, unidade minúscula: "30 Kg" → "30kg"
+    [GeneratedRegex(@"\b(\d+(?:[,\.]\d+)?)\s*(Kg|G|Ml|L|Un)\b")]
+    private static partial Regex UnitSpaceRegex();
 }

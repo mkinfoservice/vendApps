@@ -14,7 +14,7 @@ export function TrustBar() {
       {BADGES.map(({ icon: Icon, label }) => (
         <div
           key={label}
-          className="flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-xl bg-white border border-gray-100 shadow-sm"
+          className="flex items-center gap-1.5 shrink-0 px-3 py-2 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5 transition-all duration-200 cursor-default"
         >
           <Icon className="w-3.5 h-3.5 text-gray-500 shrink-0" />
           <span className="text-[11px] font-semibold text-gray-600 whitespace-nowrap">{label}</span>

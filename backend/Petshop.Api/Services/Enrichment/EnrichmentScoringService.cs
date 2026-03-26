@@ -92,14 +92,27 @@ public sealed class EnrichmentScoringService
     {
         var scores = new Dictionary<string, decimal>();
 
-        // Barcode match tem peso dominante (0.70) — EAN é identificador único de produto
-        scores["barcode"] = !string.IsNullOrWhiteSpace(input.Barcode) &&
-                            string.Equals(NormalizeDigits(input.Barcode), NormalizeDigits(candidate.CandidateBarcode), StringComparison.Ordinal)
-            ? 0.70m : 0m;
+        bool barcodeMatch = !string.IsNullOrWhiteSpace(input.Barcode)
+            && !string.IsNullOrWhiteSpace(candidate.CandidateBarcode)
+            && string.Equals(NormalizeDigits(input.Barcode), NormalizeDigits(candidate.CandidateBarcode),
+                             StringComparison.Ordinal);
 
-        scores["name"]     = StringSimilarity(input.Name, candidate.CandidateName) * 0.20m;
-        scores["brand"]    = StringSimilarity(input.Brand, candidate.CandidateBrand) * 0.08m;
-        scores["category"] = string.IsNullOrWhiteSpace(input.CategoryName) ? 0.02m : 0.01m;
+        if (barcodeMatch)
+        {
+            // Barcode exato: pesos originais — alta precisão
+            scores["barcode"]  = 0.70m;
+            scores["name"]     = StringSimilarity(input.Name, candidate.CandidateName) * 0.20m;
+            scores["brand"]    = StringSimilarity(input.Brand, candidate.CandidateBrand) * 0.08m;
+            scores["category"] = 0.02m;
+        }
+        else
+        {
+            // Sem barcode: redistribui pesos para nome e marca — permite revisão humana
+            scores["barcode"]  = 0m;
+            scores["name"]     = StringSimilarity(input.Name, candidate.CandidateName) * 0.75m;
+            scores["brand"]    = StringSimilarity(input.Brand, candidate.CandidateBrand) * 0.20m;
+            scores["category"] = 0.05m;
+        }
 
         return scores;
     }

@@ -16,6 +16,7 @@ import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal"
 import { TopBar } from "@/components/TopBar";
 import { ToastProvider } from "@/components/Toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useDragScroll } from "@/hooks/useDragScroll";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -52,6 +53,7 @@ export default function App() {
   useEffect(() => { setVisibleCount(24); }, [categorySlug, search]);
 
   const isDesktop = useMediaQuery("(min-width: 1280px)");
+  const categoryScroll = useDragScroll<HTMLDivElement>();
 
   // Verifica status do tenant (só em subdomínio válido)
   const tenantQuery = useQuery({
@@ -174,7 +176,14 @@ export default function App() {
               <div className="relative mt-4">
                 <div className="absolute left-0 top-0 bottom-1 w-6 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10" />
                 <div className="absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10" />
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <div
+                ref={categoryScroll.ref}
+                onMouseDown={categoryScroll.onMouseDown}
+                onMouseMove={categoryScroll.onMouseMove}
+                onMouseUp={categoryScroll.onMouseUp}
+                onMouseLeave={categoryScroll.onMouseLeave}
+                className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide cursor-grab select-none"
+              >
                 <CategoryTile
                   c={{ id: "all", name: "Todos", slug: "" }}
                   active={!categorySlug}

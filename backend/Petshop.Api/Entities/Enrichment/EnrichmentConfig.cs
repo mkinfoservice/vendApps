@@ -17,8 +17,8 @@ public class EnrichmentConfig
     /// <summary>Score mínimo para aplicar imagem automaticamente (padrão: 0.80).</summary>
     public decimal AutoApplyImageThreshold { get; set; } = 0.80m;
 
-    /// <summary>Score mínimo para enviar imagem para revisão manual (padrão: 0.40).</summary>
-    public decimal ReviewImageThreshold { get; set; } = 0.40m;
+    /// <summary>Score mínimo para enviar imagem para revisão manual (padrão: 0.10).</summary>
+    public decimal ReviewImageThreshold { get; set; } = 0.10m;
 
     /// <summary>Score mínimo para aplicar nome automaticamente (padrão: 0.70 = aplica quase tudo).</summary>
     public decimal AutoApplyNameThreshold { get; set; } = 0.70m;
