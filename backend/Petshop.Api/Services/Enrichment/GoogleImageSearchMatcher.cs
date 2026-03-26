@@ -34,8 +34,8 @@ public sealed class GoogleImageSearchMatcher
     {
         _http   = http;
         _logger = logger;
-        _apiKey = config["GOOGLE_API_KEY"];
-        _cseId  = config["GOOGLE_CSE_ID"];
+        _apiKey = config["GOOGLE_API_KEY"]?.Trim();
+        _cseId  = config["GOOGLE_CSE_ID"]?.Trim();
     }
 
     public bool IsConfigured =>
