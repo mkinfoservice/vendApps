@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ShoppingCart, Search, X, AlertTriangle } from "lucide-react";
 import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
-import { useCategories, useProducts } from "./features/catalog/queries";
+import { useCategories, useProducts, useStoreFront } from "./features/catalog/queries";
 import { useCart } from "./features/cart/cart";
 import { CartSheet } from "@/features/cart/CartSheet";
 import { CartSidebar } from "@/features/cart/CartSidebar";
@@ -52,8 +53,16 @@ export default function App() {
   // Reset paginação ao trocar filtro
   useEffect(() => { setVisibleCount(24); }, [categorySlug, search]);
 
+  const navigate = useNavigate();
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const categoryScroll = useDragScroll<HTMLDivElement>();
+
+  // Aplica cor primária da loja via CSS variable
+  const { data: storeFront } = useStoreFront();
+  useEffect(() => {
+    const color = storeFront?.primaryColor;
+    if (color) document.documentElement.style.setProperty("--brand", color);
+  }, [storeFront?.primaryColor]);
 
   // Verifica status do tenant (só em subdomínio válido)
   const tenantQuery = useQuery({
@@ -111,7 +120,7 @@ export default function App() {
           {cart.totalItems > 0 && (
             <span
               className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-black flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              style={{ background: "linear-gradient(135deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
             >
               {cart.totalItems > 9 ? "9+" : cart.totalItems}
             </span>
@@ -129,7 +138,7 @@ export default function App() {
           {/* Banner frete grátis */}
           <div
             className="text-white text-center text-xs font-semibold py-2 px-4"
-            style={{ background: "linear-gradient(90deg, #7c5cf8, #6d4df2)" }}
+            style={{ background: "linear-gradient(90deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
           >
             Frete Grátis acima de R$ 100
           </div>
@@ -146,7 +155,14 @@ export default function App() {
             <div className={`min-w-0 xl:pb-10 ${cart.totalItems > 0 ? "pb-28" : "pb-6"}`}>
 
               {/* Banner principal — oculto quando há filtro ativo */}
-              {!isFiltered && <HeroBanner onCategoryClick={setCategorySlug} />}
+              {!isFiltered && (
+                <HeroBanner
+                  onCategoryClick={setCategorySlug}
+                  onProductClick={(id) =>
+                    isDesktop ? setSelectedProductId(id) : navigate(`/produto/${id}`)
+                  }
+                />
+              )}
 
               {/* Trust badges */}
               {!isFiltered && <TrustBar />}
@@ -308,7 +324,7 @@ export default function App() {
                 <button
                   type="button"
                   className="h-12 px-6 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                  style={{ background: "linear-gradient(135deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
                 >
                   Ver carrinho ({cart.totalItems})
                 </button>

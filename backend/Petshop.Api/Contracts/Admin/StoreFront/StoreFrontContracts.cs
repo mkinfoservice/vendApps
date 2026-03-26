@@ -31,7 +31,7 @@ public record UpdateStoreFrontConfigRequest(
 // ── Requests — slides ─────────────────────────────────────────────────────────
 
 public record UpsertBannerSlideRequest(
-    [MaxLength(200)] string? ImageUrl,
+    string?          ImageUrl,   // URL ou data URI base64 — sem limite de tamanho
     [MaxLength(120)] string? Title,
     [MaxLength(200)] string? Subtitle,
     [MaxLength(60)]  string? CtaText,

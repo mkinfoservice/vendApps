@@ -14,7 +14,7 @@ public class BannerSlide
     public StoreFrontConfig StoreFrontConfig { get; set; } = default!;
 
     // ── Conteúdo ──────────────────────────────────────────────────────────────
-    [MaxLength(200)]
+    /// <summary>URL https:// ou data URI base64 (imagem carregada pelo admin).</summary>
     public string? ImageUrl { get; set; }
 
     [MaxLength(120)]

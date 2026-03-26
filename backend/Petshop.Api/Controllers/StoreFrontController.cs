@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Contracts.Admin.StoreFront;
 using Petshop.Api.Data;
+using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Services;
 using System.Security.Claims;
@@ -22,6 +23,20 @@ public class StoreFrontAdminController : ControllerBase
     public StoreFrontAdminController(AppDbContext db) => _db = db;
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
+
+    // ── GET /admin/storefront/categories ─────────────────────────────────────
+    /// <summary>Lista grupos de produtos da empresa (para preencher dropdown no formulário de slide).</summary>
+    [HttpGet("categories")]
+    public async Task<IActionResult> GetCategories(CancellationToken ct)
+    {
+        var cats = await _db.Categories
+            .AsNoTracking()
+            .Where(c => c.CompanyId == CompanyId)
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Slug })
+            .ToListAsync(ct);
+        return Ok(cats);
+    }
 
     // ── GET /admin/storefront ─────────────────────────────────────────────────
     [HttpGet]
