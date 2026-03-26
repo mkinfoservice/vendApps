@@ -585,6 +585,21 @@ public class CatalogEnrichmentController : ControllerBase
     /// Busca imagens no Mercado Livre para o picker manual do admin.
     /// Retorna até 5 itens, cada um com múltiplas fotos.
     /// </summary>
+    /// <summary>Diagnóstico: testa conectividade com ML API e status do token.</summary>
+    [HttpGet("image-search/ping")]
+    public async Task<IActionResult> ImageSearchPing(
+        [FromServices] MlTokenService tokenService,
+        CancellationToken ct)
+    {
+        var token = await tokenService.GetTokenAsync(ct);
+        return Ok(new
+        {
+            mlConfigured  = tokenService.IsConfigured,
+            mlTokenObtained = token is not null,
+            tokenPreview  = token is null ? null : token[..Math.Min(20, token.Length)] + "...",
+        });
+    }
+
     [HttpGet("image-search")]
     public async Task<IActionResult> ImageSearch(
         [FromQuery] string q,

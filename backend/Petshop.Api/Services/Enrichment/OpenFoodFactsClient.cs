@@ -47,7 +47,7 @@ public sealed class OpenFoodFactsClient : IProductImageMatcher
 
         try
         {
-            var url      = $"api/v0/product/{barcode}.json";
+            var url      = $"https://world.openfoodfacts.org/api/v0/product/{barcode}.json";
             var response = await _http.GetFromJsonAsync<OpenFoodFactsResponse>(url, ct);
 
             if (response?.Status != 1 || response.Product is null)

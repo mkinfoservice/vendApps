@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using System.Web;
@@ -38,48 +39,47 @@ internal record MlPicture(
 // ── Matcher ───────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// Busca imagem de produto via API pública do Mercado Livre (gratuita, sem API key).
-/// Estratégia: primeiro busca por EAN/barcode (match exato), depois por nome.
-/// Funciona muito bem para produtos pet brasileiros (ração, petiscos, acessórios).
+/// Busca imagem de produto via API do Mercado Livre.
+/// Usa OAuth client credentials (ML_APP_ID + ML_CLIENT_SECRET) quando disponível,
+/// evitando bloqueio de IP de servidores cloud.
 /// </summary>
 public sealed class MercadoLivreImageMatcher : IProductImageMatcher
 {
-    private readonly HttpClient _http;
+    private const string BaseUrl = "https://api.mercadolibre.com";
+
+    private readonly IHttpClientFactory _httpFactory;
     private readonly MlTokenService _tokenService;
     private readonly ILogger<MercadoLivreImageMatcher> _logger;
 
     public MercadoLivreImageMatcher(
-        HttpClient http,
+        IHttpClientFactory httpFactory,
         MlTokenService tokenService,
         ILogger<MercadoLivreImageMatcher> logger)
     {
-        _http         = http;
+        _httpFactory  = httpFactory;
         _tokenService = tokenService;
         _logger       = logger;
     }
 
-    /// <summary>Adiciona Authorization header se credenciais ML estiverem configuradas.</summary>
-    private async Task AuthorizeAsync(CancellationToken ct)
+    /// <summary>Cria HttpClient com Authorization header se token disponível.</summary>
+    private async Task<HttpClient> CreateClientAsync(CancellationToken ct)
     {
+        var http  = _httpFactory.CreateClient("MercadoLivre");
         var token = await _tokenService.GetTokenAsync(ct);
         if (token is not null)
-            _http.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-        else
-            _http.DefaultRequestHeaders.Authorization = null;
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return http;
     }
 
     public async Task<IReadOnlyList<ImageMatchCandidate>> FindCandidatesAsync(
         EnrichmentProductInput input,
         CancellationToken ct = default)
     {
-        // Tenta por EAN primeiro (mais preciso), depois por nome
         var candidates = new List<ImageMatchCandidate>();
 
         var barcodeResult = await SearchAsync(input.Barcode, "barcode", input, ct);
         candidates.AddRange(barcodeResult);
 
-        // Se não achou por barcode, busca por nome (limita a 3 tokens principais)
         if (candidates.Count == 0)
         {
             var nameQuery = BuildNameQuery(input.Name);
@@ -103,13 +103,12 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
     {
         if (string.IsNullOrWhiteSpace(query)) return [];
 
-        await AuthorizeAsync(ct);
-
         try
         {
-            var encoded  = HttpUtility.UrlEncode(query);
-            var url      = $"sites/MLB/search?q={encoded}&limit=5";
-            var response = await _http.GetFromJsonAsync<MlSearchResponse>(url, ct);
+            using var http   = await CreateClientAsync(ct);
+            var encoded      = HttpUtility.UrlEncode(query);
+            var response     = await http.GetFromJsonAsync<MlSearchResponse>(
+                                   $"{BaseUrl}/sites/MLB/search?q={encoded}&limit=5", ct);
 
             if (response?.Results is null || response.Results.Count == 0)
                 return [];
@@ -140,33 +139,23 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
     {
         if (string.IsNullOrWhiteSpace(query)) return [];
 
-        await AuthorizeAsync(ct);
+        using var http = await CreateClientAsync(ct);
+        var encoded    = HttpUtility.UrlEncode(query);
+        var search     = await http.GetFromJsonAsync<MlSearchResponse>(
+                             $"{BaseUrl}/sites/MLB/search?q={encoded}&limit=5", ct);
 
-        try
+        if (search?.Results is null || search.Results.Count == 0)
+            return [];
+
+        // Batch: [{code, body},...}]
+        var ids     = string.Join(",", search.Results.Select(r => r.Id));
+        var entries = await http.GetFromJsonAsync<List<MlItemBatchEntry>>(
+                          $"{BaseUrl}/items?ids={ids}", ct);
+
+        var results = new List<MlImageResult>();
+
+        if (entries?.Count > 0)
         {
-            var encoded  = HttpUtility.UrlEncode(query);
-            var search   = await _http.GetFromJsonAsync<MlSearchResponse>(
-                               $"sites/MLB/search?q={encoded}&limit=5", ct);
-
-            if (search?.Results is null || search.Results.Count == 0)
-                return [];
-
-            // Busca detalhes de todos os itens de uma vez (batch)
-            // Resposta do ML: [{"code": 200, "body": {item}}, ...]
-            var ids     = string.Join(",", search.Results.Select(r => r.Id));
-            var entries = await _http.GetFromJsonAsync<List<MlItemBatchEntry>>(
-                              $"items?ids={ids}", ct);
-
-            var results = new List<MlImageResult>();
-
-            // Fallback: se batch falhou, usa thumbnails upscalados da busca
-            if (entries is null || entries.Count == 0)
-            {
-                foreach (var r in search.Results.Where(r => !string.IsNullOrWhiteSpace(r.Thumbnail)))
-                    results.Add(new MlImageResult(r.Id!, r.Title ?? "", [UpscaleThumbnail(r.Thumbnail!)]));
-                return results;
-            }
-
             foreach (var entry in entries.Where(e => e.Code == 200 && e.Body?.Pictures != null))
             {
                 var item     = entry.Body!;
@@ -174,37 +163,24 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
                     .Where(p => !string.IsNullOrEmpty(p.BestUrl))
                     .Select(p => p.BestUrl)
                     .ToList();
-                if (pictures.Count == 0) continue;
-                results.Add(new MlImageResult(item.Id!, item.Title ?? "", pictures));
+                if (pictures.Count > 0)
+                    results.Add(new MlImageResult(item.Id!, item.Title ?? "", pictures));
             }
-
-            // Se mesmo assim não encontrou fotos, usa thumbnails como fallback
-            if (results.Count == 0)
-            {
-                foreach (var r in search.Results.Where(r => !string.IsNullOrWhiteSpace(r.Thumbnail)))
-                    results.Add(new MlImageResult(r.Id!, r.Title ?? "", [UpscaleThumbnail(r.Thumbnail!)]));
-            }
-
-            return results;
         }
-        catch (Exception ex)
+
+        // Fallback para thumbnails se batch não retornou fotos
+        if (results.Count == 0)
         {
-            // Re-throw para o controller retornar o erro real ao frontend
-            _logger.LogWarning(ex, "MercadoLivre picker search falhou para '{Query}'", query);
-            throw;
+            foreach (var r in search.Results.Where(r => !string.IsNullOrWhiteSpace(r.Thumbnail)))
+                results.Add(new MlImageResult(r.Id!, r.Title ?? "", [UpscaleThumbnail(r.Thumbnail!)]));
         }
+
+        return results;
     }
 
-    /// <summary>
-    /// Converte thumbnail ML (-I. 170px) para versão de maior qualidade (-F. 600px).
-    /// </summary>
     private static string UpscaleThumbnail(string url) =>
         url.Replace("-I.", "-F.").Replace("-O.", "-F.");
 
-    /// <summary>
-    /// Extrai os tokens mais relevantes do nome para busca (marca + produto + peso).
-    /// Ex: "RAÇÃO ROYAL CANIN ADULTO 15KG" → "ração royal canin 15kg"
-    /// </summary>
     private static string BuildNameQuery(string name)
     {
         var tokens = name

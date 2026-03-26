@@ -248,13 +248,12 @@ builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<MlTokenService>();
 
-// Mercado Livre: melhor fonte para produtos pet brasileiros (sem API key)
-// Usa o domínio internacional (mercadolibre.com) — o BR (mercadolivre.com) redireciona
-// e pode causar falhas silenciosas com HttpClient
-builder.Services.AddHttpClient<MercadoLivreImageMatcher>(client =>
+// Named HttpClient compartilhado para chamadas ao Mercado Livre
+// MercadoLivreImageMatcher usa IHttpClientFactory + CreateClient("MercadoLivre")
+// e injeta o Bearer token por request (não em DefaultRequestHeaders do singleton)
+builder.Services.AddHttpClient("MercadoLivre", client =>
 {
-    client.BaseAddress = new Uri("https://api.mercadolibre.com/");
-    client.Timeout     = TimeSpan.FromSeconds(15);
+    client.Timeout = TimeSpan.FromSeconds(15);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; vendApps/1.0)");
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });

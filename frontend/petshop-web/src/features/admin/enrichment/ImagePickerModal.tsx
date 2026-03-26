@@ -9,8 +9,18 @@ type Props = {
   onApplied: () => void;
 };
 
+/** Simplifica o nome para busca: pega os 4 tokens mais relevantes (≥3 chars, sem separadores) */
+function simplifyQuery(name: string): string {
+  return name
+    .toLowerCase()
+    .split(/[\s\-/(),]+/)
+    .filter((t) => t.length >= 3 && !/^\d+ml$|^\d+kg$|^\d+g$/.test(t))
+    .slice(0, 4)
+    .join(" ");
+}
+
 export function ImagePickerModal({ productId, productName, onClose, onApplied }: Props) {
-  const [query, setQuery] = useState(productName);
+  const [query, setQuery] = useState(() => simplifyQuery(productName));
   const [results, setResults] = useState<MlImageResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);

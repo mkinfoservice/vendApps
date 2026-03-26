@@ -48,7 +48,7 @@ public sealed class OpenPetFoodFactsClient : IProductImageMatcher
         try
         {
             var response = await _http.GetFromJsonAsync<OpenPetFoodFactsResponse>(
-                $"api/v0/product/{barcode}.json", ct);
+                $"https://world.openpetfoodfacts.org/api/v0/product/{barcode}.json", ct);
 
             if (response?.Status != 1 || response.Product is null)
                 return [];
