@@ -35,6 +35,10 @@ public class StoreFrontConfig
     /// <summary>Intervalo (segundos) entre slides. 0 = sem auto-rotação.</summary>
     public int BannerIntervalSecs { get; set; } = 5;
 
+    // ── Announcement bar ──────────────────────────────────────────────────────
+    /// <summary>JSON array de mensagens exibidas na faixa superior. Ex: ["Frete Grátis acima de R$ 100","Parcele em 12x"]</summary>
+    public string AnnouncementsJson { get; set; } = """["Frete Grátis acima de R$ 100"]""";
+
     public DateTime? UpdatedAtUtc { get; set; }
 
     // ── Navigation ────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Paintbrush, Image, Plus, Trash2, GripVertical, Upload, AlertCircle } from "lucide-react";
+import { Paintbrush, Image, Plus, Trash2, GripVertical, Upload, AlertCircle, Megaphone } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import {
@@ -432,6 +432,8 @@ export default function StoreFrontConfigPage() {
   const [logoUrl, setLogoUrl]     = useState("");
   const [storeName, setStoreName] = useState("");
   const [storeSlogan, setStoreSlogan] = useState("");
+  const [announcements, setAnnouncements] = useState<string[]>(["Frete Grátis acima de R$ 100"]);
+  const [newAnnouncement, setNewAnnouncement] = useState("");
   const [visualSynced, setVisualSynced] = useState(false);
 
   useEffect(() => {
@@ -441,17 +443,29 @@ export default function StoreFrontConfigPage() {
       setLogoUrl(config.logoUrl ?? "");
       setStoreName(config.storeName ?? "");
       setStoreSlogan(config.storeSlogan ?? "");
+      setAnnouncements(config.announcements?.length ? config.announcements : ["Frete Grátis acima de R$ 100"]);
       setVisualSynced(true);
     }
   }, [config, visualSynced]);
+
+  const addAnnouncement = () => {
+    const msg = newAnnouncement.trim();
+    if (!msg || announcements.includes(msg)) return;
+    setAnnouncements((a) => [...a, msg]);
+    setNewAnnouncement("");
+  };
+
+  const removeAnnouncement = (i: number) =>
+    setAnnouncements((a) => a.filter((_, idx) => idx !== i));
 
   const handleSaveVisual = () => {
     updateConfig.mutate({
       primaryColor: color || "#7c5cf8",
       bannerIntervalSecs: intervalSecs,
-      logoUrl:     logoUrl     || null,
-      storeName:   storeName   || null,
-      storeSlogan: storeSlogan || null,
+      logoUrl:      logoUrl      || null,
+      storeName:    storeName    || null,
+      storeSlogan:  storeSlogan  || null,
+      announcements: announcements.filter(Boolean),
     });
   };
 
@@ -595,6 +609,57 @@ export default function StoreFrontConfigPage() {
                   className="h-10 px-3 rounded-xl border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-[#7c5cf8] outline-none"
                 />
               </label>
+            </div>
+          </div>
+
+          {/* Faixa de avisos */}
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-[#7c5cf8]" />
+              Faixa de Avisos
+            </h3>
+            <p className="text-xs text-gray-400 -mt-2">
+              Mensagens que aparecem na faixa colorida do topo e rotacionam automaticamente.
+            </p>
+
+            {/* Lista de mensagens */}
+            <div className="space-y-2">
+              {announcements.map((msg, i) => (
+                <div key={i} className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+                  <span className="flex-1 text-sm text-gray-800 truncate">{msg}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeAnnouncement(i)}
+                    disabled={announcements.length <= 1}
+                    className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-500 transition disabled:opacity-30"
+                    title="Remover"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Adicionar nova mensagem */}
+            <div className="flex gap-2">
+              <input
+                value={newAnnouncement}
+                onChange={(e) => setNewAnnouncement(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addAnnouncement()}
+                placeholder='Ex: "Parcele em até 12x sem juros"'
+                maxLength={100}
+                className="flex-1 h-10 px-3 rounded-xl border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-[#7c5cf8] focus:border-[#7c5cf8] outline-none"
+              />
+              <button
+                type="button"
+                onClick={addAnnouncement}
+                disabled={!newAnnouncement.trim()}
+                className="h-10 px-4 rounded-xl text-sm font-bold text-white flex items-center gap-1.5 transition hover:brightness-110 active:scale-95 disabled:opacity-40"
+                style={{ background: "linear-gradient(135deg,#7c5cf8,#6d4df2)" }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Adicionar
+              </button>
             </div>
           </div>
 

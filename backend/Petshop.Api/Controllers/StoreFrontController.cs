@@ -7,6 +7,7 @@ using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Services;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace Petshop.Api.Controllers;
 
@@ -59,6 +60,8 @@ public class StoreFrontAdminController : ControllerBase
         if (req.LogoUrl    is not null) config.LogoUrl    = req.LogoUrl == "" ? null : req.LogoUrl;
         if (req.StoreName  is not null) config.StoreName  = req.StoreName == "" ? null : req.StoreName;
         if (req.StoreSlogan is not null) config.StoreSlogan = req.StoreSlogan == "" ? null : req.StoreSlogan;
+        if (req.Announcements is not null)
+            config.AnnouncementsJson = JsonSerializer.Serialize(req.Announcements);
 
         config.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -178,6 +181,12 @@ public class StoreFrontAdminController : ControllerBase
         s.Id, s.ImageUrl, s.Title, s.Subtitle, s.CtaText,
         s.CtaType, s.CtaTarget, s.CtaNewTab, s.SortOrder, s.IsActive);
 
+    private static IReadOnlyList<string> ParseAnnouncements(string json)
+    {
+        try { return JsonSerializer.Deserialize<List<string>>(json) ?? ["Frete Grátis acima de R$ 100"]; }
+        catch { return ["Frete Grátis acima de R$ 100"]; }
+    }
+
     private static StoreFrontConfigResponse ToResponse(StoreFrontConfig c) => new(
         c.Id,
         c.PrimaryColor,
@@ -185,6 +194,7 @@ public class StoreFrontAdminController : ControllerBase
         c.LogoUrl,
         c.StoreName,
         c.StoreSlogan,
+        ParseAnnouncements(c.AnnouncementsJson),
         c.BannerSlides
             .OrderBy(s => s.SortOrder)
             .Select(ToSlideResponse)
@@ -237,6 +247,7 @@ public class StoreFrontPublicController : ControllerBase
             return Ok(new StoreFrontConfigResponse(
                 Guid.Empty, "#7c5cf8", 5,
                 null, null, null,
+                ["Frete Grátis acima de R$ 100"],
                 Array.Empty<BannerSlideResponse>()));
 
         var slides = config.BannerSlides
@@ -247,9 +258,14 @@ public class StoreFrontPublicController : ControllerBase
                 s.CtaType, s.CtaTarget, s.CtaNewTab, s.SortOrder, s.IsActive))
             .ToList();
 
+        IReadOnlyList<string> announcements;
+        try { announcements = JsonSerializer.Deserialize<List<string>>(config.AnnouncementsJson) ?? ["Frete Grátis acima de R$ 100"]; }
+        catch { announcements = ["Frete Grátis acima de R$ 100"]; }
+
         return Ok(new StoreFrontConfigResponse(
             config.Id, config.PrimaryColor, config.BannerIntervalSecs,
             config.LogoUrl, config.StoreName, config.StoreSlogan,
+            announcements,
             slides));
     }
 }

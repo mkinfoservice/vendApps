@@ -13,6 +13,7 @@ import { ProductCard } from "@/features/catalog/ProductCard";
 import { ProductSection } from "@/features/catalog/ProductSection";
 import { HeroBanner } from "@/components/HeroBanner";
 import { TrustBar } from "@/components/TrustBar";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal";
 import { TopBar } from "@/components/TopBar";
 import { ToastProvider } from "@/components/Toast";
@@ -132,13 +133,11 @@ export default function App() {
       <div className="min-h-dvh bg-gray-50 font-sans overflow-x-hidden">
         {/* Sticky header */}
         <div className="sticky top-0 z-40">
-          {/* Banner frete grátis */}
-          <div
-            className="text-white text-center text-xs font-semibold py-2 px-4"
-            style={{ background: brandColor }}
-          >
-            Frete Grátis acima de R$ 100
-          </div>
+          {/* Announcement bar rotativa */}
+          <AnnouncementBar
+            messages={storeFront?.announcements ?? ["Frete Grátis acima de R$ 100"]}
+            brandColor={brandColor}
+          />
 
           {/* TopBar com branding + cart slot */}
           <TopBar
@@ -310,26 +309,42 @@ export default function App() {
 
         {/* Bottom bar — visível abaixo de xl apenas quando há itens */}
         {cart.totalItems > 0 && (
-          <div className="xl:hidden fixed left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+          <div
+            className="xl:hidden fixed left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-100 shadow-[0_-8px_24px_rgba(0,0,0,0.10)]"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
+              {/* Ícone do carrinho com badge */}
+              <div
+                className="relative w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ background: `${brandColor}18` }}
+              >
+                <ShoppingCart className="w-5 h-5" style={{ color: brandColor }} />
+                <span
+                  className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-black flex items-center justify-center"
+                  style={{ background: brandColor }}
+                >
+                  {cart.totalItems > 9 ? "9+" : cart.totalItems}
+                </span>
+              </div>
+
+              {/* Totais */}
               <div className="flex-1 min-w-0">
-                <div className="font-black tabular-nums text-gray-900 text-base">
+                <div className="font-black tabular-nums text-gray-900 text-base leading-tight">
                   {formatBRL(cart.subtotalCents)}
                 </div>
-                <div className="text-xs text-gray-400">
-                  {cart.totalItems} item{cart.totalItems !== 1 ? "s" : ""}
+                <div className="text-xs text-gray-400 leading-tight">
+                  {cart.totalItems} item{cart.totalItems !== 1 ? "s" : ""} no carrinho
                 </div>
               </div>
 
               <CartSheet>
                 <button
                   type="button"
-                  className="h-12 px-6 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95"
-                  style={{ background: brandColor }}
+                  className="h-12 px-5 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95 shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
                 >
-                  Ver carrinho ({cart.totalItems})
+                  Ver carrinho →
                 </button>
               </CartSheet>
             </div>

@@ -70,6 +70,7 @@ export type StoreFrontConfig = {
   logoUrl: string | null;
   storeName: string | null;
   storeSlogan: string | null;
+  announcements: string[];
   slides: BannerSlide[];
 };
 

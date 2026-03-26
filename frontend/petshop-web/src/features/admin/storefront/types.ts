@@ -18,6 +18,7 @@ export interface StoreFrontConfigResponse {
   logoUrl: string | null;
   storeName: string | null;
   storeSlogan: string | null;
+  announcements: string[];
   slides: BannerSlideResponse[];
 }
 
@@ -27,6 +28,7 @@ export interface UpdateStoreFrontConfigRequest {
   logoUrl?: string | null;
   storeName?: string | null;
   storeSlogan?: string | null;
+  announcements?: string[];
 }
 
 export interface UpsertBannerSlideRequest {

@@ -23,6 +23,7 @@ public record StoreFrontConfigResponse(
     string? LogoUrl,
     string? StoreName,
     string? StoreSlogan,
+    IReadOnlyList<string> Announcements,
     IReadOnlyList<BannerSlideResponse> Slides);
 
 // ── Requests — config geral ───────────────────────────────────────────────────
@@ -32,7 +33,8 @@ public record UpdateStoreFrontConfigRequest(
     int?             BannerIntervalSecs,
     string?          LogoUrl,
     [MaxLength(120)] string? StoreName,
-    [MaxLength(200)] string? StoreSlogan);
+    [MaxLength(200)] string? StoreSlogan,
+    IReadOnlyList<string>? Announcements);
 
 // ── Requests — slides ─────────────────────────────────────────────────────────
 
