@@ -260,6 +260,7 @@ builder.Services.AddHttpClient("MercadoLivre", client =>
 
 // Registra todos os matchers de imagem (executados em ordem pelo ProductImageMatchingService)
 // ML primeiro (melhor cobertura para mercado BR), depois as bases pet food internacionais
+builder.Services.AddScoped<MercadoLivreImageMatcher>(); // registro direto para injeção no controller
 builder.Services.AddScoped<IProductImageMatcher, MercadoLivreImageMatcher>();
 builder.Services.AddScoped<IProductImageMatcher, OpenPetFoodFactsClient>();
 builder.Services.AddScoped<IProductImageMatcher, OpenFoodFactsClient>();
