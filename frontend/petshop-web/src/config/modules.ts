@@ -22,6 +22,7 @@ import {
   Monitor,
   FileText,
   Sparkles,
+  Store,
   type LucideIcon,
 } from "lucide-react";
 
@@ -365,6 +366,18 @@ export const APP_MODULES: AppModule[] = [
     iconColor: "#7c5cf8",
     iconBg: "rgba(124,92,248,0.12)",
     route: "/app/enriquecimento",
+    group: "PLATAFORMA",
+    roles: ["admin", "gerente"],
+    isActive: true,
+  },
+  {
+    id: "loja-online",
+    label: "Loja Online",
+    description: "Banner rotativo, cores e identidade visual da loja",
+    icon: Store,
+    iconColor: "#ec4899",
+    iconBg: "rgba(236,72,153,0.12)",
+    route: "/app/configuracao-loja",
     group: "PLATAFORMA",
     roles: ["admin", "gerente"],
     isActive: true,

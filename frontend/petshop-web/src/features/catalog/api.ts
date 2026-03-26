@@ -47,3 +47,31 @@ export async function fetchProducts(categorySlug?: string, search?: string): Pro
   if (!r.ok) throw new Error("Erro ao buscar produtos");
   return r.json();
 }
+
+// ── StoreFront (banner + cor primária) ────────────────────────────────────────
+
+export type BannerSlide = {
+  id: string;
+  imageUrl: string | null;
+  title: string | null;
+  subtitle: string | null;
+  ctaText: string | null;
+  ctaType: "none" | "category" | "product" | "external";
+  ctaTarget: string | null;
+  ctaNewTab: boolean;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export type StoreFrontConfig = {
+  id: string;
+  primaryColor: string;
+  bannerIntervalSecs: number;
+  slides: BannerSlide[];
+};
+
+export async function fetchStoreFront(): Promise<StoreFrontConfig> {
+  const r = await fetch(`${catalogBase}/storefront`);
+  if (!r.ok) throw new Error("Erro ao buscar configuração da loja");
+  return r.json();
+}

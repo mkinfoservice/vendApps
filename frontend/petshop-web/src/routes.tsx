@@ -50,6 +50,7 @@ import ScaleAgentsPage from "./pages/admin/ScaleAgentsPage";
 import DavListPage from "./pages/admin/DavListPage";
 import DavBuilderPage from "./pages/admin/DavBuilderPage";
 import CatalogEnrichmentPage from "./pages/admin/CatalogEnrichmentPage";
+import StoreFrontConfigPage from "./pages/admin/StoreFrontConfigPage";
 
 // ── PDV ───────────────────────────────────────────────────────────────────────
 import PdvPage from "./pages/pdv/PdvPage";
@@ -151,6 +152,7 @@ export function AppRoutes() {
         <Route path="/app/fiscal" element={<AppPage roles={["admin"]}><FiscalConfigPage /></AppPage>} />
         <Route path="/app/balanca" element={<AppPage roles={["admin"]}><ScaleAgentsPage /></AppPage>} />
         <Route path="/app/enriquecimento" element={<AppPage roles={["admin","gerente"]}><CatalogEnrichmentPage /></AppPage>} />
+        <Route path="/app/configuracao-loja" element={<AppPage roles={["admin","gerente"]}><StoreFrontConfigPage /></AppPage>} />
         <Route path="/app/dashboard" element={<AppPage><Dashboard /></AppPage>} />
 
         {/* ── Redirects legados /admin/* → /app/* ─────────────────────── */}

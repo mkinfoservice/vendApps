@@ -16,6 +16,7 @@ using Petshop.Api.Entities.Enrichment;
 using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
+using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
 using Petshop.Api.Entities.Delivery;
@@ -55,6 +56,10 @@ public class AppDbContext : DbContext
     public DbSet<ProductNameSuggestion>   ProductNameSuggestions    => Set<ProductNameSuggestion>();
     public DbSet<ProductImageCandidate>   ProductImageCandidates    => Set<ProductImageCandidate>();
     public DbSet<EnrichmentConfig>        EnrichmentConfigs         => Set<EnrichmentConfig>();
+
+    // ── Loja Online (StoreFront) ──────────────────────────────────────────────
+    public DbSet<StoreFrontConfig> StoreFrontConfigs => Set<StoreFrontConfig>();
+    public DbSet<BannerSlide>      BannerSlides      => Set<BannerSlide>();
 
     // ── Sync ─────────────────────────────────────────────────
     public DbSet<ExternalSource> ExternalSources => Set<ExternalSource>();

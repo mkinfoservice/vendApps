@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCategories, fetchProducts } from './api';
-import type { Category, Product } from './api';
+import { fetchCategories, fetchProducts, fetchStoreFront } from './api';
+import type { Category, Product, StoreFrontConfig } from './api';
 
 export function useCategories() {
     return useQuery<Category[]>({
@@ -24,5 +24,13 @@ export function useProduct(id: string) {
             return products.find((p) => p.id === id);
         },
         enabled: !!id,
+    });
+}
+
+export function useStoreFront() {
+    return useQuery<StoreFrontConfig>({
+        queryKey: ["storefront"],
+        queryFn: fetchStoreFront,
+        staleTime: 5 * 60 * 1000,
     });
 }
