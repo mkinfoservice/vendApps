@@ -244,6 +244,10 @@ builder.Services.AddHttpClient("EnrichmentNameSearch", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
 });
 
+// ML Token Service — obtém e armazena em cache o access token via client credentials
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<MlTokenService>();
+
 // Mercado Livre: melhor fonte para produtos pet brasileiros (sem API key)
 // Usa o domínio internacional (mercadolibre.com) — o BR (mercadolivre.com) redireciona
 // e pode causar falhas silenciosas com HttpClient

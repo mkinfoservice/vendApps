@@ -45,12 +45,28 @@ internal record MlPicture(
 public sealed class MercadoLivreImageMatcher : IProductImageMatcher
 {
     private readonly HttpClient _http;
+    private readonly MlTokenService _tokenService;
     private readonly ILogger<MercadoLivreImageMatcher> _logger;
 
-    public MercadoLivreImageMatcher(HttpClient http, ILogger<MercadoLivreImageMatcher> logger)
+    public MercadoLivreImageMatcher(
+        HttpClient http,
+        MlTokenService tokenService,
+        ILogger<MercadoLivreImageMatcher> logger)
     {
-        _http   = http;
-        _logger = logger;
+        _http         = http;
+        _tokenService = tokenService;
+        _logger       = logger;
+    }
+
+    /// <summary>Adiciona Authorization header se credenciais ML estiverem configuradas.</summary>
+    private async Task AuthorizeAsync(CancellationToken ct)
+    {
+        var token = await _tokenService.GetTokenAsync(ct);
+        if (token is not null)
+            _http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        else
+            _http.DefaultRequestHeaders.Authorization = null;
     }
 
     public async Task<IReadOnlyList<ImageMatchCandidate>> FindCandidatesAsync(
@@ -87,6 +103,8 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
     {
         if (string.IsNullOrWhiteSpace(query)) return [];
 
+        await AuthorizeAsync(ct);
+
         try
         {
             var encoded  = HttpUtility.UrlEncode(query);
@@ -121,6 +139,8 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
     public async Task<List<MlImageResult>> SearchForPickerAsync(string query, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(query)) return [];
+
+        await AuthorizeAsync(ct);
 
         try
         {
