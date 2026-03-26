@@ -32,6 +32,14 @@ export function useEnrichmentBatches(page = 1) {
   return useQuery({
     queryKey: [...KEYS.batches, page],
     queryFn: () => fetchBatches(page),
+    // Atualiza a cada 4s enquanto algum lote estiver ativo
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      const hasActive = items.some(
+        (b) => b.status === "Queued" || b.status === "Running"
+      );
+      return hasActive ? 4000 : false;
+    },
   });
 }
 

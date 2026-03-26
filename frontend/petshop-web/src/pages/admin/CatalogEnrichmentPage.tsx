@@ -95,7 +95,12 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 // ── Batch card ─────────────────────────────────────────────────────────────────
 
 function BatchCard({ batch }: { batch: EnrichmentBatchResponse }) {
-  const progress = pct(batch.processed, batch.totalQueued);
+  const nameProgress = pct(batch.processed, batch.totalQueued);
+  // Imagens processadas = aplicadas + pendentes + falhas de imagem
+  const imagesProcessed = batch.imagesApplied + batch.pendingReview;
+  const imageProgress = batch.totalQueued > 0 ? pct(imagesProcessed, batch.totalQueued) : 0;
+  const isRunning = batch.status === "Running" || batch.status === "Queued";
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -106,19 +111,35 @@ function BatchCard({ batch }: { batch: EnrichmentBatchResponse }) {
         <span className="text-xs text-gray-400">{formatDate(batch.startedAtUtc)}</span>
       </div>
 
-      {/* Progress bar */}
+      {/* Barra de nomes */}
       <div>
         <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span>{batch.processed} / {batch.totalQueued} processados</span>
-          <span>{progress}%</span>
+          <span>Nomes: {batch.processed} / {batch.totalQueued}</span>
+          <span className={nameProgress === 100 ? "text-green-600 font-semibold" : ""}>{nameProgress}%</span>
         </div>
         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className="h-full bg-violet-500 rounded-full transition-all"
-            style={{ width: `${progress}%` }}
+            className={`h-full rounded-full transition-all ${nameProgress === 100 ? "bg-green-500" : "bg-violet-500"}`}
+            style={{ width: `${nameProgress}%` }}
           />
         </div>
       </div>
+
+      {/* Barra de imagens — só exibe se o job de imagens já rodou */}
+      {(imagesProcessed > 0 || (nameProgress === 100 && isRunning)) && (
+        <div>
+          <div className="flex justify-between text-xs text-gray-500 mb-1">
+            <span>Imagens: {imagesProcessed} / {batch.totalQueued}</span>
+            <span>{imageProgress}%</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-400 rounded-full transition-all"
+              style={{ width: `${imageProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-2 text-center text-xs">

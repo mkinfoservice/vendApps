@@ -27,8 +27,8 @@ public class EnrichmentConfig
     /// <summary>Número de produtos processados por vez no job (padrão: 50).</summary>
     public int BatchSize { get; set; } = 50;
 
-    /// <summary>Delay em ms entre itens no job de imagem, para não estourar rate limit (padrão: 500ms).</summary>
-    public int DelayBetweenItemsMs { get; set; } = 500;
+    /// <summary>Delay em ms entre itens no job de imagem, para não estourar rate limit (padrão: 200ms).</summary>
+    public int DelayBetweenItemsMs { get; set; } = 200;
 
     // ── Feature flags ─────────────────────────────────────────────────────────
     /// <summary>Habilita matching de imagem via APIs externas (padrão: true).</summary>

@@ -22,7 +22,8 @@ public partial class UpdateEnrichmentConfigDefaults : Migration
             SET ""AutoApplyNameThreshold""  = 0.70,
                 ""EnableImageMatching""     = true,
                 ""AutoApplyImageThreshold"" = 0.80,
-                ""ReviewImageThreshold""    = 0.40
+                ""ReviewImageThreshold""    = 0.40,
+                ""DelayBetweenItemsMs""     = 200
             WHERE ""AutoApplyNameThreshold"" = 1.0;
         ");
     }
