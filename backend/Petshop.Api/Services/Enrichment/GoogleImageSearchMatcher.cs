@@ -55,7 +55,15 @@ public sealed class GoogleImageSearchMatcher
             var url     = $"https://www.googleapis.com/customsearch/v1" +
                           $"?key={_apiKey}&cx={_cseId}&q={encoded}&searchType=image&num=10";
 
-            var response = await _http.GetFromJsonAsync<GoogleSearchResponse>(url, ct);
+            var res = await _http.GetAsync(url, ct);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("Google CSE {Status} para '{Query}': {Body}", (int)res.StatusCode, query, body);
+                return [];
+            }
+
+            var response = await res.Content.ReadFromJsonAsync<GoogleSearchResponse>(ct);
 
             if (response?.Items is null || response.Items.Count == 0)
                 return [];
