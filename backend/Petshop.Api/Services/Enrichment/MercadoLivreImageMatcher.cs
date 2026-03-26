@@ -14,6 +14,22 @@ internal record MlSearchItem(
     [property: JsonPropertyName("title")]     string? Title,
     [property: JsonPropertyName("thumbnail")] string? Thumbnail);
 
+internal record MlItemDetail(
+    [property: JsonPropertyName("id")]       string?            Id,
+    [property: JsonPropertyName("title")]    string?            Title,
+    [property: JsonPropertyName("pictures")] List<MlPicture>?   Pictures);
+
+internal record MlPicture(
+    [property: JsonPropertyName("id")]          string? Id,
+    [property: JsonPropertyName("secure_url")]  string? SecureUrl,
+    [property: JsonPropertyName("url")]         string? Url,
+    [property: JsonPropertyName("max_size")]    string? MaxSize)
+{
+    public string BestUrl => !string.IsNullOrEmpty(SecureUrl) ? SecureUrl
+                           : !string.IsNullOrEmpty(Url)       ? Url
+                           : string.Empty;
+}
+
 // ── Matcher ───────────────────────────────────────────────────────────────────
 
 /// <summary>
@@ -69,7 +85,7 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         try
         {
             var encoded  = HttpUtility.UrlEncode(query);
-            var url      = $"sites/MLB/search?q={encoded}&limit=3";
+            var url      = $"sites/MLB/search?q={encoded}&limit=5";
             var response = await _http.GetFromJsonAsync<MlSearchResponse>(url, ct);
 
             if (response?.Results is null || response.Results.Count == 0)
@@ -89,6 +105,50 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "MercadoLivre search falhou para query '{Query}'", query);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Busca imagens para o picker manual do admin.
+    /// Retorna múltiplas fotos por item do ML (via GET /items/{id}).
+    /// </summary>
+    public async Task<List<MlImageResult>> SearchForPickerAsync(string query, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return [];
+
+        try
+        {
+            var encoded  = HttpUtility.UrlEncode(query);
+            var search   = await _http.GetFromJsonAsync<MlSearchResponse>(
+                               $"sites/MLB/search?q={encoded}&limit=5", ct);
+
+            if (search?.Results is null || search.Results.Count == 0)
+                return [];
+
+            // Busca detalhes de todos os itens de uma vez (batch)
+            var ids      = string.Join(",", search.Results.Select(r => r.Id));
+            var details  = await _http.GetFromJsonAsync<List<MlItemDetail>>(
+                               $"items?ids={ids}", ct);
+
+            if (details is null) return [];
+
+            var results = new List<MlImageResult>();
+            foreach (var item in details)
+            {
+                if (item.Pictures is null || item.Pictures.Count == 0) continue;
+                var pictures = item.Pictures
+                    .Where(p => !string.IsNullOrEmpty(p.BestUrl))
+                    .Select(p => p.BestUrl)
+                    .ToList();
+                if (pictures.Count == 0) continue;
+                results.Add(new MlImageResult(item.Id!, item.Title!, pictures));
+            }
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "MercadoLivre picker search falhou para '{Query}'", query);
             return [];
         }
     }
@@ -115,3 +175,6 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
         return string.Join(" ", tokens);
     }
 }
+
+/// <summary>Resultado do picker manual: um item do ML com todas as suas fotos.</summary>
+public record MlImageResult(string ItemId, string Title, List<string> Pictures);

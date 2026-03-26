@@ -24,15 +24,18 @@ public class CatalogEnrichmentController : ControllerBase
     private readonly AppDbContext _db;
     private readonly EnrichmentBatchService _batchService;
     private readonly IBackgroundJobClient _jobs;
+    private readonly MercadoLivreImageMatcher _mlMatcher;
 
     public CatalogEnrichmentController(
         AppDbContext db,
         EnrichmentBatchService batchService,
-        IBackgroundJobClient jobs)
+        IBackgroundJobClient jobs,
+        MercadoLivreImageMatcher mlMatcher)
     {
-        _db           = db;
+        _db          = db;
         _batchService = batchService;
         _jobs         = jobs;
+        _mlMatcher    = mlMatcher;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -568,6 +571,61 @@ public class CatalogEnrichmentController : ControllerBase
 
     // ── Mappers ───────────────────────────────────────────────────────────────
 
+    // ═══════════════════════════════════════════════════════════════
+    // IMAGE PICKER — busca manual de imagem por nome no Mercado Livre
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Busca imagens no Mercado Livre para o picker manual do admin.
+    /// Retorna até 5 itens, cada um com múltiplas fotos.
+    /// </summary>
+    [HttpGet("image-search")]
+    public async Task<IActionResult> ImageSearch(
+        [FromQuery] string q,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(q))
+            return BadRequest(new { error = "Parâmetro 'q' é obrigatório." });
+
+        var results = await _mlMatcher.SearchForPickerAsync(q, ct);
+        return Ok(results);
+    }
+
+    /// <summary>
+    /// Aplica uma URL de imagem diretamente a um produto (substitui imagem primária).
+    /// </summary>
+    [HttpPut("products/{productId:guid}/image")]
+    public async Task<IActionResult> SetProductImage(
+        Guid productId,
+        [FromBody] SetProductImageRequest req,
+        CancellationToken ct)
+    {
+        var product = await _db.Products
+            .FirstOrDefaultAsync(p => p.Id == productId && p.CompanyId == CompanyId, ct);
+        if (product is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(req.Url))
+            return BadRequest(new { error = "URL da imagem é obrigatória." });
+
+        // Remove imagens primárias existentes
+        var existing = await _db.ProductImages
+            .Where(i => i.ProductId == productId && i.IsPrimary)
+            .ToListAsync(ct);
+        _db.ProductImages.RemoveRange(existing);
+
+        _db.ProductImages.Add(new Petshop.Api.Entities.Catalog.ProductImage
+        {
+            ProductId       = productId,
+            Url             = req.Url,
+            StorageProvider = "ExternalUrl",
+            IsPrimary       = true,
+            SortOrder       = 0
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { url = req.Url });
+    }
+
     private static EnrichmentBatchResponse MapBatch(EnrichmentBatch b) => new(
         b.Id, b.Trigger.ToString(), b.Status.ToString(),
         b.TotalQueued, b.Processed, b.NamesNormalized,
@@ -579,3 +637,5 @@ public class CatalogEnrichmentController : ControllerBase
         c.AutoApplyNameThreshold, c.BatchSize,
         c.DelayBetweenItemsMs, c.EnableImageMatching, c.EnableNameNormalization);
 }
+
+public record SetProductImageRequest(string Url);

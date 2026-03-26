@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, ToggleLeft, ToggleRight, Trash2, Download, Search, Package, Sparkles } from "lucide-react";
+import { Plus, ToggleLeft, ToggleRight, Trash2, Download, Search, Package, Sparkles, ImagePlus } from "lucide-react";
+import { ImagePickerModal } from "@/features/admin/enrichment/ImagePickerModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
@@ -42,6 +43,7 @@ export default function ProductsList() {
   const [orderFilter, setOrderFilter] = useState<"all" | "withoutOrders">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSync, setShowSync] = useState(false);
+  const [imagePicker, setImagePicker] = useState<{ id: string; name: string } | null>(null);
 
   const productsQuery = useAdminProducts({
     page,
@@ -365,6 +367,14 @@ export default function ProductsList() {
                   <td className="px-4 py-2.5 text-center">
                     <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
+                        title="Buscar imagem"
+                        onClick={(e) => { e.stopPropagation(); setImagePicker({ id: p.id, name: p.name }); }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
+                        style={{ color: p.imageUrl ? "var(--text-muted)" : "#f59e0b" }}
+                      >
+                        <ImagePlus size={15} />
+                      </button>
+                      <button
                         title={p.isActive ? "Desativar" : "Ativar"}
                         onClick={(e) => handleToggle(e, p.id)}
                         disabled={toggle.isPending}
@@ -406,6 +416,18 @@ export default function ProductsList() {
       </div>
 
       {showSync && <SyncModal onClose={() => setShowSync(false)} />}
+
+      {imagePicker && (
+        <ImagePickerModal
+          productId={imagePicker.id}
+          productName={imagePicker.name}
+          onClose={() => setImagePicker(null)}
+          onApplied={() => {
+            productsQuery.refetch();
+            setImagePicker(null);
+          }}
+        />
+      )}
     </div>
   );
 }

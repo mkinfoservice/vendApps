@@ -370,7 +370,9 @@ public sealed class CatalogEnrichmentOrchestrator
         {
             ProductId       = product.Id,
             Url             = localUrl,
-            StorageProvider = _imageStorage.ProviderName,
+            StorageProvider = localUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                                  ? "ExternalUrl"
+                                  : _imageStorage.ProviderName,
             IsPrimary       = true,
             SortOrder       = 0
         });
@@ -388,28 +390,15 @@ public sealed class CatalogEnrichmentOrchestrator
         });
     }
 
-    private async Task<string?> TryDownloadImageAsync(string url, CancellationToken ct)
-    {
-        try
-        {
-            using var http   = _httpFactory.CreateClient();
-            http.Timeout     = TimeSpan.FromSeconds(15);
-            var response     = await http.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/jpeg";
-            var ext         = contentType.Contains("png") ? ".png" : ".jpg";
-            var fileName    = $"{Guid.NewGuid()}{ext}";
-
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
-            return await _imageStorage.SaveAsync(stream, fileName, contentType, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Falha ao baixar imagem {Url}", url);
-            return null;
-        }
-    }
+    /// <summary>
+    /// Retorna a URL externa diretamente, sem download local.
+    /// O filesystem do servidor de produção (Render/Railway) é efêmero — arquivos baixados
+    /// somem a cada deploy. URLs do MercadoLivre e Open Food Facts são servidas em CDNs
+    /// estáveis e carregam diretamente em tags &lt;img&gt; sem restrição de CORS.
+    /// </summary>
+    private static Task<string?> TryDownloadImageAsync(string url, CancellationToken _)
+        => Task.FromResult<string?>(
+            string.IsNullOrWhiteSpace(url) ? null : url);
 
     private async Task<EnrichmentBatch?> LoadBatchAsync(Guid batchId, CancellationToken ct)
     {
