@@ -19,6 +19,11 @@ internal record MlItemDetail(
     [property: JsonPropertyName("title")]    string?            Title,
     [property: JsonPropertyName("pictures")] List<MlPicture>?   Pictures);
 
+// Batch endpoint GET /items?ids=... retorna cada item embrulhado em {code, body}
+internal record MlItemBatchEntry(
+    [property: JsonPropertyName("code")] int Code,
+    [property: JsonPropertyName("body")] MlItemDetail? Body);
+
 internal record MlPicture(
     [property: JsonPropertyName("id")]          string? Id,
     [property: JsonPropertyName("secure_url")]  string? SecureUrl,
@@ -127,23 +132,39 @@ public sealed class MercadoLivreImageMatcher : IProductImageMatcher
                 return [];
 
             // Busca detalhes de todos os itens de uma vez (batch)
-            var ids      = string.Join(",", search.Results.Select(r => r.Id));
-            var details  = await _http.GetFromJsonAsync<List<MlItemDetail>>(
-                               $"items?ids={ids}", ct);
-
-            if (details is null) return [];
+            // Resposta do ML: [{"code": 200, "body": {item}}, ...]
+            var ids     = string.Join(",", search.Results.Select(r => r.Id));
+            var entries = await _http.GetFromJsonAsync<List<MlItemBatchEntry>>(
+                              $"items?ids={ids}", ct);
 
             var results = new List<MlImageResult>();
-            foreach (var item in details)
+
+            // Fallback: se batch falhou, usa thumbnails upscalados da busca
+            if (entries is null || entries.Count == 0)
             {
-                if (item.Pictures is null || item.Pictures.Count == 0) continue;
-                var pictures = item.Pictures
+                foreach (var r in search.Results.Where(r => !string.IsNullOrWhiteSpace(r.Thumbnail)))
+                    results.Add(new MlImageResult(r.Id!, r.Title ?? "", [UpscaleThumbnail(r.Thumbnail!)]));
+                return results;
+            }
+
+            foreach (var entry in entries.Where(e => e.Code == 200 && e.Body?.Pictures != null))
+            {
+                var item     = entry.Body!;
+                var pictures = item.Pictures!
                     .Where(p => !string.IsNullOrEmpty(p.BestUrl))
                     .Select(p => p.BestUrl)
                     .ToList();
                 if (pictures.Count == 0) continue;
-                results.Add(new MlImageResult(item.Id!, item.Title!, pictures));
+                results.Add(new MlImageResult(item.Id!, item.Title ?? "", pictures));
             }
+
+            // Se mesmo assim não encontrou fotos, usa thumbnails como fallback
+            if (results.Count == 0)
+            {
+                foreach (var r in search.Results.Where(r => !string.IsNullOrWhiteSpace(r.Thumbnail)))
+                    results.Add(new MlImageResult(r.Id!, r.Title ?? "", [UpscaleThumbnail(r.Thumbnail!)]));
+            }
+
             return results;
         }
         catch (Exception ex)
