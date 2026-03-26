@@ -14,6 +14,18 @@ public class StoreFrontConfig
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = default!;
 
+    // ── Branding ──────────────────────────────────────────────────────────────
+    /// <summary>URL ou data URI da logo da loja.</summary>
+    public string? LogoUrl { get; set; }
+
+    /// <summary>Nome da loja exibido no header.</summary>
+    [MaxLength(120)]
+    public string? StoreName { get; set; }
+
+    /// <summary>Slogan / subtítulo exibido abaixo do nome.</summary>
+    [MaxLength(200)]
+    public string? StoreSlogan { get; set; }
+
     // ── Visual ────────────────────────────────────────────────────────────────
     /// <summary>Cor primária da marca em hexadecimal (ex: "#7c5cf8").</summary>
     [MaxLength(10)]

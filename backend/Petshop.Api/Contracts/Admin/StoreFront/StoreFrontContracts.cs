@@ -17,21 +17,27 @@ public record BannerSlideResponse(
     bool    IsActive);
 
 public record StoreFrontConfigResponse(
-    Guid                       Id,
-    string                     PrimaryColor,
-    int                        BannerIntervalSecs,
+    Guid   Id,
+    string PrimaryColor,
+    int    BannerIntervalSecs,
+    string? LogoUrl,
+    string? StoreName,
+    string? StoreSlogan,
     IReadOnlyList<BannerSlideResponse> Slides);
 
 // ── Requests — config geral ───────────────────────────────────────────────────
 
 public record UpdateStoreFrontConfigRequest(
     [MaxLength(10)]  string? PrimaryColor,
-    int? BannerIntervalSecs);
+    int?             BannerIntervalSecs,
+    string?          LogoUrl,
+    [MaxLength(120)] string? StoreName,
+    [MaxLength(200)] string? StoreSlogan);
 
 // ── Requests — slides ─────────────────────────────────────────────────────────
 
 public record UpsertBannerSlideRequest(
-    string?          ImageUrl,   // URL ou data URI base64 — sem limite de tamanho
+    string?          ImageUrl,   // URL ou data URI base64 — sem limite
     [MaxLength(120)] string? Title,
     [MaxLength(200)] string? Subtitle,
     [MaxLength(60)]  string? CtaText,

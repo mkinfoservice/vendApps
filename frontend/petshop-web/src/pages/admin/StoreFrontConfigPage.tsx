@@ -427,27 +427,32 @@ export default function StoreFrontConfigPage() {
   const deleteSlide   = useDeleteSlide();
   const reorderSlides = useReorderSlides();
 
-  const [color, setColor] = useState("#7c5cf8");
+  const [color, setColor]         = useState("#7c5cf8");
   const [intervalSecs, setIntervalSecs] = useState(5);
-  const [colorSynced, setColorSynced] = useState(false);
+  const [logoUrl, setLogoUrl]     = useState("");
+  const [storeName, setStoreName] = useState("");
+  const [storeSlogan, setStoreSlogan] = useState("");
+  const [visualSynced, setVisualSynced] = useState(false);
 
   useEffect(() => {
-    if (config && !colorSynced) {
-      setColor(config.primaryColor);
-      setIntervalSecs(config.bannerIntervalSecs);
-      setColorSynced(true);
+    if (config && !visualSynced) {
+      setColor(config.primaryColor ?? "#7c5cf8");
+      setIntervalSecs(config.bannerIntervalSecs ?? 5);
+      setLogoUrl(config.logoUrl ?? "");
+      setStoreName(config.storeName ?? "");
+      setStoreSlogan(config.storeSlogan ?? "");
+      setVisualSynced(true);
     }
-  }, [config, colorSynced]);
+  }, [config, visualSynced]);
 
   const handleSaveVisual = () => {
-    updateConfig.mutate(
-      { primaryColor: color || "#7c5cf8", bannerIntervalSecs: intervalSecs },
-      { onSuccess: () => {
-          // Aplica imediatamente na página atual
-          document.documentElement.style.setProperty("--brand", color);
-        }
-      }
-    );
+    updateConfig.mutate({
+      primaryColor: color || "#7c5cf8",
+      bannerIntervalSecs: intervalSecs,
+      logoUrl:     logoUrl     || null,
+      storeName:   storeName   || null,
+      storeSlogan: storeSlogan || null,
+    });
   };
 
   const moveSlide = (fromIdx: number, direction: "up" | "down") => {
@@ -555,11 +560,47 @@ export default function StoreFrontConfigPage() {
       {/* ── VISUAL ───────────────────────────────────────────────────────────── */}
       {tab === "visual" && config && (
         <div className="space-y-5">
+          {/* Identidade da loja */}
           <div className="p-5 rounded-2xl bg-white border border-gray-200 space-y-4">
             <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
               <Paintbrush className="w-4 h-4 text-[#7c5cf8]" />
-              Identidade Visual
+              Identidade da Loja
             </h3>
+
+            {/* Logo */}
+            <div>
+              <p className="text-xs font-semibold text-gray-600 mb-1.5">Logo da loja</p>
+              <ImageInput value={logoUrl} onChange={setLogoUrl} />
+            </div>
+
+            {/* Nome e slogan */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-600">Nome da loja</span>
+                <input
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="PetShop Express"
+                  maxLength={120}
+                  className="h-10 px-3 rounded-xl border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-[#7c5cf8] outline-none"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-gray-600">Slogan</span>
+                <input
+                  value={storeSlogan}
+                  onChange={(e) => setStoreSlogan(e.target.value)}
+                  placeholder="Delivery rápido"
+                  maxLength={200}
+                  className="h-10 px-3 rounded-xl border border-gray-200 text-sm bg-white focus:ring-2 focus:ring-[#7c5cf8] outline-none"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Cores e banner */}
+          <div className="p-5 rounded-2xl bg-white border border-gray-200 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900">Cores e Banner</h3>
 
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold text-gray-600">Cor primária da marca</span>
@@ -579,14 +620,12 @@ export default function StoreFrontConfigPage() {
                 />
                 <div
                   className="flex-1 h-10 rounded-xl flex items-center justify-center text-white text-xs font-bold"
-                  style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)` }}
+                  style={{ background: color || "#7c5cf8" }}
                 >
                   Preview
                 </div>
               </div>
-              <p className="text-xs text-gray-400">
-                Aplicada na barra do topo, botão do carrinho e badge de quantidades.
-              </p>
+              <p className="text-xs text-gray-400">Barra do topo, badge e botão do carrinho.</p>
             </label>
 
             <label className="flex flex-col gap-1.5">

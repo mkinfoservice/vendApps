@@ -15,12 +15,18 @@ export interface StoreFrontConfigResponse {
   id: string;
   primaryColor: string;
   bannerIntervalSecs: number;
+  logoUrl: string | null;
+  storeName: string | null;
+  storeSlogan: string | null;
   slides: BannerSlideResponse[];
 }
 
 export interface UpdateStoreFrontConfigRequest {
   primaryColor?: string;
   bannerIntervalSecs?: number;
+  logoUrl?: string | null;
+  storeName?: string | null;
+  storeSlogan?: string | null;
 }
 
 export interface UpsertBannerSlideRequest {

@@ -67,6 +67,9 @@ export type StoreFrontConfig = {
   id: string;
   primaryColor: string;
   bannerIntervalSecs: number;
+  logoUrl: string | null;
+  storeName: string | null;
+  storeSlogan: string | null;
   slides: BannerSlide[];
 };
 

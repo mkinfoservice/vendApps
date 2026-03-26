@@ -19,7 +19,7 @@ function DefaultSlide({ onCategoryClick }: { onCategoryClick?: (slug: string) =>
     >
       <div className="absolute top-[-40px] right-[-40px] w-48 h-48 rounded-full opacity-10 bg-white" />
       <div className="absolute top-[20px] right-[60px] w-24 h-24 rounded-full opacity-10 bg-white" />
-      <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row sm:items-end sm:justify-between w-full gap-4">
+      <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
         <div>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-white/80 uppercase tracking-widest mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -70,7 +70,7 @@ function SlideContent({
 
   return (
     <div
-      className="relative rounded-2xl overflow-hidden min-h-[160px] sm:min-h-[200px] flex items-end w-full"
+      className="relative rounded-2xl overflow-hidden min-h-[160px] sm:min-h-[200px] flex items-center w-full"
       style={
         slide.imageUrl
           ? {
@@ -81,9 +81,9 @@ function SlideContent({
           : { background: `linear-gradient(135deg, #5b3fd4 0%, ${primaryColor} 50%, #9b7efa 100%)` }
       }
     >
-      {/* Overlay escuro para legibilidade quando há imagem */}
+      {/* Overlay semi-transparente para legibilidade sobre imagem */}
       {slide.imageUrl && (
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-black/30" />
       )}
 
       {/* Círculos decorativos (apenas sem imagem) */}
@@ -94,7 +94,7 @@ function SlideContent({
         </>
       )}
 
-      <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row sm:items-end sm:justify-between w-full gap-4">
+      <div className="relative z-10 p-5 sm:p-7 flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
         <div>
           {slide.title && (
             <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">

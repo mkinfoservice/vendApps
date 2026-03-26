@@ -56,6 +56,9 @@ public class StoreFrontAdminController : ControllerBase
             config.PrimaryColor = req.PrimaryColor;
         if (req.BannerIntervalSecs.HasValue)
             config.BannerIntervalSecs = Math.Max(0, req.BannerIntervalSecs.Value);
+        if (req.LogoUrl    is not null) config.LogoUrl    = req.LogoUrl == "" ? null : req.LogoUrl;
+        if (req.StoreName  is not null) config.StoreName  = req.StoreName == "" ? null : req.StoreName;
+        if (req.StoreSlogan is not null) config.StoreSlogan = req.StoreSlogan == "" ? null : req.StoreSlogan;
 
         config.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -179,6 +182,9 @@ public class StoreFrontAdminController : ControllerBase
         c.Id,
         c.PrimaryColor,
         c.BannerIntervalSecs,
+        c.LogoUrl,
+        c.StoreName,
+        c.StoreSlogan,
         c.BannerSlides
             .OrderBy(s => s.SortOrder)
             .Select(ToSlideResponse)
@@ -230,6 +236,7 @@ public class StoreFrontPublicController : ControllerBase
         if (config is null)
             return Ok(new StoreFrontConfigResponse(
                 Guid.Empty, "#7c5cf8", 5,
+                null, null, null,
                 Array.Empty<BannerSlideResponse>()));
 
         var slides = config.BannerSlides
@@ -241,6 +248,8 @@ public class StoreFrontPublicController : ControllerBase
             .ToList();
 
         return Ok(new StoreFrontConfigResponse(
-            config.Id, config.PrimaryColor, config.BannerIntervalSecs, slides));
+            config.Id, config.PrimaryColor, config.BannerIntervalSecs,
+            config.LogoUrl, config.StoreName, config.StoreSlogan,
+            slides));
     }
 }

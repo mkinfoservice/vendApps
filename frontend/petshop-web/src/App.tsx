@@ -57,12 +57,9 @@ export default function App() {
   const isDesktop = useMediaQuery("(min-width: 1280px)");
   const categoryScroll = useDragScroll<HTMLDivElement>();
 
-  // Aplica cor primária da loja via CSS variable
+  // Lê config da loja (cor, logo, nome, slogan)
   const { data: storeFront } = useStoreFront();
-  useEffect(() => {
-    const color = storeFront?.primaryColor;
-    if (color) document.documentElement.style.setProperty("--brand", color);
-  }, [storeFront?.primaryColor]);
+  const brandColor = storeFront?.primaryColor ?? "#7c5cf8";
 
   // Verifica status do tenant (só em subdomínio válido)
   const tenantQuery = useQuery({
@@ -120,7 +117,7 @@ export default function App() {
           {cart.totalItems > 0 && (
             <span
               className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-black flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
+              style={{ background: brandColor }}
             >
               {cart.totalItems > 9 ? "9+" : cart.totalItems}
             </span>
@@ -138,13 +135,19 @@ export default function App() {
           {/* Banner frete grátis */}
           <div
             className="text-white text-center text-xs font-semibold py-2 px-4"
-            style={{ background: "linear-gradient(90deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
+            style={{ background: brandColor }}
           >
             Frete Grátis acima de R$ 100
           </div>
 
           {/* TopBar com branding + cart slot */}
-          <TopBar cartSlot={<CartIconButton />} />
+          <TopBar
+            cartSlot={<CartIconButton />}
+            logoUrl={storeFront?.logoUrl}
+            storeName={storeFront?.storeName}
+            storeSlogan={storeFront?.storeSlogan}
+            brandColor={brandColor}
+          />
         </div>
 
         {/* Conteúdo principal */}
@@ -324,7 +327,7 @@ export default function App() {
                 <button
                   type="button"
                   className="h-12 px-6 rounded-2xl font-black text-sm text-white transition hover:brightness-110 active:scale-95"
-                  style={{ background: "linear-gradient(135deg, var(--brand, #7c5cf8), var(--brand, #7c5cf8)cc)" }}
+                  style={{ background: brandColor }}
                 >
                   Ver carrinho ({cart.totalItems})
                 </button>
