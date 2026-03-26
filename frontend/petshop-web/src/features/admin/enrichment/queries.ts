@@ -40,6 +40,8 @@ export function useEnrichmentBatches(page = 1) {
       );
       return hasActive ? 4000 : false;
     },
+    // Mantém o polling mesmo quando a aba está em background (evita Render dormir)
+    refetchIntervalInBackground: true,
   });
 }
 

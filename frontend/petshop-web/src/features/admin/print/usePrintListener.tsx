@@ -83,6 +83,8 @@ export function usePrintListener() {
                    signalR.HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+      .withKeepAliveInterval(10_000)   // cliente → servidor a cada 10s (mantém Render acordado)
+      .withServerTimeout(60_000)       // espera até 60s antes de declarar servidor morto
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 

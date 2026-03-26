@@ -47,7 +47,14 @@ builder.Services
 // ===============================
 // SignalR
 // ===============================
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(o =>
+{
+    // Render LB tem timeout de ~55s em conexões idle.
+    // Servidor pinga o cliente a cada 10s (< 55s) para manter o WebSocket vivo.
+    o.KeepAliveInterval      = TimeSpan.FromSeconds(10);
+    // Se o cliente não responder em 30s, desconecta (withReconnect tratará isso no cliente)
+    o.ClientTimeoutInterval  = TimeSpan.FromSeconds(30);
+});
 
 // ===============================
 // Swagger + JWT Authorization
