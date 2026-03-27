@@ -221,14 +221,18 @@ builder.Services.AddScoped<CatalogEnrichmentOrchestrator>();
 builder.Services.AddScoped<EnrichNormalizeProductsJob>();
 builder.Services.AddScoped<EnrichMatchImagesJob>();
 
-// Google Custom Search API — picker manual de imagens do admin
-// Requer GOOGLE_API_KEY e GOOGLE_CSE_ID nas variáveis de ambiente
-builder.Services.AddHttpClient<GoogleImageSearchMatcher>(client =>
+// Cosmos (Bluesoft) — busca de imagem por EAN/GTIN, base brasileira
+// Requer COSMOS_TOKEN nas variáveis de ambiente (cadastro gratuito em cosmos.bluesoft.com.br)
+builder.Services.AddHttpClient<CosmosImageMatcher>(client =>
 {
-    client.Timeout = TimeSpan.FromSeconds(10);
+    var token = builder.Configuration["COSMOS_TOKEN"];
+    if (!string.IsNullOrWhiteSpace(token))
+        client.DefaultRequestHeaders.Add("X-Cosmos-Token", token.Trim());
+    client.Timeout = TimeSpan.FromSeconds(8);
     client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-enrichment/1.0");
 });
-builder.Services.AddScoped<GoogleImageSearchMatcher>();
+builder.Services.AddScoped<CosmosImageMatcher>();
+builder.Services.AddScoped<IProductImageMatcher, CosmosImageMatcher>();
 
 // ===============================
 // Services — Master Admin

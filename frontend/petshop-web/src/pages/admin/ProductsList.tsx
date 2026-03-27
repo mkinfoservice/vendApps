@@ -43,7 +43,7 @@ export default function ProductsList() {
   const [orderFilter, setOrderFilter] = useState<"all" | "withoutOrders">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showSync, setShowSync] = useState(false);
-  const [imagePicker, setImagePicker] = useState<{ id: string; name: string } | null>(null);
+  const [imagePicker, setImagePicker] = useState<{ id: string; name: string; barcode?: string | null } | null>(null);
 
   const productsQuery = useAdminProducts({
     page,
@@ -368,7 +368,7 @@ export default function ProductsList() {
                     <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
                         title="Buscar imagem"
-                        onClick={(e) => { e.stopPropagation(); setImagePicker({ id: p.id, name: p.name }); }}
+                        onClick={(e) => { e.stopPropagation(); setImagePicker({ id: p.id, name: p.name, barcode: p.barcode }); }}
                         className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface-2)]"
                         style={{ color: p.imageUrl ? "var(--text-muted)" : "#f59e0b" }}
                       >
@@ -421,6 +421,7 @@ export default function ProductsList() {
         <ImagePickerModal
           productId={imagePicker.id}
           productName={imagePicker.name}
+          barcode={imagePicker.barcode}
           onClose={() => setImagePicker(null)}
           onApplied={() => {
             productsQuery.refetch();

@@ -6,8 +6,8 @@ export type ImageSearchResult = {
   pictures: string[];
 };
 
-export async function searchImages(q: string): Promise<ImageSearchResult[]> {
-  const params = new URLSearchParams({ q });
+export async function searchImagesByBarcode(barcode: string): Promise<ImageSearchResult[]> {
+  const params = new URLSearchParams({ barcode });
   return adminFetch<ImageSearchResult[]>(`/admin/enrichment/image-search?${params}`);
 }
 

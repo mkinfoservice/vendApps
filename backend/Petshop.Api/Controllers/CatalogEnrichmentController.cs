@@ -24,21 +24,18 @@ public class CatalogEnrichmentController : ControllerBase
     private readonly AppDbContext _db;
     private readonly EnrichmentBatchService _batchService;
     private readonly IBackgroundJobClient _jobs;
-    private readonly GoogleImageSearchMatcher _googleMatcher;
-    private readonly ILogger<CatalogEnrichmentController> _logger;
+    private readonly CosmosImageMatcher _cosmosMatcher;
 
     public CatalogEnrichmentController(
         AppDbContext db,
         EnrichmentBatchService batchService,
         IBackgroundJobClient jobs,
-        GoogleImageSearchMatcher googleMatcher,
-        ILogger<CatalogEnrichmentController> logger)
+        CosmosImageMatcher cosmosMatcher)
     {
         _db            = db;
         _batchService  = batchService;
         _jobs          = jobs;
-        _googleMatcher = googleMatcher;
-        _logger        = logger;
+        _cosmosMatcher = cosmosMatcher;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -584,13 +581,13 @@ public class CatalogEnrichmentController : ControllerBase
     /// </summary>
     [HttpGet("image-search")]
     public async Task<IActionResult> ImageSearch(
-        [FromQuery] string q,
+        [FromQuery] string? barcode,
         CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(q))
-            return BadRequest(new { error = "Parâmetro 'q' é obrigatório." });
+        if (string.IsNullOrWhiteSpace(barcode))
+            return Ok(Array.Empty<ImageSearchResult>());
 
-        var results = await _googleMatcher.SearchForPickerAsync(q, ct);
+        var results = await _cosmosMatcher.SearchForPickerAsync(barcode, ct);
         return Ok(results);
     }
 
