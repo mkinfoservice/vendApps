@@ -622,6 +622,9 @@ public class CatalogEnrichmentController : ControllerBase
             SortOrder       = 0
         });
 
+        // Atualiza também o campo direto do produto (usado pelo catálogo público)
+        product.ImageUrl = req.Url;
+
         await _db.SaveChangesAsync(ct);
         return Ok(new { url = req.Url });
     }
@@ -640,6 +643,7 @@ public class CatalogEnrichmentController : ControllerBase
             .Where(i => i.ProductId == productId && i.IsPrimary)
             .ToListAsync(ct);
         _db.ProductImages.RemoveRange(existing);
+        product.ImageUrl = null;
         await _db.SaveChangesAsync(ct);
         return Ok(new { removed = existing.Count });
     }
@@ -654,6 +658,15 @@ public class CatalogEnrichmentController : ControllerBase
             .Where(i => i.Product!.CompanyId == CompanyId)
             .ToListAsync(ct);
         _db.ProductImages.RemoveRange(images);
+
+        // Limpa também o campo direto dos produtos
+        var productIds = images.Select(i => i.ProductId).ToHashSet();
+        var products = await _db.Products
+            .Where(p => p.CompanyId == CompanyId && productIds.Contains(p.Id))
+            .ToListAsync(ct);
+        foreach (var p in products)
+            p.ImageUrl = null;
+
         await _db.SaveChangesAsync(ct);
         return Ok(new { removed = images.Count });
     }
