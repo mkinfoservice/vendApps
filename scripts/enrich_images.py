@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""
+VendApps — Enriquecimento de imagens via Python
+================================================
+Busca imagens no DuckDuckGo/Bing e aplica via API do vendApps.
+
+INSTALAR DEPENDÊNCIAS:
+    pip install requests duckduckgo-search
+
+MODOS DE USO:
+
+  1. Exportar produtos sem imagem para CSV:
+       python enrich_images.py export --token SEU_JWT [--output produtos.csv]
+
+  2. Processar CSV em lote:
+       python enrich_images.py batch --token SEU_JWT --csv produtos.csv
+       python enrich_images.py batch --token SEU_JWT --csv produtos.csv --delay 2 --start 150
+
+  3. Processar um único produto:
+       python enrich_images.py single --token SEU_JWT --id PRODUCT_UUID --name "Ração Golden"
+       python enrich_images.py single --token SEU_JWT --id PRODUCT_UUID --name "Ração Golden" --barcode 7891234567890
+
+EXEMPLOS:
+  # Exportar, depois processar
+  python enrich_images.py export --token eyJ... --output sem_imagem.csv
+  python enrich_images.py batch  --token eyJ... --csv sem_imagem.csv
+
+  # Retomar do produto 200 (caso tenha parado)
+  python enrich_images.py batch --token eyJ... --csv sem_imagem.csv --start 200
+
+  # Produto avulso
+  python enrich_images.py single --token eyJ... --id abc-123 --name "Frontline Plus Cão"
+"""
+
+import argparse
+import csv
+import time
+import sys
+import re
+import requests
+
+API_BASE = "https://vendapps.onrender.com"
+DEFAULT_DELAY   = 1.5   # segundos entre produtos (evita rate limit)
+DEFAULT_PAGE_SIZE = 200  # máximo permitido pela API
+
+# ── Fontes de imagem ──────────────────────────────────────────────────────────
+
+def search_ddg(query: str, max_results: int = 5) -> list[str]:
+    """Busca imagens no DuckDuckGo (sem API key)."""
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.images(query, max_results=max_results))
+        return [r["image"] for r in results if r.get("image")]
+    except ImportError:
+        print("    [DDG] duckduckgo-search não instalado (pip install duckduckgo-search)")
+        return []
+    except Exception as e:
+        print(f"    [DDG] erro: {e}")
+        return []
+
+
+def search_bing(query: str, max_results: int = 5) -> list[str]:
+    """Busca imagens no Bing via scraping simples."""
+    try:
+        url = "https://www.bing.com/images/search"
+        params = {"q": query, "form": "HDRSC2", "first": "1"}
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        }
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        urls = re.findall(r'"murl":"(https?://[^"]+)"', r.text)
+        return urls[:max_results]
+    except Exception as e:
+        print(f"    [Bing] erro: {e}")
+        return []
+
+
+def is_likely_image(url: str) -> bool:
+    """Verifica se a URL tem cara de imagem válida."""
+    if not url or not url.startswith("http"):
+        return False
+    path = url.lower().split("?")[0]
+    return any(path.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"))
+
+
+def find_image(name: str, barcode: str | None = None) -> str | None:
+    """
+    Tenta encontrar uma imagem usando múltiplas queries e fontes.
+    Ordem: barcode (DDG → Bing) → nome (DDG → Bing) → nome + 'produto' (DDG → Bing)
+    """
+    queries = []
+    if barcode and barcode.strip():
+        queries.append(barcode.strip())
+    queries.append(name)
+    queries.append(f"{name} produto embalagem")
+
+    for query in queries:
+        print(f"    query: '{query}'")
+
+        # DuckDuckGo primeiro
+        urls = search_ddg(query, max_results=5)
+        for url in urls:
+            if is_likely_image(url):
+                return url
+
+        # Bing como fallback
+        urls = search_bing(query, max_results=5)
+        for url in urls:
+            if is_likely_image(url):
+                return url
+
+    return None
+
+
+# ── API vendApps ──────────────────────────────────────────────────────────────
+
+def api_headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+
+def get_products_page(token: str, page: int, page_size: int) -> dict:
+    r = requests.get(
+        f"{API_BASE}/admin/products",
+        params={"page": page, "pageSize": page_size, "active": "true"},
+        headers=api_headers(token),
+        timeout=20,
+    )
+    r.raise_for_status()
+    return r.json()
+
+
+def apply_image(product_id: str, image_url: str, token: str) -> bool:
+    r = requests.put(
+        f"{API_BASE}/admin/enrichment/products/{product_id}/image",
+        json={"url": image_url},
+        headers=api_headers(token),
+        timeout=15,
+    )
+    return r.status_code == 200
+
+
+# ── Modos ─────────────────────────────────────────────────────────────────────
+
+def cmd_export(token: str, output: str):
+    """Busca todos os produtos sem imagem e salva em CSV."""
+    print(f"Exportando produtos sem imagem → {output}")
+    all_items = []
+    page = 1
+
+    while True:
+        print(f"  Página {page}...", end=" ", flush=True)
+        try:
+            data = get_products_page(token, page, DEFAULT_PAGE_SIZE)
+        except requests.HTTPError as e:
+            print(f"\nErro na API: {e}")
+            break
+
+        items = data.get("items", [])
+        total = data.get("total", 0)
+        print(f"{len(items)} produtos (total: {total})")
+
+        # Filtra os que não têm imageUrl
+        sem_imagem = [p for p in items if not p.get("imageUrl")]
+        all_items.extend(sem_imagem)
+
+        fetched = (page - 1) * DEFAULT_PAGE_SIZE + len(items)
+        if fetched >= total or len(items) < DEFAULT_PAGE_SIZE:
+            break
+        page += 1
+
+    if not all_items:
+        print("Nenhum produto sem imagem encontrado.")
+        return
+
+    with open(output, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["id", "name", "barcode", "category"])
+        writer.writeheader()
+        for p in all_items:
+            writer.writerow({
+                "id":       p.get("id", ""),
+                "name":     p.get("name", ""),
+                "barcode":  p.get("barcode") or "",
+                "category": p.get("categoryName", ""),
+            })
+
+    print(f"\n✓ {len(all_items)} produtos exportados para '{output}'")
+
+
+def process_one(product_id: str, name: str, barcode: str | None, token: str) -> bool:
+    """Busca e aplica imagem para um produto. Retorna True se bem-sucedido."""
+    image_url = find_image(name, barcode)
+
+    if not image_url:
+        print("    ✗ Nenhuma imagem encontrada")
+        return False
+
+    print(f"    → {image_url[:90]}")
+    if apply_image(product_id, image_url, token):
+        print("    ✓ Aplicado")
+        return True
+    else:
+        print("    ✗ Erro ao aplicar via API")
+        return False
+
+
+def cmd_batch(token: str, csv_path: str, delay: float, start_line: int):
+    """Processa produtos de um CSV em lote."""
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    total   = len(rows)
+    success = 0
+    failed  = []
+
+    print(f"CSV: {total} produtos | inicio: linha {start_line} | delay: {delay}s\n")
+
+    for i, row in enumerate(rows, start=1):
+        if i < start_line:
+            continue
+
+        product_id = row.get("id", "").strip()
+        name       = row.get("name", "").strip()
+        barcode    = row.get("barcode", "").strip() or None
+
+        if not product_id or not name:
+            print(f"[{i}/{total}] Pulando — id ou name ausente")
+            continue
+
+        print(f"[{i}/{total}] {name[:60]}")
+        ok = process_one(product_id, name, barcode, token)
+
+        if ok:
+            success += 1
+        else:
+            failed.append({"linha": i, "id": product_id, "name": name})
+
+        if i < total:
+            time.sleep(delay)
+
+    # Resumo
+    print(f"\n{'='*50}")
+    print(f"✓ Aplicados : {success}")
+    print(f"✗ Falhos    : {len(failed)}")
+
+    if failed:
+        fail_path = csv_path.replace(".csv", "_falhos.csv")
+        with open(fail_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=["linha", "id", "name"])
+            writer.writeheader()
+            writer.writerows(failed)
+        print(f"Falhos salvos em: {fail_path}")
+        print(f"Para reprocessar: python enrich_images.py batch --token TOKEN --csv {fail_path}")
+
+
+def cmd_single(token: str, product_id: str, name: str, barcode: str | None):
+    """Processa um único produto."""
+    print(f"Produto : {name}")
+    print(f"ID      : {product_id}")
+    print(f"Barcode : {barcode or 'N/A'}\n")
+    ok = process_one(product_id, name, barcode, token)
+    sys.exit(0 if ok else 1)
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="VendApps — enriquecimento de imagens",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("--token", required=True, help="JWT token do admin")
+
+    sub = parser.add_subparsers(dest="mode", required=True)
+
+    # export
+    p_export = sub.add_parser("export", help="Exportar produtos sem imagem para CSV")
+    p_export.add_argument("--output", default="produtos_sem_imagem.csv", help="Arquivo de saída (default: produtos_sem_imagem.csv)")
+
+    # batch
+    p_batch = sub.add_parser("batch", help="Processar CSV em lote")
+    p_batch.add_argument("--csv",   required=True,                    help="Caminho do CSV")
+    p_batch.add_argument("--delay", type=float, default=DEFAULT_DELAY, help=f"Delay entre produtos em segundos (default: {DEFAULT_DELAY})")
+    p_batch.add_argument("--start", type=int,   default=1,            help="Linha do CSV para iniciar (útil para retomar; default: 1)")
+
+    # single
+    p_single = sub.add_parser("single", help="Processar um único produto")
+    p_single.add_argument("--id",      required=True,  help="UUID do produto")
+    p_single.add_argument("--name",    required=True,  help="Nome do produto")
+    p_single.add_argument("--barcode", default=None,   help="Código de barras (opcional)")
+
+    args = parser.parse_args()
+
+    if args.mode == "export":
+        cmd_export(args.token, args.output)
+    elif args.mode == "batch":
+        cmd_batch(args.token, args.csv, args.delay, args.start)
+    elif args.mode == "single":
+        cmd_single(args.token, args.id, args.name, args.barcode)
+
+
+if __name__ == "__main__":
+    main()
