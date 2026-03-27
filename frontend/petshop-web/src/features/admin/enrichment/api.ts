@@ -32,6 +32,10 @@ export function reprocessWithoutImage(): Promise<{ batchId: string; totalQueued:
   return adminFetch("/admin/enrichment/reprocess-without-image", { method: "POST" });
 }
 
+export function clearAllImages(): Promise<{ removed: number }> {
+  return adminFetch<{ removed: number }>("/admin/enrichment/clear-all-images", { method: "DELETE" });
+}
+
 // ── Name suggestions ───────────────────────────────────────────────────────────
 
 export function fetchPendingNames(page = 1, pageSize = 30): Promise<NameSuggestionListResponse> {

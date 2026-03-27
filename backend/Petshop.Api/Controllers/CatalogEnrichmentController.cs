@@ -626,6 +626,38 @@ public class CatalogEnrichmentController : ControllerBase
         return Ok(new { url = req.Url });
     }
 
+    /// <summary>
+    /// Remove a imagem primária de um produto.
+    /// </summary>
+    [HttpDelete("products/{productId:guid}/image")]
+    public async Task<IActionResult> ClearProductImage(Guid productId, CancellationToken ct)
+    {
+        var product = await _db.Products
+            .FirstOrDefaultAsync(p => p.Id == productId && p.CompanyId == CompanyId, ct);
+        if (product is null) return NotFound();
+
+        var existing = await _db.ProductImages
+            .Where(i => i.ProductId == productId && i.IsPrimary)
+            .ToListAsync(ct);
+        _db.ProductImages.RemoveRange(existing);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { removed = existing.Count });
+    }
+
+    /// <summary>
+    /// Remove todas as imagens de todos os produtos da empresa (uso em testes).
+    /// </summary>
+    [HttpDelete("clear-all-images")]
+    public async Task<IActionResult> ClearAllImages(CancellationToken ct)
+    {
+        var images = await _db.ProductImages
+            .Where(i => i.Product!.CompanyId == CompanyId)
+            .ToListAsync(ct);
+        _db.ProductImages.RemoveRange(images);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { removed = images.Count });
+    }
+
     private static EnrichmentBatchResponse MapBatch(EnrichmentBatch b) => new(
         b.Id, b.Trigger.ToString(), b.Status.ToString(),
         b.TotalQueued, b.Processed, b.NamesNormalized,

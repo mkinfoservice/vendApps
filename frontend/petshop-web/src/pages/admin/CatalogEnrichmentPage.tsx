@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Play,
+  Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
@@ -29,6 +30,7 @@ import {
   useEnrichmentConfig,
   useUpdateEnrichmentConfig,
   useNormalizeCategories,
+  useClearAllImages,
 } from "@/features/admin/enrichment/queries";
 import type {
   EnrichmentBatchResponse,
@@ -179,6 +181,7 @@ function BatchesTab() {
   const createBatch = useCreateBatch();
   const reprocess = useReprocessWithoutImage();
   const normalizeCategories = useNormalizeCategories();
+  const clearImages = useClearAllImages();
 
   const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 20)));
 
@@ -222,6 +225,20 @@ function BatchesTab() {
         >
           <Type className="w-4 h-4" />
           {normalizeCategories.isPending ? "Normalizando..." : "Normalizar Grupos"}
+        </button>
+        <button
+          onClick={() => {
+            if (confirm("Remover TODAS as imagens dos produtos? Esta ação não pode ser desfeita.")) {
+              clearImages.mutate(undefined, {
+                onSuccess: (res) => alert(`${res.removed} imagens removidas.`),
+              });
+            }
+          }}
+          disabled={clearImages.isPending}
+          className="flex items-center gap-2 px-3 py-2 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 disabled:opacity-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          {clearImages.isPending ? "Limpando..." : "Limpar todas as imagens"}
         </button>
       </div>
       {normalizeCategories.isSuccess && (

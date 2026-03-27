@@ -4,6 +4,7 @@ import {
   approveAllNames,
   approveImage,
   bulkApproveNames,
+  clearAllImages,
   createBatch,
   fetchBatch,
   fetchBatches,
@@ -75,6 +76,10 @@ export function useReprocessWithoutImage() {
       qc.invalidateQueries({ queryKey: KEYS.batches });
     },
   });
+}
+
+export function useClearAllImages() {
+  return useMutation({ mutationFn: clearAllImages });
 }
 
 // ── Name suggestions ───────────────────────────────────────────────────────────
