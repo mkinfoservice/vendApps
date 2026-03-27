@@ -45,76 +45,96 @@ DEFAULT_PAGE_SIZE = 200  # máximo permitido pela API
 
 # ── Fontes de imagem ──────────────────────────────────────────────────────────
 
-def search_ddg(query: str, max_results: int = 5) -> list[str]:
-    """Busca imagens no DuckDuckGo (sem API key)."""
+def _simplify(name: str) -> str:
+    clean = re.sub(r'\b\d+\s*(mg|ml|g|kg|mcg|ui|un|unid|comp|cpr|caps|tab)\b', '', name, flags=re.I)
+    clean = re.sub(r'[^\w\s]', ' ', clean)
+    words = [w for w in clean.split() if len(w) >= 3][:5]
+    return " ".join(words).strip() or name
+
+
+def search_ml(query: str, barcode: str | None = None, n: int = 5) -> list[str]:
+    """Mercado Livre — funciona de IP doméstico/comercial (sem bloqueio)."""
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; vendApps-local/1.0)"}
+    urls = []
+    for q in ([barcode] if barcode else []) + [query]:
+        try:
+            sr = requests.get("https://api.mercadolibre.com/sites/MLB/search",
+                              params={"q": q, "limit": n}, headers=headers, timeout=10)
+            if not sr.ok:
+                continue
+            results = sr.json().get("results", [])
+            if not results:
+                continue
+            ids = ",".join(r["id"] for r in results)
+            br = requests.get(f"https://api.mercadolibre.com/items?ids={ids}",
+                              headers=headers, timeout=10)
+            if br.ok:
+                for entry in br.json():
+                    if entry.get("code") == 200 and entry.get("body"):
+                        for pic in entry["body"].get("pictures", []):
+                            u = pic.get("secure_url") or pic.get("url", "")
+                            if u:
+                                urls.append(u)
+            if not urls:
+                for r in results:
+                    t = r.get("thumbnail", "")
+                    if t:
+                        urls.append(t.replace("-I.", "-F.").replace("-O.", "-F."))
+            if urls:
+                break
+        except Exception:
+            continue
+    return urls[:10]
+
+
+def search_bing(query: str, max_results: int = 8) -> list[str]:
+    try:
+        headers = {
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"),
+            "Accept-Language": "pt-BR,pt;q=0.9",
+            "Referer": "https://www.bing.com/",
+        }
+        r = requests.get("https://www.bing.com/images/search",
+                         params={"q": query, "form": "HDRSC2", "first": 1},
+                         headers=headers, timeout=12)
+        urls = re.findall(r'"murl":"(https?://[^"]+)"', r.text)
+        return [u for u in urls if not u.endswith(".gif")][:max_results]
+    except Exception as e:
+        print(f"    [Bing] erro: {e}")
+        return []
+
+
+def search_ddg(query: str, max_results: int = 8) -> list[str]:
     try:
         from duckduckgo_search import DDGS
         with DDGS() as ddgs:
             results = list(ddgs.images(query, max_results=max_results))
         return [r["image"] for r in results if r.get("image")]
     except ImportError:
-        print("    [DDG] duckduckgo-search não instalado (pip install duckduckgo-search)")
+        print("    [DDG] pip install duckduckgo-search")
         return []
     except Exception as e:
         print(f"    [DDG] erro: {e}")
         return []
 
 
-def search_bing(query: str, max_results: int = 5) -> list[str]:
-    """Busca imagens no Bing via scraping simples."""
-    try:
-        url = "https://www.bing.com/images/search"
-        params = {"q": query, "form": "HDRSC2", "first": "1"}
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
-            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-        }
-        r = requests.get(url, params=params, headers=headers, timeout=10)
-        urls = re.findall(r'"murl":"(https?://[^"]+)"', r.text)
-        return urls[:max_results]
-    except Exception as e:
-        print(f"    [Bing] erro: {e}")
-        return []
-
-
-def is_likely_image(url: str) -> bool:
-    """Verifica se a URL tem cara de imagem válida."""
-    if not url or not url.startswith("http"):
-        return False
-    path = url.lower().split("?")[0]
-    return any(path.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".gif"))
-
-
 def find_image(name: str, barcode: str | None = None) -> str | None:
-    """
-    Tenta encontrar uma imagem usando múltiplas queries e fontes.
-    Ordem: barcode (DDG → Bing) → nome (DDG → Bing) → nome + 'produto' (DDG → Bing)
-    """
-    queries = []
-    if barcode and barcode.strip():
-        queries.append(barcode.strip())
-    queries.append(name)
-    queries.append(f"{name} produto embalagem")
+    """Busca em ML → Bing → DDG e retorna a primeira URL válida."""
+    simple = _simplify(name)
+    print(f"    query: '{simple}'")
 
-    for query in queries:
-        print(f"    query: '{query}'")
+    for urls in [search_ml(simple, barcode), search_bing(simple), search_ddg(simple)]:
+        for u in urls:
+            if u and u.startswith("http") and not u.endswith(".gif"):
+                return u
 
-        # DuckDuckGo primeiro
-        urls = search_ddg(query, max_results=5)
-        for url in urls:
-            if is_likely_image(url):
-                return url
-
-        # Bing como fallback
-        urls = search_bing(query, max_results=5)
-        for url in urls:
-            if is_likely_image(url):
-                return url
-
+    if simple != name:
+        print(f"    retentando com nome completo: '{name}'")
+        for urls in [search_bing(name), search_ddg(name)]:
+            for u in urls:
+                if u and u.startswith("http"):
+                    return u
     return None
 
 

@@ -34,7 +34,78 @@ PAGE_SIZE  = 200
 
 # ── Busca de imagens ──────────────────────────────────────────────────────────
 
+def _simplify(name: str) -> str:
+    """Remove doses/pesos e mantém os 5 tokens mais relevantes para busca."""
+    clean = re.sub(r'\b\d+\s*(mg|ml|g|kg|mcg|ui|un|unid|comp|cpr|caps|tab)\b', '', name, flags=re.I)
+    clean = re.sub(r'[^\w\s]', ' ', clean)
+    words = [w for w in clean.split() if len(w) >= 3][:5]
+    return " ".join(words).strip() or name
+
+
+def search_ml(query: str, barcode: str | None = None, n: int = 5) -> list[str]:
+    """Mercado Livre — funciona perfeitamente de IP doméstico/comercial."""
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; vendApps-local/1.0)"}
+    urls = []
+
+    for q in ([barcode] if barcode else []) + [query]:
+        try:
+            sr = requests.get("https://api.mercadolibre.com/sites/MLB/search",
+                              params={"q": q, "limit": n}, headers=headers, timeout=10)
+            if not sr.ok:
+                continue
+            results = sr.json().get("results", [])
+            if not results:
+                continue
+
+            # Batch: busca fotos em alta resolução
+            ids = ",".join(r["id"] for r in results)
+            br = requests.get(f"https://api.mercadolibre.com/items?ids={ids}",
+                              headers=headers, timeout=10)
+            if br.ok:
+                for entry in br.json():
+                    if entry.get("code") == 200 and entry.get("body"):
+                        for pic in entry["body"].get("pictures", []):
+                            u = pic.get("secure_url") or pic.get("url", "")
+                            if u:
+                                urls.append(u)
+
+            # Fallback para thumbnails upscalados
+            if not urls:
+                for r in results:
+                    t = r.get("thumbnail", "")
+                    if t:
+                        urls.append(t.replace("-I.", "-F.").replace("-O.", "-F."))
+
+            if urls:
+                break
+        except Exception:
+            continue
+
+    return urls[:10]
+
+
+def search_bing(query: str, n: int = 8) -> list[str]:
+    """Bing Images — scraping com headers realistas."""
+    try:
+        headers = {
+            "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/124.0.0.0 Safari/537.36"),
+            "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+            "Referer": "https://www.bing.com/",
+        }
+        r = requests.get("https://www.bing.com/images/search",
+                         params={"q": query, "form": "HDRSC2", "first": 1},
+                         headers=headers, timeout=12)
+        urls = re.findall(r'"murl":"(https?://[^"]+)"', r.text)
+        # Filtra GIFs e thumbs muito pequenos
+        return [u for u in urls if not u.endswith(".gif")][:n]
+    except Exception:
+        return []
+
+
 def search_ddg(query: str, n: int = 8) -> list[str]:
+    """DuckDuckGo Images."""
     try:
         from duckduckgo_search import DDGS
         with DDGS() as ddgs:
@@ -43,30 +114,42 @@ def search_ddg(query: str, n: int = 8) -> list[str]:
     except Exception:
         return []
 
-def search_bing(query: str, n: int = 8) -> list[str]:
-    try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
-        r = requests.get("https://www.bing.com/images/search",
-                         params={"q": query}, headers=headers, timeout=10)
-        return re.findall(r'"murl":"(https?://[^"]+)"', r.text)[:n]
-    except Exception:
-        return []
 
 def find_images(name: str, barcode: str | None = None) -> list[str]:
+    """
+    Busca em múltiplas fontes em cascata:
+      1. Mercado Livre (melhor cobertura para produtos BR)
+      2. Bing Images
+      3. DuckDuckGo
+    Usa nome simplificado para evitar queries muito específicas.
+    """
+    simple = _simplify(name)
     seen, result = set(), []
-    queries = []
-    if barcode:
-        queries.append(barcode)
-    queries += [name, f"{name} produto embalagem"]
 
-    for q in queries:
-        urls = search_ddg(q, 6) or search_bing(q, 6)
-        for u in urls:
-            if u not in seen and u.startswith("http"):
+    def add(urls):
+        for u in (urls or []):
+            if u and u not in seen and u.startswith("http"):
                 seen.add(u)
                 result.append(u)
-        if len(result) >= 12:
-            break
+
+    # 1. Mercado Livre
+    add(search_ml(simple, barcode))
+    if len(result) >= 8:
+        return result[:12]
+
+    # 2. Bing
+    add(search_bing(simple))
+    if len(result) >= 8:
+        return result[:12]
+
+    # 3. DuckDuckGo
+    add(search_ddg(simple))
+
+    # 4. Tenta com nome completo se ainda poucos resultados
+    if len(result) < 4 and simple != name:
+        add(search_bing(name))
+        add(search_ddg(name))
+
     return result[:12]
 
 # ── API vendApps ──────────────────────────────────────────────────────────────
