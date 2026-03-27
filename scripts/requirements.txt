@@ -1,0 +1,4 @@
+requests
+duckduckgo-search
+pillow
+pyinstaller
