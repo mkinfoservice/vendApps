@@ -158,7 +158,8 @@ def find_images(name: str, barcode: str | None = None) -> list[str]:
                 break
             time.sleep(0.3)  # pequena pausa entre fontes para evitar rate limit
 
-        _IMAGE_CACHE[key] = found
+        if found:  # só cacheia quando encontrou algo (evita guardar resultado vazio)
+            _IMAGE_CACHE[key] = found
         add(found)
 
     # Tenta variações em ordem até ter pelo menos 4 imagens
