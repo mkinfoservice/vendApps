@@ -1,4 +1,4 @@
 requests
-duckduckgo-search
+ddgs
 pillow
 pyinstaller

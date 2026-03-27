@@ -107,7 +107,10 @@ def search_bing(query: str, n: int = 8) -> list[str]:
 def search_ddg(query: str, n: int = 8) -> list[str]:
     """DuckDuckGo Images."""
     try:
-        from duckduckgo_search import DDGS
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
         with DDGS() as ddgs:
             results = list(ddgs.images(query, max_results=n))
         return [r["image"] for r in results if r.get("image")]
@@ -291,12 +294,26 @@ class App(tk.Tk):
         act = tk.Frame(right, bg="white", pady=8, padx=14)
         act.pack(fill="x")
 
-        self._btn(act, "⏭  Pular",           "#e2e8f0", self._skip, fg="#333").pack(side="left", padx=(0, 6))
-        self._btn(act, "🔄  Buscar imagens",  self.ACCENT, self._do_search, fg="white").pack(side="left")
+        self._btn(act, "⏭  Pular", "#e2e8f0", self._skip, fg="#333").pack(side="left", padx=(0, 8))
+
+        # Query field
+        tk.Label(act, text="Buscar:", bg="white", fg=self.GRAY,
+                 font=("Segoe UI", 9)).pack(side="left", padx=(0, 4))
+        self._query_var = tk.StringVar()
+        self._query_entry = tk.Entry(act, textvariable=self._query_var, width=38,
+                                     font=("Segoe UI", 10), relief="flat",
+                                     bg="#f4f4f8", fg="#1e1e2e",
+                                     highlightthickness=1,
+                                     highlightbackground="#ddd",
+                                     highlightcolor=self.ACCENT)
+        self._query_entry.pack(side="left", ipady=4, padx=(0, 6))
+        self._query_entry.bind("<Return>", lambda _: self._do_search())
+
+        self._btn(act, "🔍  Buscar", self.ACCENT, self._do_search, fg="white").pack(side="left")
 
         self._search_lbl = tk.Label(act, text="", bg="white", fg=self.GRAY,
                                     font=("Segoe UI", 9))
-        self._search_lbl.pack(side="left", padx=12)
+        self._search_lbl.pack(side="left", padx=10)
 
         # Separator
         tk.Frame(right, bg="#eeeeee", height=1).pack(fill="x")
@@ -449,6 +466,9 @@ class App(tk.Tk):
             f"Categoria: {p.get('categoryName') or p.get('category') or '—'}  |  "
             f"#{idx + 1} de {len(self.products)}")
 
+        # Popula campo de busca com nome simplificado (editável, não afeta o banco)
+        self._query_var.set(_simplify(p.get("name", "")))
+
         self._clear_grid()
         self._do_search()
 
@@ -474,12 +494,15 @@ class App(tk.Tk):
     def _do_search(self):
         if self.current < 0:
             return
-        p = self.products[self.current]
+        p       = self.products[self.current]
+        query   = self._query_var.get().strip() or _simplify(p.get("name", ""))
+        barcode = p.get("barcode")
+
         self._clear_grid()
         self._search_lbl.config(text="🔍 Buscando...")
 
         def work():
-            urls = find_images(p.get("name",""), p.get("barcode"))
+            urls = find_images(query, barcode)
             self.after(0, lambda: self._show_images(urls))
 
         threading.Thread(target=work, daemon=True).start()

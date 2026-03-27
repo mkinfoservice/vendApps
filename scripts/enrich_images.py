@@ -107,12 +107,15 @@ def search_bing(query: str, max_results: int = 8) -> list[str]:
 
 def search_ddg(query: str, max_results: int = 8) -> list[str]:
     try:
-        from duckduckgo_search import DDGS
+        try:
+            from ddgs import DDGS
+        except ImportError:
+            from duckduckgo_search import DDGS
         with DDGS() as ddgs:
             results = list(ddgs.images(query, max_results=max_results))
         return [r["image"] for r in results if r.get("image")]
     except ImportError:
-        print("    [DDG] pip install duckduckgo-search")
+        print("    [DDG] pip install ddgs")
         return []
     except Exception as e:
         print(f"    [DDG] erro: {e}")
