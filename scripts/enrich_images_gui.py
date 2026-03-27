@@ -118,40 +118,62 @@ def search_ddg(query: str, n: int = 8) -> list[str]:
         return []
 
 
+_IMAGE_CACHE: dict[str, list[str]] = {}
+
+
+def _cache_key(query: str) -> str:
+    return re.sub(r'\s+', ' ', query.lower().strip())
+
+
 def find_images(name: str, barcode: str | None = None) -> list[str]:
     """
-    Busca em múltiplas fontes em cascata:
-      1. Mercado Livre (melhor cobertura para produtos BR)
-      2. Bing Images
-      3. DuckDuckGo
-    Usa nome simplificado para evitar queries muito específicas.
+    Busca em cascata: ML → Bing → DDG.
+    Cache por query normalizada — mesma busca nunca vai ao servidor duas vezes.
+    Se retornar vazio tenta variações da query até achar algo.
     """
+    import time
+
     simple = _simplify(name)
     seen, result = set(), []
 
     def add(urls):
         for u in (urls or []):
-            if u and u not in seen and u.startswith("http"):
+            if u and u not in seen and u.startswith("http") and not u.endswith(".gif"):
                 seen.add(u)
                 result.append(u)
 
-    # 1. Mercado Livre
-    add(search_ml(simple, barcode))
-    if len(result) >= 8:
-        return result[:12]
+    def search_all(q: str):
+        key = _cache_key(q)
+        if key in _IMAGE_CACHE:
+            add(_IMAGE_CACHE[key])
+            return
 
-    # 2. Bing
-    add(search_bing(simple))
-    if len(result) >= 8:
-        return result[:12]
+        found = []
+        for fn in [lambda: search_ml(q, barcode),
+                   lambda: search_bing(q),
+                   lambda: search_ddg(q)]:
+            urls = fn()
+            found.extend(u for u in urls if u and u.startswith("http"))
+            if len(found) >= 8:
+                break
+            time.sleep(0.3)  # pequena pausa entre fontes para evitar rate limit
 
-    # 3. DuckDuckGo
-    add(search_ddg(simple))
+        _IMAGE_CACHE[key] = found
+        add(found)
 
-    # 4. Tenta com nome completo se ainda poucos resultados
-    if len(result) < 4 and simple != name:
-        add(search_bing(name))
-        add(search_ddg(name))
+    # Tenta variações em ordem até ter pelo menos 4 imagens
+    variations = [simple]
+    if simple != name.lower().strip():
+        variations.append(name)
+    # versão só com as primeiras 2 palavras (ex: "alcon basic" de "alcon basic adult")
+    words = simple.split()
+    if len(words) > 2:
+        variations.append(" ".join(words[:2]))
+
+    for q in variations:
+        if len(result) >= 4:
+            break
+        search_all(q)
 
     return result[:12]
 
