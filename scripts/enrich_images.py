@@ -123,21 +123,36 @@ def search_ddg(query: str, max_results: int = 8) -> list[str]:
 
 
 def find_image(name: str, barcode: str | None = None) -> str | None:
-    """Busca em ML → Bing → DDG e retorna a primeira URL válida."""
+    """Busca em cascata: ML API → Bing/DDG site:ML → fallback geral."""
     simple = _simplify(name)
     print(f"    query: '{simple}'")
 
-    for urls in [search_ml(simple, barcode), search_bing(simple), search_ddg(simple)]:
-        for u in urls:
-            if u and u.startswith("http") and not u.endswith(".gif"):
-                return u
+    def first_valid(urls):
+        return next((u for u in urls if u and u.startswith("http") and not u.endswith(".gif")), None)
+
+    # 1. ML API direto
+    u = first_valid(search_ml(simple, barcode))
+    if u:
+        return u
+
+    # 2. Bing + DDG forçando site:mercadolivre.com.br
+    site_q = f"site:mercadolivre.com.br {simple}"
+    print(f"    site query: '{site_q}'")
+    u = first_valid(search_bing(site_q)) or first_valid(search_ddg(site_q))
+    if u:
+        return u
+
+    # 3. Fallback geral
+    u = first_valid(search_bing(simple)) or first_valid(search_ddg(simple))
+    if u:
+        return u
 
     if simple != name:
         print(f"    retentando com nome completo: '{name}'")
-        for urls in [search_bing(name), search_ddg(name)]:
-            for u in urls:
-                if u and u.startswith("http"):
-                    return u
+        u = first_valid(search_bing(name)) or first_valid(search_ddg(name))
+        if u:
+            return u
+
     return None
 
 
@@ -148,13 +163,29 @@ def api_headers(token: str) -> dict:
 
 
 def get_products_page(token: str, page: int, page_size: int) -> dict:
-    r = requests.get(
-        f"{API_BASE}/admin/products",
-        params={"page": page, "pageSize": page_size, "active": "true"},
-        headers=api_headers(token),
-        timeout=20,
-    )
-    r.raise_for_status()
+    try:
+        r = requests.get(
+            f"{API_BASE}/admin/products",
+            params={"page": page, "pageSize": page_size, "active": "true"},
+            headers=api_headers(token),
+            timeout=20,
+        )
+    except requests.RequestException as e:
+        raise RuntimeError(f"Falha de conexao com a API: {e}") from e
+
+    if not r.ok:
+        detail = None
+        try:
+            payload = r.json()
+            if isinstance(payload, dict):
+                detail = payload.get("error") or payload.get("message") or payload.get("detail")
+        except Exception:
+            detail = None
+        if not detail:
+            body = (r.text or "").strip()
+            detail = body[:220] if body else f"HTTP {r.status_code} {r.reason or ''}".strip()
+        raise RuntimeError(str(detail))
+
     return r.json()
 
 
@@ -166,6 +197,18 @@ def apply_image(product_id: str, image_url: str, token: str) -> bool:
         timeout=15,
     )
     return r.status_code == 200
+
+
+def clear_all_images(token: str) -> tuple[bool, int]:
+    r = requests.delete(
+        f"{API_BASE}/admin/enrichment/clear-all-images",
+        headers=api_headers(token),
+        timeout=20,
+    )
+    if r.status_code != 200:
+        return False, 0
+    data = r.json() if r.content else {}
+    return True, int(data.get("removed", 0))
 
 
 # ── Modos ─────────────────────────────────────────────────────────────────────
@@ -290,6 +333,17 @@ def cmd_single(token: str, product_id: str, name: str, barcode: str | None):
     sys.exit(0 if ok else 1)
 
 
+def cmd_clear(token: str):
+    """Remove todas as imagens atuais do catalogo (uso em testes)."""
+    print("Removendo imagens do catalogo via API...")
+    ok, removed = clear_all_images(token)
+    if ok:
+        print(f"OK {removed} imagem(ns) removida(s).")
+        return
+    print("ERRO ao remover imagens via API.")
+    sys.exit(1)
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
@@ -317,6 +371,9 @@ def main():
     p_single.add_argument("--name",    required=True,  help="Nome do produto")
     p_single.add_argument("--barcode", default=None,   help="Código de barras (opcional)")
 
+    # clear
+    sub.add_parser("clear", help="Remover todas as imagens atuais do catalogo")
+
     args = parser.parse_args()
 
     if args.mode == "export":
@@ -325,6 +382,8 @@ def main():
         cmd_batch(args.token, args.csv, args.delay, args.start)
     elif args.mode == "single":
         cmd_single(args.token, args.id, args.name, args.barcode)
+    elif args.mode == "clear":
+        cmd_clear(args.token)
 
 
 if __name__ == "__main__":

@@ -127,9 +127,8 @@ def _cache_key(query: str) -> str:
 
 def find_images(name: str, barcode: str | None = None) -> list[str]:
     """
-    Busca em cascata: ML → Bing → DDG.
-    Cache por query normalizada — mesma busca nunca vai ao servidor duas vezes.
-    Se retornar vazio tenta variações da query até achar algo.
+    Busca em cascata: ML API → Bing/DDG com site:mercadolivre.com.br → fallback geral.
+    Cache por query normalizada — mesmo resultado não vai ao servidor duas vezes.
     """
     import time
 
@@ -142,31 +141,40 @@ def find_images(name: str, barcode: str | None = None) -> list[str]:
                 seen.add(u)
                 result.append(u)
 
-    def search_all(q: str):
+    def search_all(q: str, use_ml: bool = True):
         key = _cache_key(q)
         if key in _IMAGE_CACHE:
             add(_IMAGE_CACHE[key])
             return
 
         found = []
-        for fn in [lambda: search_ml(q, barcode),
-                   lambda: search_bing(q),
-                   lambda: search_ddg(q)]:
+        sources = []
+        if use_ml:
+            sources.append(lambda: search_ml(q, barcode))
+        sources += [lambda: search_bing(q), lambda: search_ddg(q)]
+
+        for fn in sources:
             urls = fn()
             found.extend(u for u in urls if u and u.startswith("http"))
             if len(found) >= 8:
                 break
-            time.sleep(0.3)  # pequena pausa entre fontes para evitar rate limit
+            time.sleep(0.3)
 
-        if found:  # só cacheia quando encontrou algo (evita guardar resultado vazio)
+        if found:
             _IMAGE_CACHE[key] = found
         add(found)
 
-    # Tenta variações em ordem até ter pelo menos 4 imagens
-    variations = [simple]
+    # 1. ML API direto (melhor qualidade)
+    search_all(simple)
+
+    # 2. Bing + DDG forçando site:mercadolivre.com.br
+    if len(result) < 4:
+        search_all(f"site:mercadolivre.com.br {simple}", use_ml=False)
+
+    # 3. Variações como fallback geral
+    variations = []
     if simple != name.lower().strip():
         variations.append(name)
-    # versão só com as primeiras 2 palavras (ex: "alcon basic" de "alcon basic adult")
     words = simple.split()
     if len(words) > 2:
         variations.append(" ".join(words[:2]))
@@ -183,10 +191,29 @@ def find_images(name: str, barcode: str | None = None) -> list[str]:
 def api_get_products(token: str) -> list[dict]:
     all_items, page = [], 1
     while True:
-        r = requests.get(f"{API_BASE}/admin/products",
-                         params={"page": page, "pageSize": PAGE_SIZE},
-                         headers={"Authorization": f"Bearer {token}"}, timeout=20)
-        r.raise_for_status()
+        try:
+            r = requests.get(
+                f"{API_BASE}/admin/products",
+                params={"page": page, "pageSize": PAGE_SIZE},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=20,
+            )
+        except requests.RequestException as e:
+            raise RuntimeError(f"Falha de conexao com a API: {e}") from e
+
+        if not r.ok:
+            detail = None
+            try:
+                payload = r.json()
+                if isinstance(payload, dict):
+                    detail = payload.get("error") or payload.get("message") or payload.get("detail")
+            except Exception:
+                detail = None
+            if not detail:
+                body = (r.text or "").strip()
+                detail = body[:220] if body else f"HTTP {r.status_code} {r.reason or ''}".strip()
+            raise RuntimeError(detail)
+
         data  = r.json()
         items = data.get("items", [])
         all_items.extend(p for p in items if not p.get("imageUrl"))
@@ -239,6 +266,7 @@ class App(tk.Tk):
         self.n_applied = 0
         self.n_skipped = 0
         self._photos: list = []   # mantém referências p/ evitar GC
+        self._auto_running = False
 
         self._build()
 
@@ -270,6 +298,8 @@ class App(tk.Tk):
         self._btn(src, "📡  Carregar da API",   "#89b4fa", self._load_api).pack(side="left", padx=8)
         self._btn(src, "📂  Abrir CSV",          "#a6e3a1", self._load_csv).pack(side="left", padx=4)
         self._btn(src, "💾  Exportar CSV",        "#fab387", self._export_csv).pack(side="left", padx=4)
+        self._auto_btn = self._btn(src, "⚡  Automático", "#cba6f7", self._toggle_auto)
+        self._auto_btn.pack(side="left", padx=4)
 
         self._src_info = tk.Label(src, text="", bg="#2d2d44", fg=self.GRAY,
                                   font=("Segoe UI", 9))
@@ -398,7 +428,8 @@ class App(tk.Tk):
                 products = api_get_products(self.token.get().strip())
                 self.after(0, lambda: self._set_products(products, "API"))
             except Exception as e:
-                self.after(0, lambda: self._err(f"Erro na API:\n{e}"))
+                msg = str(e).strip() or repr(e) or "Erro desconhecido"
+                self.after(0, lambda m=msg: self._err(f"Erro na API:\n{m}"))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -447,7 +478,8 @@ class App(tk.Tk):
                     "Exportado", f"{len(products)} produtos salvos em:\n{path}"))
                 self.after(0, lambda: self._src_info.config(text=""))
             except Exception as e:
-                self.after(0, lambda: self._err(f"Erro:\n{e}"))
+                msg = str(e).strip() or repr(e) or "Erro desconhecido"
+                self.after(0, lambda m=msg: self._err(f"Erro:\n{m}"))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -577,6 +609,78 @@ class App(tk.Tk):
                 self.after(0, lambda: self._search_lbl.config(text="Erro ao aplicar"))
 
         threading.Thread(target=work, daemon=True).start()
+
+    # ── Auto batch ────────────────────────────────────────────────────────────
+
+    def _toggle_auto(self):
+        if self._auto_running:
+            self._auto_running = False
+            self._auto_btn.config(text="⚡  Automático")
+            return
+
+        if not self._check_token():
+            return
+        pending = [p for p in self.products
+                   if not p.get("_applied") and not p.get("_skipped")]
+        if not pending:
+            messagebox.showinfo("Auto", "Nenhum produto pendente na lista.")
+            return
+
+        if not messagebox.askyesno("Automático",
+            f"{len(pending)} produtos pendentes.\n\n"
+            "O sistema vai buscar e aplicar a primeira imagem encontrada "
+            "automaticamente, pulando os que não tiver imagem.\n\n"
+            "Deseja continuar?"):
+            return
+
+        self._auto_running = True
+        self._auto_btn.config(text="⏹  Parar")
+        threading.Thread(target=self._run_auto, daemon=True).start()
+
+    def _run_auto(self):
+        import time as _time
+        token = self.token.get().strip()
+
+        for idx, p in enumerate(self.products):
+            if not self._auto_running:
+                break
+            if p.get("_applied") or p.get("_skipped"):
+                continue
+
+            self.after(0, lambda i=idx: self._select(i))
+            self.after(0, lambda n=p["name"]: self._search_lbl.config(
+                text=f"Auto: buscando '{n[:40]}'..."))
+
+            urls = find_images(_simplify(p.get("name", "")), p.get("barcode"))
+            url  = next((u for u in urls if u and u.startswith("http")), None)
+
+            if url and self._auto_running:
+                ok = api_apply_image(p["id"], url, token)
+                if ok:
+                    p["_applied"] = True
+                    self.n_applied += 1
+                    self.after(0, lambda i=idx: self._mark_item(i, "✓"))
+                else:
+                    p["_skipped"] = True
+                    self.n_skipped += 1
+                    self.after(0, lambda i=idx: self._mark_item(i, "⏭"))
+            else:
+                p["_skipped"] = True
+                self.n_skipped += 1
+                self.after(0, lambda i=idx: self._mark_item(i, "⏭"))
+
+            self.after(0, self._update_progress)
+            _time.sleep(0.8)
+
+        self._auto_running = False
+        self.after(0, lambda: self._auto_btn.config(text="⚡  Automático"))
+        self.after(0, lambda: self._search_lbl.config(text=""))
+        applied = sum(1 for p in self.products if p.get("_applied"))
+        skipped = sum(1 for p in self.products if p.get("_skipped"))
+        self.after(0, lambda: messagebox.showinfo("Auto concluído",
+            f"Processamento automático finalizado!\n\n"
+            f"✓ Aplicados : {applied}\n"
+            f"⏭ Pulados   : {skipped}"))
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
