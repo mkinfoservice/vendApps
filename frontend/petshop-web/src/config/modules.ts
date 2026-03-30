@@ -258,6 +258,18 @@ export const APP_MODULES: AppModule[] = [
     roles: ["admin", "gerente"],
     isActive: true,
   },
+  {
+    id: "insumos",
+    label: "Insumos",
+    description: "Materiais operacionais e alerta de estoque mínimo",
+    icon: Boxes,
+    iconColor: "#0ea5e9",
+    iconBg: "rgba(14,165,233,0.12)",
+    route: "/app/insumos",
+    group: "LOGISTICA",
+    roles: ["admin", "gerente"],
+    isActive: true,
+  },
 
   // ── GESTÃO ────────────────────────────────────────────────────────────────
   {

@@ -71,11 +71,22 @@ public class AppDbContext : DbContext
     public DbSet<ProductChangeLog> ProductChangeLogs => Set<ProductChangeLog>();
     public DbSet<ProductPriceHistory> ProductPriceHistories => Set<ProductPriceHistory>();
 
+    // ── Insumos ───────────────────────────────────────────────
+    public DbSet<Supply> Supplies => Set<Supply>();
+
+    // ── Adicionais de Produto ─────────────────────────────────
+    public DbSet<ProductAddon> ProductAddons => Set<ProductAddon>();
+
+    // ── Adicionais de Item de Venda ───────────────────────────
+    public DbSet<SaleOrderItemAddon> SaleOrderItemAddons => Set<SaleOrderItemAddon>();
+
     // ── Master Admin ──────────────────────────────────────────
     public DbSet<CompanySettings> CompanySettings => Set<CompanySettings>();
     public DbSet<CompanyIntegrationWhatsapp> CompanyIntegrationsWhatsapp => Set<CompanyIntegrationWhatsapp>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<MasterAuditLog> MasterAuditLogs => Set<MasterAuditLog>();
+    public DbSet<AdminAlert> AdminAlerts => Set<AdminAlert>();
+    public DbSet<PlatformWhatsappConfig> PlatformWhatsappConfigs => Set<PlatformWhatsappConfig>();
 
     // ── WhatsApp ──────────────────────────────────────────────
     public DbSet<WhatsAppContact> WhatsAppContacts => Set<WhatsAppContact>();
@@ -185,6 +196,31 @@ public class AppDbContext : DbContext
 
         // RowVersion concurrency token foi removido de Product.cs ([Timestamp] retirado).
         // Sem optimistic concurrency no produto — atualizações de estoque são serializadas pela sessão.
+
+        // ── ProductAddon ──────────────────────────────────────
+        modelBuilder.Entity<ProductAddon>()
+            .HasOne(a => a.Product)
+            .WithMany(p => p.Addons)
+            .HasForeignKey(a => a.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── Supply ────────────────────────────────────────────
+        modelBuilder.Entity<Supply>()
+            .HasOne(s => s.Company)
+            .WithMany()
+            .HasForeignKey(s => s.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── SaleOrderItemAddon ────────────────────────────────
+        modelBuilder.Entity<SaleOrderItemAddon>()
+            .HasOne(a => a.SaleOrderItem)
+            .WithMany(i => i.Addons)
+            .HasForeignKey(a => a.SaleOrderItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ── AdminAlert ────────────────────────────────────────
+        modelBuilder.Entity<AdminAlert>()
+            .HasIndex(a => new { a.CompanyId, a.IsRead });
 
         // ── ProductVariant ────────────────────────────────────
         modelBuilder.Entity<ProductVariant>()

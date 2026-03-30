@@ -466,6 +466,141 @@ interface QuickProduct {
   name: string;
   priceCents: number;
   imageUrl?: string | null;
+  hasAddons: boolean;
+  barcode?: string | null;
+  internalCode?: string | null;
+}
+
+interface AddonOption {
+  id: string;
+  name: string;
+  priceCents: number;
+}
+
+function AddonModal({
+  product,
+  saleId,
+  onConfirm,
+  onClose,
+}: {
+  product: QuickProduct;
+  saleId: string;
+  onConfirm: (name: string) => void;
+  onClose: () => void;
+}) {
+  const [addons, setAddons]           = useState<AddonOption[]>([]);
+  const [selected, setSelected]       = useState<Set<string>>(new Set());
+  const [loading, setLoading]         = useState(true);
+  const [adding, setAdding]           = useState(false);
+
+  useEffect(() => {
+    adminFetch<AddonOption[]>(`/admin/products/${product.id}/addons`)
+      .then(setAddons)
+      .catch(() => setAddons([]))
+      .finally(() => setLoading(false));
+  }, [product.id]);
+
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const extraCents = addons
+    .filter((a) => selected.has(a.id))
+    .reduce((s, a) => s + a.priceCents, 0);
+
+  async function handleConfirm(addonIds: string[]) {
+    setAdding(true);
+    try {
+      await addItem(saleId, { productId: product.id, qty: 1, addonIds: addonIds.length ? addonIds : undefined });
+      onConfirm(product.name);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+        <div>
+          <h2 className="font-bold text-gray-800 text-base">{product.name}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Escolha os adicionais</p>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-gray-400 py-4 text-center">Carregando...</p>
+        ) : addons.length === 0 ? (
+          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponível.</p>
+        ) : (
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {addons.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => toggle(a.id)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left"
+                style={{
+                  borderColor: selected.has(a.id) ? "#7c5cf8" : "#e5e7eb",
+                  backgroundColor: selected.has(a.id) ? "rgba(124,92,248,0.06)" : "transparent",
+                }}
+              >
+                <div
+                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
+                  style={{
+                    borderColor: selected.has(a.id) ? "#7c5cf8" : "#d1d5db",
+                    backgroundColor: selected.has(a.id) ? "#7c5cf8" : "transparent",
+                  }}
+                >
+                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">✓</span>}
+                </div>
+                <span className="flex-1 text-sm text-gray-700 font-medium">{a.name}</span>
+                <span className="text-sm font-bold text-[#7c5cf8]">+{brl(a.priceCents)}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {extraCents > 0 && (
+          <div className="flex justify-between text-sm px-1">
+            <span className="text-gray-500">Total com adicionais</span>
+            <span className="font-bold text-gray-800">{brl(product.priceCents + extraCents)}</span>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => handleConfirm([])}
+            disabled={adding}
+            className="flex-1 py-2.5 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
+          >
+            Não, obrigado
+          </button>
+          <button
+            type="button"
+            disabled={adding || loading}
+            onClick={() => handleConfirm([...selected])}
+            className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition hover:opacity-90 disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+          >
+            {adding ? "Adicionando..." : selected.size > 0 ? `Adicionar (${selected.size})` : "Adicionar"}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
+          style={{ position: "absolute" }}
+        >
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function QuickProducts({
@@ -475,17 +610,25 @@ function QuickProducts({
   saleId: string;
   onAdded: (name: string) => void;
 }) {
-  const [products, setProducts] = useState<QuickProduct[]>([]);
-  const [adding, setAdding]     = useState<string | null>(null);
+  const [products, setProducts]   = useState<QuickProduct[]>([]);
+  const [adding, setAdding]       = useState<string | null>(null);
+  const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    adminFetch<{ items: QuickProduct[] }>("/admin/products?pageSize=24&active=true")
+    const p = new URLSearchParams({ pageSize: "60", active: "true" });
+    if (search.trim()) p.set("search", search.trim());
+    adminFetch<{ items: QuickProduct[] }>(`/admin/products?${p.toString()}`)
       .then((r) => setProducts(r.items))
       .catch(() => {});
-  }, []);
+  }, [search]);
 
   async function handleAdd(p: QuickProduct) {
     if (adding) return;
+    if (p.hasAddons) {
+      setAddonTarget(p);
+      return;
+    }
     setAdding(p.id);
     try {
       await addItem(saleId, { productId: p.id, qty: 1 });
@@ -504,36 +647,62 @@ function QuickProducts({
   }
 
   return (
-    <div className="h-full overflow-y-auto p-3">
-      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
-        Atalhos rápidos
-      </p>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-        {products.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            disabled={adding === p.id}
-            onClick={() => handleAdd(p)}
-            className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50"
-          >
-            <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
-              {p.imageUrl ? (
-                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl text-gray-200">📦</span>
+    <>
+      {addonTarget && (
+        <AddonModal
+          product={addonTarget}
+          saleId={saleId}
+          onConfirm={(name) => { setAddonTarget(null); onAdded(name); }}
+          onClose={() => setAddonTarget(null)}
+        />
+      )}
+      <div className="h-full overflow-y-auto p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome, código interno ou código de barras"
+              className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+          {products.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={adding === p.id || !saleId}
+              onClick={() => handleAdd(p)}
+              className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50 relative"
+            >
+              {p.hasAddons && (
+                <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none" style={{ background: "#7c5cf8" }}>+</span>
               )}
-            </div>
-            <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
-              {p.name}
-            </span>
-            <span className="text-[11px] font-bold text-[#7c5cf8]">
-              {brl(p.priceCents)}
-            </span>
-          </button>
-        ))}
+              <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+                {p.imageUrl ? (
+                  <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl text-gray-200">📦</span>
+                )}
+              </div>
+              <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
+                {p.name}
+              </span>
+              <span className="text-[11px] font-bold text-[#7c5cf8]">
+                {brl(p.priceCents)}
+              </span>
+              {(p.internalCode || p.barcode) && (
+                <span className="text-[10px] text-gray-400 leading-tight text-center">
+                  {p.internalCode || p.barcode}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -826,8 +995,11 @@ export default function PdvPage() {
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ minHeight: 200, flex: "1 1 0" }}>
-            {!currentSale || currentSale.items.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-100" style={{ minHeight: 200, flex: "1 1 0" }}>
+            <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Catalogo de produtos</p>
+            </div>
+            <div className="border-b border-gray-100" style={{ maxHeight: "46vh" }}>
               <QuickProducts
                 saleId={currentSale?.id ?? ""}
                 onAdded={async (name) => {
@@ -836,49 +1008,62 @@ export default function PdvPage() {
                   barcodeRef.current?.focus();
                 }}
               />
-            ) : (
-              <div className="overflow-y-auto h-full">
-                <table className="w-full text-sm text-gray-900">
-                  <thead className="border-b sticky top-0 bg-white z-10">
-                    <tr className="text-left text-xs text-gray-400">
-                      <th className="px-4 py-3">Produto</th>
-                      <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
-                      <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
-                      <th className="px-3 py-3 text-right">Total</th>
-                      <th className="px-3 py-3 w-8" />
+            </div>
+            <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Carrinho da venda</p>
+            </div>
+            <div className="overflow-y-auto h-full">
+              <table className="w-full text-sm text-gray-900">
+                <thead className="border-b sticky top-0 bg-white z-10">
+                  <tr className="text-left text-xs text-gray-400">
+                    <th className="px-4 py-3">Produto</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
+                    <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
+                    <th className="px-3 py-3 text-right">Total</th>
+                    <th className="px-3 py-3 w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {!currentSale || currentSale.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                        Nenhum item no carrinho
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {currentSale.items.map((item) => (
-                      <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-                        <td className="px-4 py-2.5 font-medium text-gray-900">
-                          <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
-                          <span className="sm:hidden text-xs text-gray-400 mt-0.5">
-                            {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
+                  ) : currentSale.items.map((item) => (
+                    <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-4 py-2.5 font-medium text-gray-900">
+                        <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
+                        <span className="sm:hidden text-xs text-gray-400 mt-0.5">
+                          {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
+                        </span>
+                        {item.addons && item.addons.length > 0 && (
+                          <span className="block mt-1 text-[11px] text-[#7c5cf8]">
+                            + {item.addons.map((a) => a.nameSnapshot).join(", ")}
                           </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
-                          {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
-                          {brl(item.unitPriceCentsSnapshot)}
-                          {item.isSoldByWeight && <span className="text-xs">/kg</span>}
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
-                        <td className="px-3 py-2.5">
-                          <button
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="text-red-400 hover:text-red-600 text-sm leading-none"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
+                        {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
+                        {brl(item.unitPriceCentsSnapshot)}
+                        {item.isSoldByWeight && <span className="text-xs">/kg</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
+                      <td className="px-3 py-2.5">
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="text-red-400 hover:text-red-600 text-sm leading-none"
+                        >
+                          ✕
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Mobile: sticky cobrar bar */}
@@ -905,7 +1090,8 @@ export default function PdvPage() {
 
         {/* ── Right: Totals + Payment (desktop only) ──────────── */}
         <div className="hidden lg:flex w-80 xl:w-96 flex-col gap-3 shrink-0">
-          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3">
+          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 border border-gray-100">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo da venda</p>
             <div className="flex justify-between text-sm text-gray-500">
               <span>Subtotal</span>
               <span>{brl(currentSale?.subtotalCents ?? 0)}</span>

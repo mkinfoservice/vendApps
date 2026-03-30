@@ -21,5 +21,8 @@ public record CreateProductRequest(
     bool IsSoldByWeight = false,
     [MaxLength(5)] string? ScaleProductCode = null,
     ScaleBarcodeMode ScaleBarcodeMode = ScaleBarcodeMode.WeightEncoded,
-    decimal ScaleTareWeight = 0
+    decimal ScaleTareWeight = 0,
+    // ── Adicionais / Insumo ───────────────────────────────────
+    bool HasAddons = false,
+    bool IsSupply = false
 );

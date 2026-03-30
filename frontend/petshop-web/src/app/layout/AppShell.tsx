@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppHeader } from "./AppHeader";
 import { AppSidebar } from "./AppSidebar";
+import { SupplyAlertsPopup } from "./SupplyAlertsPopup";
 
 interface Props {
   children: ReactNode;
@@ -18,6 +19,7 @@ export function AppShell({ children }: Props) {
         <AppSidebar />
         <main className="flex-1 min-w-0">{children}</main>
       </div>
+      <SupplyAlertsPopup />
     </div>
   );
 }

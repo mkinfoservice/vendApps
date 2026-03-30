@@ -74,7 +74,7 @@ public class AdminProductsController : ControllerBase
                 p.Category.Name, p.Brand != null ? p.Brand.Name : null,
                 p.Unit, p.PriceCents, p.CostCents, p.MarginPercent, p.StockQty,
                 p.IsActive, p.UpdatedAtUtc, p.ImageUrl,
-                p.IsSoldByWeight, p.ScaleProductCode))
+                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons))
             .ToListAsync(ct);
 
         return Ok(new ProductListResponse(page, pageSize, total, items));
@@ -90,6 +90,7 @@ public class AdminProductsController : ControllerBase
             .Include(p => p.Brand)
             .Include(p => p.Images)
             .Include(p => p.Variants)
+            .Include(p => p.Addons.Where(a => a.IsActive).OrderBy(a => a.SortOrder))
             .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == CompanyId, ct);
 
         if (p == null) return NotFound("Produto não encontrado.");
@@ -101,7 +102,9 @@ public class AdminProductsController : ControllerBase
             p.StockQty, p.Ncm, p.IsActive, p.CreatedAtUtc, p.UpdatedAtUtc,
             p.Images.OrderBy(i => i.SortOrder).Select(i => new ProductImageDto(i.Id, i.Url, i.StorageProvider, i.IsPrimary, i.SortOrder)).ToList(),
             p.Variants.Select(v => new ProductVariantDto(v.Id, v.VariantKey, v.VariantValue, v.Barcode, v.PriceCents, v.StockQty)).ToList(),
-            p.IsSoldByWeight, p.ScaleProductCode, p.ScaleBarcodeMode, p.ScaleTareWeight
+            p.IsSoldByWeight, p.ScaleProductCode, p.ScaleBarcodeMode, p.ScaleTareWeight,
+            p.HasAddons, p.IsSupply,
+            p.Addons.Select(a => new ProductAddonDto(a.Id, a.Name, a.PriceCents, a.SortOrder, a.IsActive)).ToList()
         ));
     }
 
@@ -133,6 +136,8 @@ public class AdminProductsController : ControllerBase
             ScaleProductCode = req.ScaleProductCode?.Trim(),
             ScaleBarcodeMode = req.ScaleBarcodeMode,
             ScaleTareWeight  = req.ScaleTareWeight,
+            HasAddons        = req.HasAddons,
+            IsSupply         = req.IsSupply,
             CreatedAtUtc     = DateTime.UtcNow
         };
         product.MarginPercent = product.PriceCents > 0
@@ -177,6 +182,8 @@ public class AdminProductsController : ControllerBase
         if (req.ScaleProductCode != null) product.ScaleProductCode = req.ScaleProductCode.Trim();
         if (req.ScaleBarcodeMode.HasValue) product.ScaleBarcodeMode = req.ScaleBarcodeMode.Value;
         if (req.ScaleTareWeight.HasValue) product.ScaleTareWeight = req.ScaleTareWeight.Value;
+        if (req.HasAddons.HasValue) product.HasAddons = req.HasAddons.Value;
+        if (req.IsSupply.HasValue) product.IsSupply = req.IsSupply.Value;
 
         if (req.PriceCents.HasValue && req.PriceCents.Value != product.PriceCents)
         {

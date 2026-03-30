@@ -10,6 +10,10 @@ import {
   deleteWithoutOrders,
   uploadAdminProductImage,
   deleteAdminProductImage,
+  fetchProductAddons,
+  createProductAddon,
+  updateProductAddon,
+  deleteProductAddon,
   type CreateProductRequest,
   type UpdateProductRequest,
 } from "./api";
@@ -100,5 +104,48 @@ export function useDeleteProductImage(productId: string) {
   return useMutation({
     mutationFn: (imageId: string) => deleteAdminProductImage(productId, imageId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-product", productId] }); },
+  });
+}
+
+export function useProductAddons(productId: string) {
+  return useQuery({
+    queryKey: ["product-addons", productId],
+    queryFn: () => fetchProductAddons(productId),
+    enabled: !!productId && productId !== "new",
+  });
+}
+
+export function useCreateProductAddon(productId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; priceCents: number; sortOrder?: number }) =>
+      createProductAddon(productId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product-addons", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-product", productId] });
+    },
+  });
+}
+
+export function useUpdateProductAddon(productId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ addonId, data }: { addonId: string; data: { name?: string; priceCents?: number; sortOrder?: number; isActive?: boolean } }) =>
+      updateProductAddon(productId, addonId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product-addons", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-product", productId] });
+    },
+  });
+}
+
+export function useDeleteProductAddon(productId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (addonId: string) => deleteProductAddon(productId, addonId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product-addons", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-product", productId] });
+    },
   });
 }

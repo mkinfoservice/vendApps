@@ -184,7 +184,43 @@ public class WhatsAppClient
     {
         var graphVersion = _config["WHATSAPP_GRAPH_VERSION"] ?? "v25.0";
 
-        // 1️⃣ Tenta credenciais por empresa (Mode=cloud_api, IsActive=true)
+        string companyMode = "own";
+        if (companyId.HasValue)
+        {
+            var company = await _db.Companies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == companyId.Value, ct);
+
+            companyMode = (company?.WhatsappMode ?? "own").Trim().ToLowerInvariant();
+            if (companyMode == "none")
+                return null;
+        }
+
+        // 1️⃣ Credenciais da plataforma (modo global para o tenant)
+        if (companyMode == "platform")
+        {
+            var platform = await _db.PlatformWhatsappConfigs
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .OrderByDescending(p => p.UpdatedAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            if (platform is not null &&
+                !string.IsNullOrWhiteSpace(platform.PhoneNumberId) &&
+                !string.IsNullOrWhiteSpace(platform.AccessTokenEncrypted))
+            {
+                var platformToken = _crypto.TryDecrypt(platform.AccessTokenEncrypted);
+                if (!string.IsNullOrWhiteSpace(platformToken))
+                {
+                    _logger.LogDebug(
+                        "WA_CREDS | CompanyId={CompanyId} | Usando credenciais globais da plataforma",
+                        companyId);
+                    return (platform.PhoneNumberId, platformToken, graphVersion);
+                }
+            }
+        }
+
+        // 2️⃣ Tenta credenciais por empresa (Mode=cloud_api, IsActive=true)
         if (companyId.HasValue)
         {
             var integration = await _db.CompanyIntegrationsWhatsapp
@@ -213,7 +249,7 @@ public class WhatsAppClient
             }
         }
 
-        // 2️⃣ Fallback: credenciais globais via env vars
+        // 3️⃣ Fallback: credenciais globais via env vars
         var globalPhoneId = _config["WHATSAPP_PHONE_NUMBER_ID"];
         var globalToken   = _config["WHATSAPP_ACCESS_TOKEN"];
 

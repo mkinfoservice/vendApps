@@ -29,8 +29,13 @@ public record ProductDetailResponse(
     bool IsSoldByWeight,
     string? ScaleProductCode,
     ScaleBarcodeMode ScaleBarcodeMode,
-    decimal ScaleTareWeight
+    decimal ScaleTareWeight,
+    // ── Adicionais ──
+    bool HasAddons,
+    bool IsSupply,
+    IReadOnlyList<ProductAddonDto> Addons
 );
 
 public record ProductImageDto(Guid Id, string Url, string StorageProvider, bool IsPrimary, int SortOrder);
 public record ProductVariantDto(Guid Id, string VariantKey, string VariantValue, string? Barcode, int? PriceCents, decimal StockQty);
+public record ProductAddonDto(Guid Id, string Name, int PriceCents, int SortOrder, bool IsActive);

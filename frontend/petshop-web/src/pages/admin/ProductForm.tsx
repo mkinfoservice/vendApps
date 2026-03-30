@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ImagePlus, Trash2, Star } from "lucide-react";
+import { ImagePlus, Trash2, Star, Plus } from "lucide-react";
 import { fetchCategories } from "@/features/catalog/api";
 import {
   useAdminProductById,
@@ -8,6 +8,9 @@ import {
   useUpdateProduct,
   useUploadProductImage,
   useDeleteProductImage,
+  useCreateProductAddon,
+  useUpdateProductAddon,
+  useDeleteProductAddon,
 } from "@/features/admin/products/queries";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
@@ -55,6 +58,8 @@ type FormState = {
   internalCode: string;
   ncm: string;
   isActive: boolean;
+  hasAddons: boolean;
+  isSupply: boolean;
 };
 
 const EMPTY: FormState = {
@@ -70,6 +75,8 @@ const EMPTY: FormState = {
   internalCode: "",
   ncm:          "",
   isActive:     true,
+  hasAddons:    false,
+  isSupply:     false,
 };
 
 export default function ProductForm() {
@@ -82,11 +89,17 @@ export default function ProductForm() {
   const [error, setError]       = useState<string | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
 
-  const productQuery = useAdminProductById(isNew ? "" : id!);
-  const createMut    = useCreateProduct();
-  const updateMut    = useUpdateProduct(isNew ? "" : id!);
-  const uploadImage  = useUploadProductImage(isNew ? "" : id!);
-  const deleteImage  = useDeleteProductImage(isNew ? "" : id!);
+  const productQuery  = useAdminProductById(isNew ? "" : id!);
+  const createMut     = useCreateProduct();
+  const updateMut     = useUpdateProduct(isNew ? "" : id!);
+  const uploadImage   = useUploadProductImage(isNew ? "" : id!);
+  const deleteImage   = useDeleteProductImage(isNew ? "" : id!);
+  const createAddon   = useCreateProductAddon(isNew ? "" : id!);
+  const updateAddon   = useUpdateProductAddon(isNew ? "" : id!);
+  const deleteAddon   = useDeleteProductAddon(isNew ? "" : id!);
+
+  const [newAddonName, setNewAddonName]   = useState("");
+  const [newAddonPrice, setNewAddonPrice] = useState("0,00");
 
   // Carrega categorias (público, usa VITE_COMPANY_SLUG)
   useEffect(() => {
@@ -110,6 +123,8 @@ export default function ProductForm() {
       internalCode: p.internalCode ?? "",
       ncm:          p.ncm ?? "",
       isActive:     p.isActive,
+      hasAddons:    p.hasAddons,
+      isSupply:     p.isSupply,
     });
     setSlugManual(true); // em edição, slug não é auto-derivado
   }, [productQuery.data]);
@@ -154,6 +169,8 @@ export default function ProductForm() {
       internalCode: form.internalCode.trim() || null,
       ncm:          form.ncm.trim() || null,
       isActive:     form.isActive,
+      hasAddons:    form.hasAddons,
+      isSupply:     form.isSupply,
     };
 
     try {
@@ -410,6 +427,130 @@ export default function ProductForm() {
                 />
               </div>
             </section>
+
+            {/* Flags: Adicionais / Insumo */}
+            <section
+              className="rounded-2xl border p-5 space-y-3"
+              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+            >
+              <div className="text-sm font-extrabold" style={{ color: "var(--text)" }}>Comportamento</div>
+              <div className="grid grid-cols-2 gap-3">
+                {/* Tem adicionais */}
+                <button
+                  type="button"
+                  onClick={() => set("hasAddons", !form.hasAddons)}
+                  className="h-10 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold transition-all"
+                  style={{
+                    borderColor: "var(--border)",
+                    backgroundColor: form.hasAddons ? "rgba(124,92,248,0.12)" : "var(--surface-2)",
+                    color: form.hasAddons ? "#7c5cf8" : "var(--text-muted)",
+                  }}
+                >
+                  {form.hasAddons ? "✓ Tem adicionais" : "Tem adicionais"}
+                </button>
+                {/* É insumo */}
+                <button
+                  type="button"
+                  onClick={() => set("isSupply", !form.isSupply)}
+                  className="h-10 rounded-xl border flex items-center justify-center gap-2 text-sm font-semibold transition-all"
+                  style={{
+                    borderColor: "var(--border)",
+                    backgroundColor: form.isSupply ? "rgba(250,204,21,0.12)" : "var(--surface-2)",
+                    color: form.isSupply ? "#eab308" : "var(--text-muted)",
+                  }}
+                >
+                  {form.isSupply ? "✓ É insumo" : "É insumo"}
+                </button>
+              </div>
+            </section>
+
+            {/* Adicionais — só em edição e quando hasAddons */}
+            {!isNew && form.hasAddons && (
+              <section
+                className="rounded-2xl border p-5 space-y-4"
+                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+              >
+                <div className="text-sm font-extrabold" style={{ color: "var(--text)" }}>Adicionais</div>
+
+                {/* Lista de addons existentes */}
+                {(productQuery.data?.addons ?? []).length === 0 ? (
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Nenhum adicional cadastrado.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {productQuery.data?.addons.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2"
+                        style={{ backgroundColor: "var(--surface-2)" }}
+                      >
+                        <span className="flex-1 text-sm" style={{ color: "var(--text)" }}>{addon.name}</span>
+                        <span className="text-sm font-semibold" style={{ color: "var(--text-muted)" }}>
+                          +R$ {centsToReal(addon.priceCents)}
+                        </span>
+                        <button
+                          type="button"
+                          title={addon.isActive ? "Desativar" : "Ativar"}
+                          onClick={() => updateAddon.mutate({ addonId: addon.id, data: { isActive: !addon.isActive } })}
+                          className="text-xs px-2 py-1 rounded-lg transition-all"
+                          style={{
+                            backgroundColor: addon.isActive ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+                            color: addon.isActive ? "#4ade80" : "#f87171",
+                          }}
+                        >
+                          {addon.isActive ? "Ativo" : "Inativo"}
+                        </button>
+                        <button
+                          type="button"
+                          title="Excluir"
+                          onClick={() => {
+                            if (!confirm(`Excluir adicional "${addon.name}"?`)) return;
+                            deleteAddon.mutate(addon.id);
+                          }}
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-red-950/40"
+                        >
+                          <Trash2 size={13} className="text-red-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Novo adicional */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    value={newAddonName}
+                    onChange={(e) => setNewAddonName(e.target.value)}
+                    placeholder="Nome do adicional"
+                    className="flex-1 h-9 rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8]/40"
+                    style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  />
+                  <input
+                    value={newAddonPrice}
+                    onChange={(e) => setNewAddonPrice(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0,00"
+                    className="w-24 h-9 rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8]/40"
+                    style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!newAddonName.trim() || createAddon.isPending}
+                    onClick={() => {
+                      if (!newAddonName.trim()) return;
+                      createAddon.mutate(
+                        { name: newAddonName.trim(), priceCents: realToCents(newAddonPrice) },
+                        { onSuccess: () => { setNewAddonName(""); setNewAddonPrice("0,00"); } }
+                      );
+                    }}
+                    className="h-9 px-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
+                    style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+                  >
+                    <Plus size={14} />
+                    Add
+                  </button>
+                </div>
+              </section>
+            )}
 
             {/* Imagens — só disponível em edição (precisa do ID) */}
             {!isNew && (

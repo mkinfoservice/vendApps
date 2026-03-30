@@ -37,6 +37,7 @@ import CustomersPage from "./pages/admin/CustomersPage";
 import LoyaltyConfigPage from "./pages/admin/LoyaltyConfigPage";
 import PromotionsPage from "./pages/admin/PromotionsPage";
 import SuppliersPage from "./pages/admin/SuppliersPage";
+import SuppliesPage from "./pages/admin/SuppliesPage";
 import PurchasesPage from "./pages/admin/PurchasesPage";
 import PurchaseOrderDetail from "./pages/admin/PurchaseOrderDetail";
 import ReportsPage from "./pages/admin/ReportsPage";
@@ -136,6 +137,7 @@ export function AppRoutes() {
         <Route path="/app/compras" element={<AppPage roles={["admin","gerente"]}><PurchasesPage /></AppPage>} />
         <Route path="/app/compras/:id" element={<AppPage roles={["admin","gerente"]}><PurchaseOrderDetail /></AppPage>} />
         <Route path="/app/fornecedores" element={<AppPage roles={["admin","gerente"]}><SuppliersPage /></AppPage>} />
+        <Route path="/app/insumos" element={<AppPage roles={["admin","gerente"]}><SuppliesPage /></AppPage>} />
 
         {/* ── /app — Gestão ───────────────────────────────────────────── */}
         <Route path="/app/financeiro" element={<AppPage roles={["admin","gerente"]}><Financeiro /></AppPage>} />
@@ -171,6 +173,7 @@ export function AppRoutes() {
         <Route path="/admin/deliverers/new" element={<Navigate to="/app/logistica/entregadores/novo" replace />} />
         <Route path="/admin/purchases" element={<Navigate to="/app/compras" replace />} />
         <Route path="/admin/suppliers" element={<Navigate to="/app/fornecedores" replace />} />
+        <Route path="/admin/supplies" element={<Navigate to="/app/insumos" replace />} />
         <Route path="/admin/financeiro" element={<Navigate to="/app/financeiro" replace />} />
         <Route path="/admin/financial" element={<Navigate to="/app/financeiro/lancamentos" replace />} />
         <Route path="/admin/pdv/terminais" element={<Navigate to="/app/caixa" replace />} />

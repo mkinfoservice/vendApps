@@ -18,6 +18,7 @@ export type ProductListItem = {
   isActive: boolean;
   updatedAtUtc: string | null;
   imageUrl: string | null;
+  hasAddons: boolean;
 };
 
 export type ProductListResponse = {
@@ -39,6 +40,14 @@ export type BulkDeleteProductsResponse = {
 export type DeleteWithoutOrdersResponse = {
   matched: number;
   deleted: number;
+};
+
+export type ProductAddon = {
+  id: string;
+  name: string;
+  priceCents: number;
+  sortOrder: number;
+  isActive: boolean;
 };
 
 export type ProductDetail = {
@@ -64,6 +73,9 @@ export type ProductDetail = {
   updatedAtUtc: string | null;
   images: { id: string; url: string; storageProvider: string; isPrimary: boolean; sortOrder: number }[];
   variants: { id: string; variantKey: string; variantValue: string; barcode: string | null; priceCents: number | null; stockQty: number }[];
+  hasAddons: boolean;
+  isSupply: boolean;
+  addons: ProductAddon[];
 };
 
 export type CreateProductRequest = {
@@ -80,6 +92,8 @@ export type CreateProductRequest = {
   stockQty: number;
   ncm?: string | null;
   isActive?: boolean;
+  hasAddons?: boolean;
+  isSupply?: boolean;
 };
 
 export type UpdateProductRequest = Partial<CreateProductRequest>;
@@ -166,4 +180,37 @@ export async function uploadAdminProductImage(
 
 export async function deleteAdminProductImage(id: string, imageId: string): Promise<void> {
   return adminFetch(`/admin/products/${id}/images/${imageId}`, { method: "DELETE" });
+}
+
+// ── Addons ─────────────────────────────────────────────────────────────────
+
+export async function fetchProductAddons(productId: string): Promise<ProductAddon[]> {
+  return adminFetch<ProductAddon[]>(`/admin/products/${productId}/addons`);
+}
+
+export async function createProductAddon(
+  productId: string,
+  data: { name: string; priceCents: number; sortOrder?: number }
+): Promise<ProductAddon> {
+  return adminFetch<ProductAddon>(`/admin/products/${productId}/addons`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateProductAddon(
+  productId: string,
+  addonId: string,
+  data: { name?: string; priceCents?: number; sortOrder?: number; isActive?: boolean }
+): Promise<void> {
+  return adminFetch(`/admin/products/${productId}/addons/${addonId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteProductAddon(productId: string, addonId: string): Promise<void> {
+  return adminFetch(`/admin/products/${productId}/addons/${addonId}`, { method: "DELETE" });
 }

@@ -29,4 +29,7 @@ public class SaleOrderItem
 
     [Column(TypeName = "decimal(8,3)")]
     public decimal? WeightKg { get; set; }
+
+    // ── Adicionais ─────────────────────────────────────────
+    public List<SaleOrderItemAddon> Addons { get; set; } = new();
 }

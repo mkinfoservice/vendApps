@@ -109,7 +109,16 @@ public class Product
     // ── Concorrência (desabilitada — xmin causava DbUpdateConcurrencyException nos seeds) ─
     public byte[]? RowVersion { get; set; }
 
+    // ── Adicionais ────────────────────────────────────────────
+    /// <summary>Produto possui adicionais opcionais selecionáveis no PDV.</summary>
+    public bool HasAddons { get; set; } = false;
+
+    // ── Insumo ────────────────────────────────────────────────
+    /// <summary>Produto é um insumo interno (não aparece no catálogo público).</summary>
+    public bool IsSupply { get; set; } = false;
+
     // ── Navegações ────────────────────────────────────────────
     public List<ProductVariant> Variants { get; set; } = new();
     public List<ProductImage> Images { get; set; } = new();
+    public List<Petshop.Api.Entities.Catalog.ProductAddon> Addons { get; set; } = new();
 }

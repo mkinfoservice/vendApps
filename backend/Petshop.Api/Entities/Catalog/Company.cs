@@ -35,6 +35,15 @@ public class Company
 
     public DateTime? PlanExpiresAtUtc { get; set; }
 
+    // ── WhatsApp Mode ─────────────────────────────────────
+    /// <summary>"own" | "platform" | "none"</summary>
+    [MaxLength(20)]
+    public string WhatsappMode { get; set; } = "none";
+
+    /// <summary>Telefone do proprietário para alertas internos (insumos, estoque).</summary>
+    [MaxLength(20)]
+    public string? OwnerAlertPhone { get; set; }
+
     // ── Timestamps ────────────────────────────────────────
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

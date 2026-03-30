@@ -34,6 +34,51 @@ public class WhatsAppAdminController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("preferences")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> GetPreferences(CancellationToken ct = default)
+    {
+        var companyIdRaw = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyIdRaw, out var companyId))
+            return BadRequest(new { error = "companyId inválido no token." });
+
+        var company = await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == companyId, ct);
+        if (company is null) return NotFound();
+
+        return Ok(new WhatsappPreferencesDto(
+            company.WhatsappMode,
+            company.OwnerAlertPhone));
+    }
+
+    [HttpPut("preferences")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> UpsertPreferences(
+        [FromBody] UpsertWhatsappPreferencesRequest req,
+        CancellationToken ct = default)
+    {
+        var mode = (req.WhatsappMode ?? "none").Trim().ToLowerInvariant();
+        if (mode is not ("none" or "own" or "platform"))
+            return BadRequest(new { error = "WhatsappMode deve ser 'none', 'own' ou 'platform'." });
+
+        var companyIdRaw = User.FindFirstValue("companyId");
+        if (!Guid.TryParse(companyIdRaw, out var companyId))
+            return BadRequest(new { error = "companyId inválido no token." });
+
+        var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == companyId, ct);
+        if (company is null) return NotFound();
+
+        company.WhatsappMode = mode;
+        company.OwnerAlertPhone = string.IsNullOrWhiteSpace(req.OwnerAlertPhone)
+            ? null
+            : req.OwnerAlertPhone.Trim();
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new WhatsappPreferencesDto(company.WhatsappMode, company.OwnerAlertPhone));
+    }
+
     // ── POST /admin/whatsapp/test-send ────────────────────────────────────────
 
     /// <summary>
@@ -174,4 +219,14 @@ public record TestSendRequest(
     string To,
     string Text,
     Guid? CompanyId = null
+);
+
+public record WhatsappPreferencesDto(
+    string WhatsappMode,
+    string? OwnerAlertPhone
+);
+
+public record UpsertWhatsappPreferencesRequest(
+    string WhatsappMode,
+    string? OwnerAlertPhone
 );

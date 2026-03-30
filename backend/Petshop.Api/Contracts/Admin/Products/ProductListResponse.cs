@@ -20,5 +20,7 @@ public record ProductListItem(
     string? ImageUrl,
     // ── Balança ──
     bool IsSoldByWeight,
-    string? ScaleProductCode
+    string? ScaleProductCode,
+    // ── Adicionais ──
+    bool HasAddons
 );

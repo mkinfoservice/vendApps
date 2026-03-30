@@ -356,7 +356,7 @@ public class PdvController : ControllerBase
     {
         var sale = await _db.SaleOrders
             .AsNoTracking()
-            .Include(o => o.Items)
+            .Include(o => o.Items).ThenInclude(i => i.Addons)
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
 
@@ -461,16 +461,27 @@ public class PdvController : ControllerBase
 
         if (product is null) return BadRequest("Produto não encontrado.");
 
+        // Resolve addons selecionados
+        var addons = new List<Petshop.Api.Entities.Catalog.ProductAddon>();
+        if (req.AddonIds is { Count: > 0 })
+        {
+            addons = await _db.ProductAddons
+                .Where(a => req.AddonIds.Contains(a.Id) && a.ProductId == product.Id && a.IsActive)
+                .ToListAsync(ct);
+        }
+        int addonsCents = addons.Sum(a => a.PriceCents);
+
+        int unitPriceCents = product.PriceCents + addonsCents;
         int total;
         if (product.IsSoldByWeight)
         {
             if (req.WeightKg is null or <= 0)
                 return BadRequest("WeightKg é obrigatório para produtos por peso.");
-            total = (int)Math.Round(req.WeightKg.Value * product.PriceCents);
+            total = (int)Math.Round(req.WeightKg.Value * unitPriceCents);
         }
         else
         {
-            total = (int)Math.Round(req.Qty * product.PriceCents);
+            total = (int)Math.Round(req.Qty * unitPriceCents);
         }
 
         var item = new SaleOrderItem
@@ -479,10 +490,16 @@ public class PdvController : ControllerBase
             ProductNameSnapshot    = product.Name,
             ProductBarcodeSnapshot = product.Barcode,
             Qty                    = req.Qty,
-            UnitPriceCentsSnapshot = product.PriceCents,
+            UnitPriceCentsSnapshot = unitPriceCents,
             TotalCents             = total,
             IsSoldByWeight         = product.IsSoldByWeight,
-            WeightKg               = product.IsSoldByWeight ? req.WeightKg : null
+            WeightKg               = product.IsSoldByWeight ? req.WeightKg : null,
+            Addons                 = addons.Select(a => new SaleOrderItemAddon
+            {
+                AddonId          = a.Id,
+                NameSnapshot     = a.Name,
+                PriceCentsSnapshot = a.PriceCents,
+            }).ToList()
         };
 
         var persistedManual = await InsertSaleItemAndRecalcAsync(sale.Id, item, ct);
@@ -976,7 +993,8 @@ WHERE s.""Id"" = {saleId};", ct);
         Items = o.Items.Select(i => new
         {
             i.Id, i.ProductId, i.ProductNameSnapshot, i.ProductBarcodeSnapshot,
-            i.Qty, i.UnitPriceCentsSnapshot, i.TotalCents, i.IsSoldByWeight, i.WeightKg
+            i.Qty, i.UnitPriceCentsSnapshot, i.TotalCents, i.IsSoldByWeight, i.WeightKg,
+            Addons = i.Addons.Select(a => new { a.AddonId, a.NameSnapshot, a.PriceCentsSnapshot })
         }),
         Payments = o.Payments.Select(p => new
         {
@@ -1010,7 +1028,8 @@ public record ScanBarcodeRequest(string Barcode);
 public record AddSaleItemRequest(
     Guid ProductId,
     decimal Qty = 1,
-    decimal? WeightKg = null
+    decimal? WeightKg = null,
+    List<Guid>? AddonIds = null
 );
 
 public record PaymentEntry(string PaymentMethod, int AmountCents);

@@ -20,5 +20,8 @@ public record UpdateProductRequest(
     bool? IsSoldByWeight = null,
     string? ScaleProductCode = null,
     ScaleBarcodeMode? ScaleBarcodeMode = null,
-    decimal? ScaleTareWeight = null
+    decimal? ScaleTareWeight = null,
+    // ── Adicionais / Insumo ───────────────────────────────────
+    bool? HasAddons = null,
+    bool? IsSupply = null
 );
