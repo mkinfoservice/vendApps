@@ -25,6 +25,7 @@ import {
 
 type Step = "search" | "customer" | "cart" | "payment" | "summary";
 const STEPS: Step[] = ["search", "customer", "cart", "payment", "summary"];
+type SearchMode = "lookup" | "quick";
 
 type CartItem = {
   key: string;
@@ -76,6 +77,7 @@ function toPseudoProduct(item: CartItem): ProductListItem {
 export default function PhoneOrderBuilder() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("search");
+  const [searchMode, setSearchMode] = useState<SearchMode>("lookup");
 
   const [lookupInput, setLookupInput] = useState("");
   const [lookupValue, setLookupValue] = useState("");
@@ -260,6 +262,9 @@ export default function PhoneOrderBuilder() {
   function handleLookup() {
     const cleaned = lookupInput.replace(/\D/g, "");
     if (cleaned.length < 8) return;
+    const isCpf = cleaned.length === 11;
+    setGuestPhone(isCpf ? "" : cleaned);
+    setGuestCpf(isCpf ? cleaned : "");
     setLookupValue(cleaned);
   }
 
@@ -275,6 +280,7 @@ export default function PhoneOrderBuilder() {
 
   function resetFlow() {
     setStep("search");
+    setSearchMode("lookup");
     setLookupInput("");
     setLookupValue("");
     setCustomer(null);
@@ -302,6 +308,16 @@ export default function PhoneOrderBuilder() {
       setGuestPhone(isCpf ? "" : lookupValue);
       setGuestCpf(isCpf ? lookupValue : "");
     }
+    setStep("cart");
+  }
+
+  function continueQuickGuest() {
+    if (!guestName.trim()) return;
+    setCustomer(null);
+    setLookupInput("");
+    setLookupValue("");
+    setGuestPhone("");
+    setGuestCpf("");
     setStep("cart");
   }
 
@@ -359,90 +375,132 @@ export default function PhoneOrderBuilder() {
         <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
           {step === "search" && (
             <div className="space-y-6">
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Digite o telefone ou CPF do cliente para iniciar o atendimento.
-              </p>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
-                  <input
-                    type="tel"
-                    value={lookupInput}
-                    onChange={(e) => setLookupInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLookup()}
-                    placeholder="Telefone ou CPF"
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                    style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-                    autoFocus
-                  />
-                </div>
-                <button onClick={handleLookup} className="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 transition flex items-center gap-2">
-                  {searchingCustomer ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-                  Buscar
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setSearchMode("lookup")}
+                  className={`py-2.5 rounded-xl border text-sm font-semibold transition ${searchMode === "lookup" ? "bg-brand text-white border-brand" : "hover:bg-[--surface-2]"}`}
+                  style={searchMode === "lookup" ? {} : { borderColor: "var(--border)", color: "var(--text)" }}
+                >
+                  Cliente cadastrado
+                </button>
+                <button
+                  onClick={() => setSearchMode("quick")}
+                  className={`py-2.5 rounded-xl border text-sm font-semibold transition ${searchMode === "quick" ? "bg-brand text-white border-brand" : "hover:bg-[--surface-2]"}`}
+                  style={searchMode === "quick" ? {} : { borderColor: "var(--border)", color: "var(--text)" }}
+                >
+                  Pedido sem cadastro
                 </button>
               </div>
 
-              {lookupValue && !searchingCustomer && (
-                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
-                  {foundCustomer ? (
-                    <>
-                      <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle2 size={16} />
-                        <span className="text-sm font-semibold">Cliente encontrado</span>
-                      </div>
-                      <div>
-                        <p className="font-semibold" style={{ color: "var(--text)" }}>{foundCustomer.name}</p>
-                        <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>{foundCustomer.phone || foundCustomer.cpf || "—"}</p>
-                        {foundCustomer.address && (
-                          <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-                            <MapPin size={12} /> {foundCustomer.address}
-                          </p>
-                        )}
-                      </div>
-                      <button onClick={continueFromSearch} className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 transition">
-                        Confirmar e montar pedido
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
-                        <User size={16} />
-                        <span className="text-sm">Cliente não encontrado. Continuar como convidado.</span>
-                      </div>
-                      <div className="space-y-2">
-                        <input
-                          value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
-                          placeholder="Nome do cliente *"
-                          className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                          style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-                        />
-                        <div className="grid md:grid-cols-2 gap-2">
-                          <input
-                            value={guestPhone}
-                            onChange={(e) => setGuestPhone(e.target.value)}
-                            placeholder="Telefone (opcional)"
-                            className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                            style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-                          />
-                          <input
-                            value={guestCpf}
-                            onChange={(e) => setGuestCpf(e.target.value)}
-                            placeholder="CPF (opcional)"
-                            className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
-                            style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
-                          />
-                        </div>
-                      </div>
-                      <button
-                        disabled={!guestName.trim()}
-                        onClick={continueFromSearch}
-                        className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition"
-                      >
-                        Continuar sem cadastro
-                      </button>
-                    </>
+              {searchMode === "lookup" ? (
+                <>
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Digite o telefone ou CPF do cliente para iniciar o atendimento.
+                  </p>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--text-muted)" }} />
+                      <input
+                        type="tel"
+                        value={lookupInput}
+                        onChange={(e) => setLookupInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleLookup()}
+                        placeholder="Telefone ou CPF"
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                        style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
+                        autoFocus
+                      />
+                    </div>
+                    <button onClick={handleLookup} className="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 transition flex items-center gap-2">
+                      {searchingCustomer ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                      Buscar
+                    </button>
+                  </div>
+
+                  {lookupValue && !searchingCustomer && (
+                    <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
+                      {foundCustomer ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 size={16} />
+                            <span className="text-sm font-semibold">Cliente encontrado</span>
+                          </div>
+                          <div>
+                            <p className="font-semibold" style={{ color: "var(--text)" }}>{foundCustomer.name}</p>
+                            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>{foundCustomer.phone || foundCustomer.cpf || "—"}</p>
+                            {foundCustomer.address && (
+                              <p className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                                <MapPin size={12} /> {foundCustomer.address}
+                              </p>
+                            )}
+                          </div>
+                          <button onClick={continueFromSearch} className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 transition">
+                            Confirmar e montar pedido
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+                            <User size={16} />
+                            <span className="text-sm">Cliente não encontrado. Continuar como convidado.</span>
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              value={guestName}
+                              onChange={(e) => setGuestName(e.target.value)}
+                              placeholder="Nome do cliente *"
+                              className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
+                            />
+                            <div className="grid md:grid-cols-2 gap-2">
+                              <input
+                                value={guestPhone}
+                                onChange={(e) => setGuestPhone(e.target.value)}
+                                placeholder="Telefone (opcional)"
+                                className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
+                              />
+                              <input
+                                value={guestCpf}
+                                onChange={(e) => setGuestCpf(e.target.value)}
+                                placeholder="CPF (opcional)"
+                                className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                                style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            disabled={!guestName.trim()}
+                            onClick={continueFromSearch}
+                            className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition"
+                          >
+                            Continuar sem cadastro
+                          </button>
+                        </>
+                      )}
+                    </div>
                   )}
+                </>
+              ) : (
+                <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                    Informe somente o nome para iniciar o pedido agora.
+                  </p>
+                  <input
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && continueQuickGuest()}
+                    placeholder="Nome do cliente *"
+                    className="w-full px-3 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
+                    style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
+                  />
+                  <button
+                    disabled={!guestName.trim()}
+                    onClick={continueQuickGuest}
+                    className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition"
+                  >
+                    Ir para produtos
+                  </button>
                 </div>
               )}
             </div>
