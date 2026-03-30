@@ -3,12 +3,13 @@ import { adminFetch } from "@/features/admin/auth/adminFetch";
 export type PhoneOrderItem = {
   productId: string;
   qty: number;
+  addonIds?: string[];
 };
 
 export type CreatePhoneOrderRequest = {
   customerId?: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
   cep?: string;
   address?: string;
   complement?: string;

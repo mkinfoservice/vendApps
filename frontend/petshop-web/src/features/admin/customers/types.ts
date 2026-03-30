@@ -47,7 +47,7 @@ export type CustomerListResponse = {
 
 export type UpsertCustomerRequest = {
   name: string;
-  phone: string;
+  phone?: string;
   cpf?: string;
   cep?: string;
   address?: string;

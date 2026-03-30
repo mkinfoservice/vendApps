@@ -23,6 +23,11 @@ export function fetchCustomerByPhone(phone: string) {
   return adminFetch<CustomerDetailDto>(`/admin/customers/by-phone/${encodeURIComponent(phone)}`);
 }
 
+export async function fetchCustomerByPhoneOrCpf(input: string) {
+  const lookup = await adminFetch<{ id: string }>(`/admin/customers/lookup?q=${encodeURIComponent(input)}`);
+  return adminFetch<CustomerDetailDto>(`/admin/customers/${lookup.id}`);
+}
+
 export function fetchCustomer(id: string) {
   return adminFetch<CustomerDetailDto>(`/admin/customers/${id}`);
 }

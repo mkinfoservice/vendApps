@@ -51,8 +51,6 @@ public class AdminOrdersController : ControllerBase
             return BadRequest(new { error = "Carrinho vazio." });
         if (string.IsNullOrWhiteSpace(req.CustomerName))
             return BadRequest(new { error = "Nome do cliente é obrigatório." });
-        if (string.IsNullOrWhiteSpace(req.CustomerPhone))
-            return BadRequest(new { error = "Telefone é obrigatório." });
 
         // ── Resolve CustomerId opcional ────────────────────────────────────────
         Customer? customer = null;
@@ -79,6 +77,9 @@ public class AdminOrdersController : ControllerBase
         }
 
         // ── Monta o pedido ────────────────────────────────────────────────────
+        var normalizedPhone = System.Text.RegularExpressions.Regex.Replace(
+            req.CustomerPhone ?? customer?.Phone ?? "", @"\D", "");
+
         var order = new Order
         {
             Id             = Guid.NewGuid(),
@@ -89,7 +90,7 @@ public class AdminOrdersController : ControllerBase
             AttendantUserId = attendantId,
 
             CustomerName = req.CustomerName.Trim(),
-            Phone        = req.CustomerPhone.Trim(),
+            Phone        = normalizedPhone,
             Cep          = req.Cep?.Trim() ?? customer?.Cep ?? "",
             Address      = req.Address?.Trim() ?? customer?.Address ?? "",
             Complement   = req.Complement?.Trim() ?? customer?.Complement,
@@ -117,12 +118,34 @@ public class AdminOrdersController : ControllerBase
             if (product is null)
                 return BadRequest(new { error = $"Produto não encontrado: {item.ProductId}" });
 
+            var requestedAddonIds = (item.AddonIds ?? new List<Guid>())
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+            var selectedAddons = requestedAddonIds.Count == 0
+                ? new List<Entities.Catalog.ProductAddon>()
+                : await _db.ProductAddons
+                    .Where(a => a.ProductId == product.Id && a.IsActive && requestedAddonIds.Contains(a.Id))
+                    .ToListAsync(ct);
+
+            if (selectedAddons.Count != requestedAddonIds.Count)
+                return BadRequest(new { error = $"Adicionais inválidos para o produto {product.Name}." });
+
+            var addonsTotalCents = selectedAddons.Sum(a => a.PriceCents);
+            var snapshotSuffix = selectedAddons.Count == 0
+                ? ""
+                : $" (+ {string.Join(", ", selectedAddons.Select(a => a.Name))})";
+            var snapshotName = $"{product.Name}{snapshotSuffix}";
+            if (snapshotName.Length > 150)
+                snapshotName = snapshotName[..150];
+
             order.Items.Add(new OrderItem
             {
                 Id                    = Guid.NewGuid(),
                 ProductId             = product.Id,
-                ProductNameSnapshot   = product.Name,
-                UnitPriceCentsSnapshot = product.PriceCents,
+                ProductNameSnapshot   = snapshotName,
+                UnitPriceCentsSnapshot = product.PriceCents + addonsTotalCents,
                 Qty                   = item.Qty,
             });
         }
@@ -284,7 +307,7 @@ public sealed class CreatePhoneOrderRequest
     /// <summary>Nome do cliente — obrigatório mesmo com CustomerId (confirmação visual).</summary>
     public string CustomerName { get; init; } = "";
 
-    public string CustomerPhone { get; init; } = "";
+    public string? CustomerPhone { get; init; }
 
     /// <summary>Endereço de entrega — se omitido e CustomerId informado, usa endereço do cadastro.</summary>
     public string? Cep { get; init; }
@@ -306,4 +329,5 @@ public sealed class PhoneOrderItemRequest
 {
     public Guid ProductId { get; init; }
     public int Qty { get; init; }
+    public List<Guid>? AddonIds { get; init; }
 }

@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +39,7 @@ public class CustomersController : ControllerBase
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
-    // ── GET /admin/customers ──────────────────────────────────────────────────
+    // -- GET /admin/customers --------------------------------------------------
     /// <summary>Lista e busca clientes da empresa.</summary>
     [HttpGet]
     public async Task<IActionResult> List(
@@ -79,7 +79,7 @@ public class CustomersController : ControllerBase
         return Ok(new { page, pageSize, total, items });
     }
 
-    // ── GET /admin/customers/by-phone/{phone} ────────────────────────────────
+    // -- GET /admin/customers/by-phone/{phone} --------------------------------
     /// <summary>Busca rápida por telefone exato — usado no fluxo de pedido telefônico.</summary>
     [HttpGet("by-phone/{phone}")]
     public async Task<IActionResult> ByPhone(string phone, CancellationToken ct = default)
@@ -100,7 +100,7 @@ public class CustomersController : ControllerBase
         return Ok(customer);
     }
 
-    // ── GET /admin/customers/{id} ─────────────────────────────────────────────
+    // -- GET /admin/customers/{id} ---------------------------------------------
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct = default)
     {
@@ -129,7 +129,7 @@ public class CustomersController : ControllerBase
             orders));
     }
 
-    // ── POST /admin/customers ─────────────────────────────────────────────────
+    // -- POST /admin/customers -------------------------------------------------
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] UpsertCustomerRequest req,
@@ -139,16 +139,22 @@ public class CustomersController : ControllerBase
         if (err is not null) return BadRequest(new { error = err });
 
         var phone = CleanPhone(req.Phone);
+        var cpf = CleanCpf(req.Cpf);
 
-        if (await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone, ct))
+        if (!string.IsNullOrWhiteSpace(phone) &&
+            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone, ct))
             return Conflict(new { error = $"Já existe um cliente com o telefone '{req.Phone}'." });
+
+        if (!string.IsNullOrWhiteSpace(cpf) &&
+            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Cpf == cpf, ct))
+            return Conflict(new { error = $"Já existe um cliente com o CPF '{req.Cpf}'." });
 
         var customer = new Customer
         {
             CompanyId = CompanyId,
             Name      = req.Name.Trim(),
             Phone     = phone,
-            Cpf       = CleanCpf(req.Cpf),
+            Cpf       = cpf,
             Cep       = CleanCep(req.Cep),
             Address   = req.Address?.Trim(),
             Complement       = req.Complement?.Trim(),
@@ -174,14 +180,14 @@ public class CustomersController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "👤 Cliente {Name} ({Phone}) criado na empresa {CompanyId}",
+            "?? Cliente {Name} ({Phone}) criado na empresa {CompanyId}",
             customer.Name, customer.Phone, CompanyId);
 
         return CreatedAtAction(nameof(GetById), new { id = customer.Id },
             MapDetail(customer, null));
     }
 
-    // ── PUT /admin/customers/{id} ─────────────────────────────────────────────
+    // -- PUT /admin/customers/{id} ---------------------------------------------
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(
         Guid id,
@@ -197,11 +203,18 @@ public class CustomersController : ControllerBase
         if (customer is null) return NotFound();
 
         var phone = CleanPhone(req.Phone);
+        var cpf = CleanCpf(req.Cpf);
 
         // Garante que não conflita com outro cliente
-        if (customer.Phone != phone &&
+        if (!string.IsNullOrWhiteSpace(phone) &&
+            customer.Phone != phone &&
             await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone && c.Id != id, ct))
             return Conflict(new { error = $"Já existe outro cliente com o telefone '{req.Phone}'." });
+
+        if (!string.IsNullOrWhiteSpace(cpf) &&
+            customer.Cpf != cpf &&
+            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Cpf == cpf && c.Id != id, ct))
+            return Conflict(new { error = $"Já existe outro cliente com o CPF '{req.Cpf}'." });
 
         bool addressChanged =
             CleanCep(req.Cep) != customer.Cep ||
@@ -209,7 +222,7 @@ public class CustomersController : ControllerBase
 
         customer.Name      = req.Name.Trim();
         customer.Phone     = phone;
-        customer.Cpf       = CleanCpf(req.Cpf);
+        customer.Cpf       = cpf;
         customer.Cep       = CleanCep(req.Cep);
         customer.Address   = req.Address?.Trim();
         customer.Complement       = req.Complement?.Trim();
@@ -237,7 +250,7 @@ public class CustomersController : ControllerBase
         return Ok(MapDetail(customer, null));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     private async Task EnrichAddressAsync(Customer customer, CancellationToken ct)
     {
@@ -277,13 +290,14 @@ public class CustomersController : ControllerBase
 
     private static string? ValidateRequest(UpsertCustomerRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.Name))   return "Nome é obrigatório.";
-        if (string.IsNullOrWhiteSpace(req.Phone))  return "Telefone é obrigatório.";
+        if (string.IsNullOrWhiteSpace(req.Name)) return "Nome é obrigatório.";
+        if (string.IsNullOrWhiteSpace(req.Phone) && string.IsNullOrWhiteSpace(req.Cpf))
+            return "Informe ao menos telefone ou CPF.";
         return null;
     }
 
-    private static string CleanPhone(string phone) =>
-        Regex.Replace(phone, @"\D", "");
+    private static string CleanPhone(string? phone) =>
+        string.IsNullOrWhiteSpace(phone) ? "" : Regex.Replace(phone, @"\D", "");
 
     private static string? CleanCpf(string? cpf) =>
         string.IsNullOrWhiteSpace(cpf) ? null : Regex.Replace(cpf, @"\D", "");
@@ -298,9 +312,9 @@ public class CustomersController : ControllerBase
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
             orders);
 
-    // ══════════════════════════════════════════════════════════════════════════
+    // --------------------------------------------------------------------------
     // FIDELIDADE (Fase 9)
-    // ══════════════════════════════════════════════════════════════════════════
+    // --------------------------------------------------------------------------
 
     // GET /admin/customers/{id}/loyalty
     [HttpGet("{id:guid}/loyalty")]
@@ -392,11 +406,11 @@ public class CustomersController : ControllerBase
         cfg.MinRedemptionPoints, cfg.MaxDiscountPercent, cfg.UpdatedAtUtc);
 }
 
-// ── DTOs ─────────────────────────────────────────────────────────────────────
+// -- DTOs ---------------------------------------------------------------------
 
 public record UpsertCustomerRequest(
     string Name,
-    string Phone,
+    string? Phone,
     string? Cpf,
     string? Cep,
     string? Address,
@@ -485,3 +499,4 @@ public record CustomerLookupResult(
     string?   Email,
     DateOnly? BirthDate
 );
+
