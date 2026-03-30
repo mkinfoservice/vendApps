@@ -934,6 +934,18 @@ INSERT INTO ""SaleOrderItems""
 VALUES
 ({item.Id}, {saleId}, {item.ProductId}, {item.ProductNameSnapshot}, {item.ProductBarcodeSnapshot}, {item.Qty}, {item.UnitPriceCentsSnapshot}, {item.TotalCents}, {item.IsSoldByWeight}, {item.WeightKg});", ct);
 
+            if (item.Addons is { Count: > 0 })
+            {
+                foreach (var addon in item.Addons)
+                {
+                    await _db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO ""SaleOrderItemAddons""
+(""Id"", ""SaleOrderItemId"", ""AddonId"", ""NameSnapshot"", ""PriceCentsSnapshot"")
+VALUES
+({addon.Id}, {item.Id}, {addon.AddonId}, {addon.NameSnapshot}, {addon.PriceCentsSnapshot});", ct);
+                }
+            }
+
             await _db.Database.ExecuteSqlInterpolatedAsync($@"
 UPDATE ""SaleOrders"" s
 SET

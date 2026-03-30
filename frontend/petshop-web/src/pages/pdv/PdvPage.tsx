@@ -623,7 +623,13 @@ function QuickProducts({
   const [loading, setLoading]     = useState(false);
   const [adding, setAdding]       = useState<string | null>(null);
   const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const h = setTimeout(() => setSearch(searchInput.trim()), 350);
+    return () => clearTimeout(h);
+  }, [searchInput]);
 
   useEffect(() => {
     let cancelled = false;
@@ -684,22 +690,6 @@ function QuickProducts({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="h-full min-h-[240px] flex items-center justify-center text-gray-400 text-sm">
-        Carregando catalogo...
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="h-full min-h-[240px] flex items-center justify-center text-gray-300 text-sm">
-        Nenhum produto encontrado
-      </div>
-    );
-  }
-
   return (
     <>
       {addonTarget && (
@@ -715,13 +705,23 @@ function QuickProducts({
           <div className="relative flex-1">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Buscar por nome, codigo interno ou codigo de barras"
               className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
             />
+            {loading && (
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+                carregando...
+              </span>
+            )}
           </div>
         </div>
+        {products.length === 0 && !loading ? (
+          <div className="h-full min-h-[220px] flex items-center justify-center text-gray-300 text-sm">
+            Nenhum produto encontrado
+          </div>
+        ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {products.map((p) => (
             <button
@@ -761,6 +761,7 @@ function QuickProducts({
             </button>
           ))}
         </div>
+        )}
       </div>
     </>
   );
