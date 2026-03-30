@@ -11,6 +11,7 @@ using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
+using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
 
@@ -36,6 +37,8 @@ public class OrdersController : ControllerBase
         _jobs = jobs;
         _print = print;
     }
+
+    private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
     /// <summary>
     /// Enriquece o endereço usando ViaCEP antes de geocodificar.
@@ -85,7 +88,8 @@ public class OrdersController : ControllerBase
     {
         var baseQuery = _db.Orders
             .AsNoTracking()
-            .Include(o => o.Items);
+            .Include(o => o.Items)
+            .Where(o => o.CompanyId == CompanyId);
 
         Order? order;
 
@@ -150,7 +154,8 @@ public class OrdersController : ControllerBase
 
         var q = _db.Orders
             .AsNoTracking()
-            .Where(o => o.Status == OrderStatus.PRONTO_PARA_ENTREGA);
+            .Where(o => o.CompanyId == CompanyId &&
+                        o.Status == OrderStatus.PRONTO_PARA_ENTREGA);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -199,7 +204,10 @@ public class OrdersController : ControllerBase
         if (pageSize < 1) pageSize = 20;
         if (pageSize > 100) pageSize = 100;
 
-        var query = _db.Orders.AsNoTracking().AsQueryable();
+        var query = _db.Orders
+            .AsNoTracking()
+            .Where(o => o.CompanyId == CompanyId)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
@@ -259,9 +267,9 @@ public class OrdersController : ControllerBase
         Order? order;
 
         if (Guid.TryParse(idOrNumber, out var id))
-            order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+            order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
         else
-            order = await _db.Orders.FirstOrDefaultAsync(o => o.PublicId == idOrNumber, ct);
+            order = await _db.Orders.FirstOrDefaultAsync(o => o.PublicId == idOrNumber && o.CompanyId == CompanyId, ct);
 
         if (order is null)
             return NotFound("Pedido não encontrado.");
@@ -419,7 +427,8 @@ public class OrdersController : ControllerBase
             limit, providerName);
 
         var orders = await _db.Orders
-            .Where(o => o.Status == OrderStatus.PRONTO_PARA_ENTREGA &&
+            .Where(o => o.CompanyId == CompanyId &&
+                        o.Status == OrderStatus.PRONTO_PARA_ENTREGA &&
                         (o.Latitude == null || o.Longitude == null))
             .OrderBy(o => o.CreatedAtUtc)
             .Take(limit)
@@ -531,9 +540,9 @@ public class OrdersController : ControllerBase
         Order? order;
 
         if (Guid.TryParse(idOrNumber, out var id))
-            order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+            order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
         else
-            order = await _db.Orders.FirstOrDefaultAsync(o => o.PublicId == idOrNumber, ct);
+            order = await _db.Orders.FirstOrDefaultAsync(o => o.PublicId == idOrNumber && o.CompanyId == CompanyId, ct);
 
         if (order is null)
             return NotFound("Pedido não encontrado.");
