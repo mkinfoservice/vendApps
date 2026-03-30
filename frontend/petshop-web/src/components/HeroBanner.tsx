@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useStoreFront } from "@/features/catalog/queries";
 import type { BannerSlide } from "@/features/catalog/api";
 
@@ -134,7 +133,6 @@ export function HeroBanner({ onCategoryClick, onProductClick }: Props) {
   const total = slides.length;
 
   const next = useCallback(() => setCurrent((i) => (i + 1) % total), [total]);
-  const prev = useCallback(() => setCurrent((i) => (i - 1 + total) % total), [total]);
 
   // Auto-rotação
   useEffect(() => {
@@ -172,24 +170,6 @@ export function HeroBanner({ onCategoryClick, onProductClick }: Props) {
       {/* Controles — só visíveis com múltiplos slides */}
       {total > 1 && (
         <>
-          {/* Setas */}
-          <button
-            type="button"
-            onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition"
-            aria-label="Slide anterior"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center text-white transition"
-            aria-label="Próximo slide"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
           {/* Dots */}
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
             {slides.map((_, i) => (

@@ -3,7 +3,7 @@ import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
-  closeSession, getCupom, getSessionReport, addMovement, importDav,
+  closeSession, getCupom, getSessionReport, addMovement, importDav, addItem,
   type Sale, type CupomData, type SessionReport,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
@@ -459,6 +459,84 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
   );
 }
 
+// ── Quick Products (atalhos no estado vazio) ──────────────────────────────────
+
+interface QuickProduct {
+  id: string;
+  name: string;
+  priceCents: number;
+  imageUrl?: string | null;
+}
+
+function QuickProducts({
+  saleId,
+  onAdded,
+}: {
+  saleId: string;
+  onAdded: (name: string) => void;
+}) {
+  const [products, setProducts] = useState<QuickProduct[]>([]);
+  const [adding, setAdding]     = useState<string | null>(null);
+
+  useEffect(() => {
+    adminFetch<{ items: QuickProduct[] }>("/admin/products?pageSize=24&active=true")
+      .then((r) => setProducts(r.items))
+      .catch(() => {});
+  }, []);
+
+  async function handleAdd(p: QuickProduct) {
+    if (adding) return;
+    setAdding(p.id);
+    try {
+      await addItem(saleId, { productId: p.id, qty: 1 });
+      onAdded(p.name);
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="h-full min-h-[160px] flex items-center justify-center text-gray-300 text-sm">
+        Nenhum item adicionado
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto p-3">
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+        Atalhos rápidos
+      </p>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+        {products.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            disabled={adding === p.id}
+            onClick={() => handleAdd(p)}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50"
+          >
+            <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+              {p.imageUrl ? (
+                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl text-gray-200">📦</span>
+              )}
+            </div>
+            <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
+              {p.name}
+            </span>
+            <span className="text-[11px] font-bold text-[#7c5cf8]">
+              {brl(p.priceCents)}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main PDV Page ─────────────────────────────────────────────────────────────
 
 export default function PdvPage() {
@@ -750,9 +828,14 @@ export default function PdvPage() {
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ minHeight: 200, flex: "1 1 0" }}>
             {!currentSale || currentSale.items.length === 0 ? (
-              <div className="h-full min-h-[160px] flex items-center justify-center text-gray-300 text-sm">
-                Nenhum item adicionado
-              </div>
+              <QuickProducts
+                saleId={currentSale?.id ?? ""}
+                onAdded={async (name) => {
+                  if (currentSale) await refreshSale(currentSale.id);
+                  flash(`${name} adicionado`, true);
+                  barcodeRef.current?.focus();
+                }}
+              />
             ) : (
               <div className="overflow-y-auto h-full">
                 <table className="w-full text-sm text-gray-900">
