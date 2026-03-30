@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 import {
@@ -9,7 +9,7 @@ import {
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import OpenSessionPage from "./OpenSessionPage";
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 const brl = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
@@ -18,26 +18,39 @@ const payMethodLabel = (m: string): string =>
   ({ PIX: "PIX", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "Cartao Credito",
      CARTAO_DEBITO: "Cartao Debito", CHEQUE: "Cheque" }[m] ?? m);
 
-// â”€â”€ Cupom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 function printCupom(data: CupomData) {
   const itemRows = data.items.map((i) => {
     const qtyLabel = i.isSoldByWeight ? `${i.weightKg?.toFixed(3)} kg` : `${i.qty}x`;
+    const addonsTotalCents = (i.addons ?? []).reduce((sum, a) => sum + a.priceCentsSnapshot, 0);
+    const baseTotalCents = i.totalCents - addonsTotalCents;
     const addonRows = (i.addons ?? []).map((a) =>
       `<tr>
         <td colspan="2" style="font-size:10px;color:#555;padding-left:10px">+ ${a.nameSnapshot}</td>
         <td style="font-size:10px;text-align:right;color:#555">+${brl(a.priceCentsSnapshot)}</td>
       </tr>`
     ).join("");
+    const addonsSummaryRow = addonsTotalCents > 0
+      ? `<tr>
+          <td colspan="2" style="font-size:10px;color:#555;padding-left:10px">Subtotal adicionais</td>
+          <td style="font-size:10px;text-align:right;color:#555">+${brl(addonsTotalCents)}</td>
+        </tr>`
+      : "";
 
     return `
       <tr><td colspan="3" style="font-size:11px;font-weight:600;padding-top:4px">${i.productNameSnapshot}</td></tr>
       <tr style="color:#555">
         <td style="font-size:11px">${qtyLabel}</td>
-        <td style="font-size:11px;text-align:right">${brl(i.unitBaseCents ?? i.unitPriceCentsSnapshot)}</td>
-        <td style="font-size:11px;text-align:right;font-weight:bold;color:#111">${brl(i.totalCents)}</td>
+        <td style="font-size:11px;color:#555">Valor do produto</td>
+        <td style="font-size:11px;text-align:right">${brl(baseTotalCents)}</td>
       </tr>
       ${addonRows}
+      ${addonsSummaryRow}
+      <tr>
+        <td colspan="2" style="font-size:11px;text-align:right;font-weight:700;color:#111;padding-top:2px">Total item (produto + adicionais)</td>
+        <td style="font-size:11px;text-align:right;font-weight:700;color:#111;padding-top:2px">${brl(i.totalCents)}</td>
+      </tr>
       <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #ddd;margin:2px 0"></td></tr>`;
   }).join("");
 
@@ -96,7 +109,7 @@ ${contingNote}
   win.print();
 }
 
-// â”€â”€ Movement Modal (Sangria / Suprimento) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 interface MovementModalProps {
   sessionId: string;
@@ -193,7 +206,7 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
   );
 }
 
-// â”€â”€ Close Session Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 interface CloseModalProps {
   sessionId: string;
@@ -278,7 +291,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
               </div>
             )}
 
-            {/* ConferÃªncia */}
+            {/* Conferencia */}
             <div className="space-y-3">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Conferencia de Caixa</p>
               <div className="flex justify-between text-sm bg-blue-50 rounded-xl px-4 py-3">
@@ -309,7 +322,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
               )}
             </div>
 
-            {/* ObservaÃ§Ãµes */}
+            {/* Observacoes */}
             <div>
               <label className="text-xs text-gray-500">Observacoes (opcional)</label>
               <textarea
@@ -341,7 +354,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
   );
 }
 
-// â”€â”€ Payment Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 type PayMethod = { method: string; label: string; color: string };
 
@@ -408,7 +421,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
   );
 }
 
-// â”€â”€ DAV Search Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 interface DavSummary { id: string; publicId: string; customerName: string; totalCents: number; itemCount: number; status: string; }
 
@@ -467,7 +480,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
   );
 }
 
-// â”€â”€ Quick Products (atalhos no estado vazio) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 interface QuickProduct {
   id: string;
@@ -620,22 +633,16 @@ function QuickProducts({
   onAdded: (name: string) => void;
 }) {
   const [products, setProducts]   = useState<QuickProduct[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(false);
   const [adding, setAdding]       = useState<string | null>(null);
   const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    const h = setTimeout(() => setSearch(searchInput.trim()), 350);
-    return () => clearTimeout(h);
-  }, [searchInput]);
-
+  
   useEffect(() => {
     let cancelled = false;
 
     async function loadAllProducts() {
-      setLoading(true);
+      setLoadingInitial(true);
       try {
         const pageSize = 200;
         let page = 1;
@@ -648,7 +655,7 @@ function QuickProducts({
             active: "true",
             excludeSupplies: "true",
           });
-          if (search.trim()) p.set("search", search.trim());
+
 
           const r = await adminFetch<{ total: number; items: QuickProduct[] }>(`/admin/products?${p.toString()}`);
           total = r.total ?? 0;
@@ -667,13 +674,24 @@ function QuickProducts({
       } catch {
         if (!cancelled) setProducts([]);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoadingInitial(false);
       }
     }
 
     loadAllProducts();
     return () => { cancelled = true; };
-  }, [search]);
+  }, []);
+
+  const filteredProducts = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      (p.internalCode ?? "").toLowerCase().includes(q) ||
+      (p.barcode ?? "").toLowerCase().includes(q)
+    );
+  }, [products, searchInput]);
+
 
   async function handleAdd(p: QuickProduct) {
     if (adding) return;
@@ -710,20 +728,20 @@ function QuickProducts({
               placeholder="Buscar por nome, codigo interno ou codigo de barras"
               className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
             />
-            {loading && (
+            {loadingInitial && (
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
                 carregando...
               </span>
             )}
           </div>
         </div>
-        {products.length === 0 && !loading ? (
+        {filteredProducts.length === 0 && !loadingInitial ? (
           <div className="h-full min-h-[220px] flex items-center justify-center text-gray-300 text-sm">
             Nenhum produto encontrado
           </div>
         ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <button
               key={p.id}
               type="button"
@@ -744,7 +762,7 @@ function QuickProducts({
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-2xl text-gray-200">ðŸ“¦</span>
+                  <span className="text-[10px] text-gray-300">SEM IMAGEM</span>
                 )}
               </div>
               <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
@@ -827,7 +845,7 @@ function CartTable({
   );
 }
 
-// â”€â”€ Main PDV Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
 
 export default function PdvPage() {
   const { session, sale, loading, refreshSession, refreshSale, setSale } = usePdv();
@@ -893,7 +911,7 @@ export default function PdvPage() {
     e.preventDefault();
     if (!sale || !davCode.trim()) return;
     setImportingDav(true);
-    // Accept "DAV-XXXX" or just "XXXX" â€” backend stores with DAV- prefix
+    // Accept "DAV-XXXX" or just "XXXX" - backend stores with DAV- prefix
     const code = davCode.trim().toUpperCase().startsWith("DAV-")
       ? davCode.trim().toUpperCase()
       : `DAV-${davCode.trim().toUpperCase()}`;
@@ -1033,7 +1051,7 @@ export default function PdvPage() {
         </div>
       )}
 
-      {/* â”€â”€ Mobile: Payment panel overlay when showPay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* Mobile: Payment panel overlay when showPay */}
       {showPay && (
         <div className="lg:hidden fixed inset-0 z-30 bg-black/50 flex items-end" onClick={() => setShowPay(false)}>
           <div
@@ -1066,7 +1084,7 @@ export default function PdvPage() {
       )}
 
       <div className="flex flex-col lg:flex-row flex-1 gap-3 p-3 sm:p-4 min-h-0">
-        {/* â”€â”€ Left: Barcode + Item list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Left: Barcode + Item list */}
         <div className="flex-1 flex flex-col gap-3 min-w-0">
           <form onSubmit={handleScan} className="flex gap-2">
             <input
@@ -1087,7 +1105,7 @@ export default function PdvPage() {
             </button>
           </form>
 
-          {/* â”€â”€ DAV Import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* DAV Import */}
           <form onSubmit={handleImportDav} className="flex gap-2 items-center">
             <div className="flex-1 flex items-center border border-emerald-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-400 overflow-hidden">
               <span className="pl-3 pr-1 text-xs font-bold text-emerald-600 select-none whitespace-nowrap">DAV-</span>
@@ -1154,7 +1172,7 @@ export default function PdvPage() {
           </div>
         </div>
 
-        {/* â”€â”€ Right: Totals + Payment (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* Right: Totals + Payment (desktop only) */}
         <div className="hidden lg:flex w-[420px] xl:w-[460px] flex-col gap-3 shrink-0">
           <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 border border-gray-100">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo da venda</p>
