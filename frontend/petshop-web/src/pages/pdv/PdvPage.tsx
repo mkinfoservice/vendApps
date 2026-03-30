@@ -15,21 +15,29 @@ const brl = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
 const payMethodLabel = (m: string): string =>
-  ({ PIX: "PIX", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "CartÃ£o CrÃ©dito",
-     CARTAO_DEBITO: "CartÃ£o DÃ©bito", CHEQUE: "Cheque" }[m] ?? m);
+  ({ PIX: "PIX", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "Cartao Credito",
+     CARTAO_DEBITO: "Cartao Debito", CHEQUE: "Cheque" }[m] ?? m);
 
 // â”€â”€ Cupom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function printCupom(data: CupomData) {
   const itemRows = data.items.map((i) => {
     const qtyLabel = i.isSoldByWeight ? `${i.weightKg?.toFixed(3)} kg` : `${i.qty}x`;
+    const addonRows = (i.addons ?? []).map((a) =>
+      `<tr>
+        <td colspan="2" style="font-size:10px;color:#555;padding-left:10px">+ ${a.nameSnapshot}</td>
+        <td style="font-size:10px;text-align:right;color:#555">+${brl(a.priceCentsSnapshot)}</td>
+      </tr>`
+    ).join("");
+
     return `
       <tr><td colspan="3" style="font-size:11px;font-weight:600;padding-top:4px">${i.productNameSnapshot}</td></tr>
       <tr style="color:#555">
         <td style="font-size:11px">${qtyLabel}</td>
-        <td style="font-size:11px;text-align:right">${brl(i.unitPriceCentsSnapshot)}</td>
+        <td style="font-size:11px;text-align:right">${brl(i.unitBaseCents ?? i.unitPriceCentsSnapshot)}</td>
         <td style="font-size:11px;text-align:right;font-weight:bold;color:#111">${brl(i.totalCents)}</td>
       </tr>
+      ${addonRows}
       <tr><td colspan="3"><hr style="border:none;border-top:1px dashed #ddd;margin:2px 0"></td></tr>`;
   }).join("");
 
@@ -42,7 +50,7 @@ function printCupom(data: CupomData) {
   ).join("");
 
   const contingNote = data.fiscalDecision === "PermanentContingency"
-    ? `<p style="font-size:9px;color:#c00;text-align:center;margin-top:4px">âš  VENDA EM CONTINGÃŠNCIA â€” NFC-e nÃ£o emitida</p>` : "";
+    ? `<p style="font-size:9px;color:#c00;text-align:center;margin-top:4px">ATENCAO: VENDA EM CONTINGENCIA - NFC-e nao emitida</p>` : "";
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -60,7 +68,7 @@ function printCupom(data: CupomData) {
 </style>
 </head><body>
 <p class="co">${data.companyName}</p>
-<p class="sub">CUPOM NÃƒO FISCAL</p>
+<p class="sub">CUPOM NAO FISCAL</p>
 <p class="sub">${data.publicId}</p>
 <p class="sub">${new Date(data.createdAtUtc).toLocaleString("pt-BR")}</p>
 ${data.customerName ? `<p class="sub">Cliente: ${data.customerName}</p>` : ""}
@@ -77,7 +85,7 @@ ${data.customerName ? `<p class="sub">Cliente: ${data.customerName}</p>` : ""}
 <hr class="sep-dash">
 <table><tbody>${payRows}</tbody></table>
 ${contingNote}
-<p class="thanks">Obrigado pela preferÃªncia!</p>
+<p class="thanks">Obrigado pela preferencia!</p>
 </body></html>`;
 
   const win = window.open("", "_blank", "width=380,height=640");
@@ -154,12 +162,12 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500">DescriÃ§Ã£o (opcional)</label>
+            <label className="text-xs text-gray-500">Descricao (opcional)</label>
             <input
               className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: ReforÃ§o de troco"}
+              placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: Reforco de troco"}
             />
           </div>
         </div>
@@ -272,13 +280,13 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
 
             {/* ConferÃªncia */}
             <div className="space-y-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">ConferÃªncia de Caixa</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Conferencia de Caixa</p>
               <div className="flex justify-between text-sm bg-blue-50 rounded-xl px-4 py-3">
                 <span className="text-blue-700">Saldo esperado</span>
                 <span className="font-semibold text-blue-800">{brl(expectedCash)}</span>
               </div>
               <div>
-                <label className="text-xs text-gray-500">Contagem fÃ­sica (R$)</label>
+                <label className="text-xs text-gray-500">Contagem fisica (R$)</label>
                 <input
                   type="number" min={0} step={0.01}
                   className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
@@ -293,7 +301,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
                   : divergence > 0 ? "bg-yellow-50 text-yellow-700"
                   : "bg-red-50 text-red-700"
                 }`}>
-                  <span>DivergÃªncia</span>
+                  <span>Divergencia</span>
                   <span className="font-semibold">
                     {divergence > 0 ? "+" : ""}{brl(divergence)}
                   </span>
@@ -303,7 +311,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
 
             {/* ObservaÃ§Ãµes */}
             <div>
-              <label className="text-xs text-gray-500">ObservaÃ§Ãµes (opcional)</label>
+              <label className="text-xs text-gray-500">Observacoes (opcional)</label>
               <textarea
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none"
                 rows={2}
@@ -340,8 +348,8 @@ type PayMethod = { method: string; label: string; color: string };
 const PAY_METHODS: PayMethod[] = [
   { method: "PIX",            label: "PIX",           color: "#00bfa5" },
   { method: "DINHEIRO",       label: "Dinheiro",       color: "#43a047" },
-  { method: "CARTAO_CREDITO", label: "CrÃ©dito",        color: "#1e88e5" },
-  { method: "CARTAO_DEBITO",  label: "DÃ©bito",         color: "#5e35b1" },
+  { method: "CARTAO_CREDITO", label: "Credito",        color: "#1e88e5" },
+  { method: "CARTAO_DEBITO",  label: "Debito",         color: "#5e35b1" },
 ];
 
 interface PayPanelProps {
@@ -427,20 +435,20 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-3 pb-3 sm:pb-0">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[70vh]">
         <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800 text-sm">Buscar OrÃ§amento (DAV)</h3>
+          <h3 className="font-semibold text-gray-800 text-sm">Buscar Orcamento (DAV)</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
         </div>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2">
             <Search size={14} className="text-gray-400" />
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="CÃ³digo ou nome do clienteâ€¦"
+              placeholder="Codigo ou nome do cliente..."
               className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400" />
           </div>
         </div>
         <div className="overflow-y-auto flex-1 px-2 pb-3">
-          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregandoâ€¦</p>}
-          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orÃ§amento encontrado.</p>}
+          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregando...</p>}
+          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orcamento encontrado.</p>}
           {filtered.map((d) => (
             <button key={d.id} type="button"
               onClick={() => { onSelect(d.publicId); onClose(); }}
@@ -448,7 +456,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
             >
               <div>
                 <p className="text-sm font-semibold text-emerald-700">{d.publicId}</p>
-                <p className="text-xs text-gray-400">{d.customerName || "â€”"} Â· {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-gray-400">{d.customerName || "-"} - {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
               </div>
               <p className="text-sm font-bold text-gray-700">{fmt(d.totalCents)}</p>
             </button>
@@ -534,7 +542,7 @@ function AddonModal({
         {loading ? (
           <p className="text-sm text-gray-400 py-4 text-center">Carregando...</p>
         ) : addons.length === 0 ? (
-          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponÃ­vel.</p>
+          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponivel.</p>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {addons.map((a) => (
@@ -555,7 +563,7 @@ function AddonModal({
                     backgroundColor: selected.has(a.id) ? "#7c5cf8" : "transparent",
                   }}
                 >
-                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">âœ“</span>}
+                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">*</span>}
                 </div>
                 <span className="flex-1 text-sm text-gray-700 font-medium">{a.name}</span>
                 <span className="text-sm font-bold text-[#7c5cf8]">+{brl(a.priceCents)}</span>
@@ -578,7 +586,7 @@ function AddonModal({
             disabled={adding}
             className="flex-1 py-2.5 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
           >
-            NÃ£o, obrigado
+            Nao, obrigado
           </button>
           <button
             type="button"
@@ -632,6 +640,7 @@ function QuickProducts({
             page: String(page),
             pageSize: String(pageSize),
             active: "true",
+            excludeSupplies: "true",
           });
           if (search.trim()) p.set("search", search.trim());
 
@@ -678,7 +687,7 @@ function QuickProducts({
   if (loading) {
     return (
       <div className="h-full min-h-[240px] flex items-center justify-center text-gray-400 text-sm">
-        Carregando catÃ¡logo...
+        Carregando catalogo...
       </div>
     );
   }
@@ -708,7 +717,7 @@ function QuickProducts({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, cÃ³digo interno ou cÃ³digo de barras"
+              placeholder="Buscar por nome, codigo interno ou codigo de barras"
               className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
             />
           </div>
@@ -788,7 +797,7 @@ function CartTable({
               <td className="px-4 py-2.5 font-medium text-gray-900">
                 <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
                 <span className="sm:hidden text-xs text-gray-400 mt-0.5">
-                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} Â· {brl(item.unitPriceCentsSnapshot)}
+                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} - {brl(item.unitPriceCentsSnapshot)}
                 </span>
                 {item.addons && item.addons.length > 0 && (
                   <span className="block mt-1 text-[11px] text-[#7c5cf8]">
@@ -806,7 +815,7 @@ function CartTable({
               <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
               <td className="px-3 py-2.5">
                 <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-600 text-sm leading-none">
-                  âœ•
+                  x
                 </button>
               </td>
             </tr>
@@ -873,7 +882,7 @@ export default function PdvPage() {
       setBarcode("");
       barcodeRef.current?.focus();
     } catch (e: unknown) {
-      flash(e instanceof Error ? e.message : "Produto nÃ£o encontrado", false);
+      flash(e instanceof Error ? e.message : "Produto nao encontrado", false);
     } finally {
       setScanning(false);
     }
@@ -893,7 +902,7 @@ export default function PdvPage() {
       flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
       setDavCode("");
     } catch (e: unknown) {
-      flash(e instanceof Error ? e.message : "DAV nÃ£o encontrado", false);
+      flash(e instanceof Error ? e.message : "DAV nao encontrado", false);
     } finally {
       setImportingDav(false);
     }
@@ -988,7 +997,7 @@ export default function PdvPage() {
         <span className="font-bold text-base" style={{ color: "#7c5cf8" }}>PDV</span>
         <span className="text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{session.registerName}</span>
         <span className="hidden sm:block text-xs text-gray-400 ml-1">
-          Â· {session.openedByUserName}
+          - {session.openedByUserName}
         </span>
         <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
           <button
@@ -1064,7 +1073,7 @@ export default function PdvPage() {
               autoFocus
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
-              placeholder="CÃ³digo de barras..."
+              placeholder="Codigo de barras..."
               className="flex-1 border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
             />
             <button
@@ -1084,7 +1093,7 @@ export default function PdvPage() {
               <input
                 value={davCode}
                 onChange={(e) => setDavCode(e.target.value.replace(/^DAV-/i, ""))}
-                placeholder="cÃ³digo ou escaneieâ€¦"
+                placeholder="codigo ou escaneie..."
                 className="flex-1 py-2 pr-3 text-sm bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none"
               />
             </div>
@@ -1094,11 +1103,11 @@ export default function PdvPage() {
               className="px-4 py-2 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
               style={{ background: "#10b981" }}
             >
-              {importingDav ? "â€¦" : "Importar"}
+              {importingDav ? "..." : "Importar"}
             </button>
             <button
               type="button"
-              title="Buscar orÃ§amento"
+              title="Buscar orcamento"
               onClick={() => setShowDavSearch(true)}
               className="p-2 rounded-xl border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition"
             >

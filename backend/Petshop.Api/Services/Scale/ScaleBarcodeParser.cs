@@ -72,6 +72,7 @@ public class ScaleBarcodeParser
                 p => p.CompanyId == companyId
                   && p.ScaleProductCode == productCode
                   && p.IsSoldByWeight
+                  && !p.IsSupply
                   && p.IsActive,
                 ct);
 

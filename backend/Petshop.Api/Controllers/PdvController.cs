@@ -418,7 +418,7 @@ public class PdvController : ControllerBase
         var product = await _db.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Barcode == req.Barcode &&
-                                      p.CompanyId == CompanyId && p.IsActive, ct);
+                                      p.CompanyId == CompanyId && p.IsActive && !p.IsSupply, ct);
 
         if (product is null)
             return NotFound(new { error = "Produto não encontrado para este barcode.", Barcode = req.Barcode });
@@ -457,7 +457,7 @@ public class PdvController : ControllerBase
 
         var product = await _db.Products
             .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == req.ProductId && p.CompanyId == CompanyId && p.IsActive, ct);
+            .FirstOrDefaultAsync(p => p.Id == req.ProductId && p.CompanyId == CompanyId && p.IsActive && !p.IsSupply, ct);
 
         if (product is null) return BadRequest("Produto não encontrado.");
 
@@ -836,7 +836,7 @@ public class PdvController : ControllerBase
     {
         var sale = await _db.SaleOrders
             .AsNoTracking()
-            .Include(o => o.Items)
+            .Include(o => o.Items).ThenInclude(i => i.Addons)
             .Include(o => o.Payments)
             .Include(o => o.CashSession)
                 .ThenInclude(s => s.CashRegister)
@@ -865,9 +865,15 @@ public class PdvController : ControllerBase
                 i.ProductNameSnapshot,
                 i.Qty,
                 i.UnitPriceCentsSnapshot,
+                UnitBaseCents = i.UnitPriceCentsSnapshot - i.Addons.Sum(a => a.PriceCentsSnapshot),
                 i.TotalCents,
                 i.IsSoldByWeight,
-                i.WeightKg
+                i.WeightKg,
+                Addons = i.Addons.Select(a => new
+                {
+                    a.NameSnapshot,
+                    a.PriceCentsSnapshot
+                })
             }),
             Payments = sale.Payments.Select(p => new
             {

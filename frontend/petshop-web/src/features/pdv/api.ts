@@ -81,9 +81,14 @@ export interface CupomData {
     productNameSnapshot: string;
     qty: number;
     unitPriceCentsSnapshot: number;
+    unitBaseCents?: number;
     totalCents: number;
     isSoldByWeight: boolean;
     weightKg: number | null;
+    addons?: Array<{
+      nameSnapshot: string;
+      priceCentsSnapshot: number;
+    }>;
   }>;
   payments: Array<{
     paymentMethod: string;

@@ -34,6 +34,7 @@ public class AdminProductsController : ControllerBase
         [FromQuery] Guid? categoryId,
         [FromQuery] Guid? brandId,
         [FromQuery] bool? active,
+        [FromQuery] bool? excludeSupplies,
         [FromQuery] bool? withoutOrders,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -57,6 +58,7 @@ public class AdminProductsController : ControllerBase
         if (categoryId.HasValue) q = q.Where(p => p.CategoryId == categoryId.Value);
         if (brandId.HasValue)    q = q.Where(p => p.BrandId == brandId.Value);
         if (active.HasValue)     q = q.Where(p => p.IsActive == active.Value);
+        if (excludeSupplies == true) q = q.Where(p => !p.IsSupply);
         if (withoutOrders == true)
         {
             q = q.Where(p =>

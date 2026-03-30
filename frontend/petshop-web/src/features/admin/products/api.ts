@@ -107,6 +107,7 @@ export async function fetchAdminProducts(params?: {
   search?: string;
   categoryId?: string;
   active?: boolean;
+  excludeSupplies?: boolean;
   withoutOrders?: boolean;
 }): Promise<ProductListResponse> {
   const qs = new URLSearchParams();
@@ -115,6 +116,7 @@ export async function fetchAdminProducts(params?: {
   if (params?.search)    qs.set("search",     params.search);
   if (params?.categoryId) qs.set("categoryId", params.categoryId);
   if (params?.active !== undefined) qs.set("active", String(params.active));
+  if (params?.excludeSupplies !== undefined) qs.set("excludeSupplies", String(params.excludeSupplies));
   if (params?.withoutOrders !== undefined) qs.set("withoutOrders", String(params.withoutOrders));
   const q = qs.toString();
   return adminFetch<ProductListResponse>(`/admin/products${q ? `?${q}` : ""}`);

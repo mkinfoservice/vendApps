@@ -106,7 +106,7 @@ public class CatalogController : ControllerBase
 
         var query = _db.Products
             .AsNoTracking()
-            .Where(p => p.CompanyId == company.Id && p.IsActive)
+            .Where(p => p.CompanyId == company.Id && p.IsActive && !p.IsSupply)
             .Include(p => p.Category)
             .AsQueryable();
 
