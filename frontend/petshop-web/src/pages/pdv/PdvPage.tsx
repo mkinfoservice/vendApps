@@ -367,13 +367,47 @@ const PAY_METHODS: PayMethod[] = [
 
 interface PayPanelProps {
   totalCents: number;
-  onPay: (method: string, amountCents: number) => void;
+  onPay: (method: string, amountCents: number, customerDocument?: string) => void;
   onCancel: () => void;
   paying: boolean;
 }
 
 function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
   const [cash, setCash] = useState("");
+  const [pendingPayment, setPendingPayment] = useState<{ method: string; amountCents: number } | null>(null);
+  const [docType, setDocType] = useState<"none" | "cpf" | "cnpj">("none");
+  const [docValue, setDocValue] = useState("");
+  const [docError, setDocError] = useState<string | null>(null);
+
+  const openDocPrompt = (method: string, amountCents: number) => {
+    setPendingPayment({ method, amountCents });
+    setDocType("none");
+    setDocValue("");
+    setDocError(null);
+  };
+
+  const closeDocPrompt = () => {
+    setPendingPayment(null);
+    setDocType("none");
+    setDocValue("");
+    setDocError(null);
+  };
+
+  const confirmPay = () => {
+    if (!pendingPayment) return;
+    const digits = docValue.replace(/\D/g, "");
+    if (docType === "cpf" && digits.length !== 11) {
+      setDocError("CPF deve ter 11 digitos.");
+      return;
+    }
+    if (docType === "cnpj" && digits.length !== 14) {
+      setDocError("CNPJ deve ter 14 digitos.");
+      return;
+    }
+    const customerDocument = docType === "none" ? undefined : digits;
+    onPay(pendingPayment.method, pendingPayment.amountCents, customerDocument);
+    closeDocPrompt();
+  };
 
   return (
     <div className="space-y-4">
@@ -384,7 +418,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
           <button
             key={pm.method}
             disabled={paying}
-            onClick={() => onPay(pm.method, totalCents)}
+            onClick={() => openDocPrompt(pm.method, totalCents)}
             className="py-3 rounded-xl text-white font-semibold text-sm transition active:scale-95"
             style={{ background: pm.color }}
           >
@@ -403,12 +437,58 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
         />
         <button
           disabled={paying || !cash}
-          onClick={() => onPay("DINHEIRO", Math.round(parseFloat(cash || "0") * 100))}
+          onClick={() => openDocPrompt("DINHEIRO", Math.round(parseFloat(cash || "0") * 100))}
           className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-medium"
         >
           Confirmar
         </button>
       </div>
+
+      {pendingPayment && (
+        <div className="border border-gray-200 rounded-xl p-3 space-y-3 bg-gray-50">
+          <p className="text-sm font-semibold text-gray-700">Incluir CPF/CNPJ na nota fiscal?</p>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => { setDocType("none"); setDocError(null); }}
+              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "none" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
+            >
+              Nao informar
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDocType("cpf"); setDocError(null); }}
+              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "cpf" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
+            >
+              CPF
+            </button>
+            <button
+              type="button"
+              onClick={() => { setDocType("cnpj"); setDocError(null); }}
+              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "cnpj" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
+            >
+              CNPJ
+            </button>
+          </div>
+          {docType !== "none" && (
+            <input
+              value={docValue}
+              onChange={(e) => setDocValue(e.target.value)}
+              placeholder={docType === "cpf" ? "Digite o CPF" : "Digite o CNPJ"}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
+            />
+          )}
+          {docError && <p className="text-xs text-red-500">{docError}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={closeDocPrompt} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white">
+              Voltar
+            </button>
+            <button type="button" onClick={confirmPay} className="flex-1 py-2 rounded-lg text-sm text-white font-semibold" style={{ background: "#7c5cf8" }}>
+              Confirmar pagamento
+            </button>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={onCancel}
@@ -793,8 +873,8 @@ function CartTable({
   onRemove: (itemId: string) => void;
 }) {
   return (
-    <div className="overflow-y-auto h-full">
-      <table className="w-full text-sm text-gray-900">
+    <div className="overflow-auto h-full">
+      <table className="w-full text-sm text-gray-900 table-auto">
         <thead className="border-b sticky top-0 bg-white z-10">
           <tr className="text-left text-xs text-gray-400">
             <th className="px-4 py-3">Produto</th>
@@ -813,8 +893,8 @@ function CartTable({
             </tr>
           ) : sale.items.map((item) => (
             <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-              <td className="px-4 py-2.5 font-medium text-gray-900">
-                <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
+              <td className="px-4 py-2.5 font-medium text-gray-900 align-top">
+                <span className="block break-words leading-tight">{item.productNameSnapshot}</span>
                 <span className="sm:hidden text-xs text-gray-400 mt-0.5">
                   {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} - {brl(item.unitPriceCentsSnapshot)}
                 </span>
@@ -933,7 +1013,7 @@ export default function PdvPage() {
     await refreshSale(sale.id);
   }
 
-  async function handlePay(method: string, amountCents: number) {
+  async function handlePay(method: string, amountCents: number, customerDocument?: string) {
     if (!sale) return;
     if (amountCents < sale.totalCents) {
       flash(`Valor insuficiente. Total: ${brl(sale.totalCents)}`, false);
@@ -943,6 +1023,7 @@ export default function PdvPage() {
     try {
       const result = await paySale(sale.id, {
         payments: [{ paymentMethod: method, amountCents }],
+        customerDocument,
       });
       const cupomData = await getCupom(sale.id);
       printCupom(cupomData);
@@ -1145,7 +1226,7 @@ export default function PdvPage() {
             />
           </div>
 
-          <div className="lg:hidden bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100" style={{ minHeight: 180 }}>
+          <div className="lg:hidden bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 max-h-[320px]" style={{ minHeight: 180 }}>
             <CartTable sale={currentSale} onRemove={handleRemoveItem} />
           </div>
 

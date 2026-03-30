@@ -587,6 +587,9 @@ public class PdvController : ControllerBase
         var fiscalDecision = decision.ToString();
         var completedAt    = DateTime.UtcNow;
         var finalNotes     = req.Notes ?? sale.Notes;
+        var customerDocument = NormalizeCustomerDocument(req.CustomerDocument);
+        if (!string.IsNullOrWhiteSpace(req.CustomerDocument) && customerDocument is null)
+            return BadRequest("Documento inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
 
         // Montar pagamentos com FK explícito (sem tocar na navigação do sale rastreado)
         var saleId   = sale.Id;
@@ -620,7 +623,8 @@ public class PdvController : ControllerBase
                    "CompletedAtUtc" = {completedAt},
                    "DiscountCents"  = {discountCents},
                    "TotalCents"     = {totalCents},
-                   "Notes"          = {finalNotes}
+                   "Notes"          = {finalNotes},
+                   "CustomerDocument" = {customerDocument ?? sale.CustomerDocument}
             WHERE  "Id" = {saleId}
             """, ct);
 
@@ -980,6 +984,13 @@ WHERE s.""Id"" = {saleId};", ct);
             _                             => Entities.Fiscal.FiscalPaymentMethod.Other
         };
 
+    private static string? NormalizeCustomerDocument(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var digits = new string(raw.Where(char.IsDigit).ToArray());
+        return digits.Length is 11 or 14 ? digits : null;
+    }
+
     private static object MapSession(CashSession s) => new
     {
         s.Id,
@@ -999,6 +1010,7 @@ WHERE s.""Id"" = {saleId};", ct);
         o.CashSessionId,
         o.CustomerName,
         o.CustomerPhone,
+        o.CustomerDocument,
         o.SubtotalCents,
         o.DiscountCents,
         o.TotalCents,
@@ -1055,7 +1067,8 @@ public record PaymentEntry(string PaymentMethod, int AmountCents);
 public record PaySaleRequest(
     IReadOnlyList<PaymentEntry> Payments,
     int? DiscountCents = null,
-    string? Notes = null
+    string? Notes = null,
+    string? CustomerDocument = null
 );
 
 public record AddMovementRequest(

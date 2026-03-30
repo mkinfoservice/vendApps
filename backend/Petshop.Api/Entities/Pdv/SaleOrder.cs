@@ -35,6 +35,9 @@ public class SaleOrder
     [MaxLength(30)]
     public string? CustomerPhone { get; set; }
 
+    [MaxLength(20)]
+    public string? CustomerDocument { get; set; }
+
     // ── Totais ────────────────────────────────────────────
     public int SubtotalCents { get; set; }
     public int DiscountCents { get; set; } = 0;

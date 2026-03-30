@@ -216,6 +216,7 @@ public class FiscalQueueProcessorJob
                 DiscountCents    = sale.DiscountCents,
                 TotalCents       = sale.TotalCents,
                 CustomerName     = sale.CustomerName,
+                CustomerDocument = sale.CustomerDocument,
                 ContingencyType  = contingType,
                 Emitter          = emitter,
                 Items            = fiscalItems,
