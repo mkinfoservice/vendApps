@@ -6,6 +6,7 @@ import type {
   ListAdminUsersResponse,
   AdminUserDto,
   WhatsappIntegrationDto,
+  PlatformWhatsappConfigDto,
   ProvisionResultDto,
 } from "./types";
 
@@ -151,6 +152,37 @@ export function upsertWhatsapp(
     `/master/companies/${companyId}/integrations/whatsapp`,
     { method: "PUT", body: JSON.stringify(body) },
   );
+}
+
+// ── WhatsApp prefs (mode + ownerAlertPhone) ───────────────────
+
+export function updateWhatsappPrefs(
+  companyId: string,
+  body: { whatsappMode?: string; ownerAlertPhone?: string | null },
+) {
+  return masterFetch<CompanyDetailDto>(`/master/companies/${companyId}/whatsapp-prefs`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Platform WhatsApp (global) ────────────────────────────────
+
+export function fetchPlatformWhatsapp() {
+  return masterFetch<PlatformWhatsappConfigDto>("/master/integrations/whatsapp/platform");
+}
+
+export function upsertPlatformWhatsapp(body: {
+  wabaId?: string;
+  phoneNumberId?: string;
+  accessToken?: string;
+  templateLanguageCode?: string;
+  isActive?: boolean;
+}) {
+  return masterFetch<PlatformWhatsappConfigDto>("/master/integrations/whatsapp/platform", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
 }
 
 // ── Provision ─────────────────────────────────────────────────

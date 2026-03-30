@@ -8,6 +8,7 @@ import {
   fetchSettings, updateSettings,
   fetchAdmins, createAdmin, deactivateAdmin, resetAdminPassword,
   fetchWhatsapp, upsertWhatsapp,
+  updateWhatsappPrefs,
   provisionCompany,
 } from "@/features/master/companies/api";
 import type { CompanyDetailDto, AdminUserDto } from "@/features/master/companies/types";
@@ -856,7 +857,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   SAIU_PARA_ENTREGA: "Saiu para entrega", ENTREGUE: "Entregue", CANCELADO: "Cancelado",
 };
 
-function WhatsappTab({ companyId }: { companyId: string }) {
+function WhatsappTab({ companyId, company }: { companyId: string; company: CompanyDetailDto }) {
   const qc = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -864,6 +865,27 @@ function WhatsappTab({ companyId }: { companyId: string }) {
     queryFn:  () => fetchWhatsapp(companyId),
     retry: false,
   });
+
+  // ── Prefs de alerta ─────────────────────────────────────────
+  const [waMode,     setWaMode]     = useState<"own" | "platform" | "none">(company.whatsappMode ?? "none");
+  const [ownerPhone, setOwnerPhone] = useState(company.ownerAlertPhone ?? "");
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const [prefsErr,   setPrefsErr]   = useState<string | null>(null);
+
+  const prefsMut = useMutation({
+    mutationFn: () => updateWhatsappPrefs(companyId, {
+      whatsappMode:    waMode,
+      ownerAlertPhone: ownerPhone.trim() || null,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["master", "company", companyId] });
+      setPrefsErr(null);
+      setPrefsSaved(true);
+      setTimeout(() => setPrefsSaved(false), 3000);
+    },
+    onError: (e: Error) => setPrefsErr(e.message),
+  });
+  // ────────────────────────────────────────────────────────────
 
   const [form, setForm] = useState({
     mode: "link", wabaId: "", phoneNumberId: "",
@@ -929,6 +951,7 @@ function WhatsappTab({ companyId }: { companyId: string }) {
   if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Carregando…</div>;
 
   return (
+    <div className="space-y-4">
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
       {isError && (
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
@@ -1066,6 +1089,59 @@ function WhatsappTab({ companyId }: { companyId: string }) {
         {saveMut.isPending ? "Salvando…" : "Salvar integração"}
       </button>
     </div>
+
+    {/* ── Modo de envio de alertas ─────────────────────────── */}
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+      <p className="text-sm font-bold text-gray-700">Alertas internos (insumos / estoque)</p>
+      <p className="text-xs text-gray-400">
+        Define qual conta WhatsApp envia notificações ao dono da empresa quando o estoque de insumos fica abaixo do mínimo.
+      </p>
+
+      <div className="flex flex-col gap-2">
+        {(["own", "platform", "none"] as const).map((v) => (
+          <label key={v} className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="radio"
+              value={v}
+              checked={waMode === v}
+              onChange={() => setWaMode(v)}
+              className="w-4 h-4 accent-purple-600"
+            />
+            <span className="text-sm text-gray-700 font-medium">
+              {v === "own"      && "Própria (credenciais desta empresa)"}
+              {v === "platform" && "Plataforma (conta global do vendApps)"}
+              {v === "none"     && "Não enviar alertas"}
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 mb-1">
+          Telefone do dono para alertas (E.164)
+        </label>
+        <input
+          value={ownerPhone}
+          onChange={(e) => setOwnerPhone(e.target.value)}
+          placeholder="5511999999999"
+          className="w-full h-9 rounded-xl border border-gray-200 px-3 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
+        />
+        <p className="text-xs text-gray-400 mt-1">Formato internacional sem + — ex: 5511999999999</p>
+      </div>
+
+      {prefsErr  && <p className="text-sm text-red-600">{prefsErr}</p>}
+      {prefsSaved && <p className="text-sm text-green-600">✓ Prefs salvas!</p>}
+
+      <button
+        onClick={() => prefsMut.mutate()}
+        disabled={prefsMut.isPending}
+        className="h-9 px-5 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
+        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+      >
+        {prefsMut.isPending ? "Salvando…" : "Salvar prefs"}
+      </button>
+    </div>
+    </div>
   );
 }
 
@@ -1169,7 +1245,7 @@ export default function CompanyDetail() {
             {tab === "overview" && <OverviewTab company={company} onRefresh={refresh} />}
             {tab === "settings" && <SettingsTab companyId={company.id} />}
             {tab === "admins"   && <AdminsTab   companyId={company.id} />}
-            {tab === "whatsapp" && <WhatsappTab  companyId={company.id} />}
+            {tab === "whatsapp" && <WhatsappTab  companyId={company.id} company={company} />}
           </>
         )}
       </main>

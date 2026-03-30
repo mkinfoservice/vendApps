@@ -34,6 +34,16 @@ export type CompanyDetailDto = {
   hasSettings: boolean;
   hasWhatsapp: boolean;
   adminCount: number;
+  whatsappMode: "own" | "platform" | "none";
+  ownerAlertPhone: string | null;
+};
+
+export type PlatformWhatsappConfigDto = {
+  wabaId: string | null;
+  phoneNumberId: string | null;
+  hasAccessToken: boolean;
+  templateLanguageCode: string;
+  isActive: boolean;
 };
 
 export type CompanySettingsDto = {

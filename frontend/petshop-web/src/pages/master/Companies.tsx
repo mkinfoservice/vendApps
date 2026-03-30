@@ -125,6 +125,12 @@ export default function Companies() {
               </p>
             )}
           </div>
+          <Link
+            to="/master/platform/whatsapp"
+            className="flex items-center gap-2 h-10 px-4 rounded-xl font-semibold text-sm border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+          >
+            WhatsApp Global
+          </Link>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 h-10 px-4 rounded-xl font-semibold text-sm text-white transition hover:brightness-110 active:scale-95"

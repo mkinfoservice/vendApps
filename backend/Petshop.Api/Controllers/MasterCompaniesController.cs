@@ -355,6 +355,32 @@ public class MasterCompaniesController : ControllerBase
         ));
     }
 
+    // ── PATCH /master/companies/{id}/whatsapp-prefs ──────────────
+
+    [HttpPatch("{id:guid}/whatsapp-prefs")]
+    public async Task<IActionResult> UpdateWhatsappPrefs(
+        Guid id,
+        [FromBody] UpdateWhatsappPrefsRequest req,
+        CancellationToken ct = default)
+    {
+        var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct);
+        if (company is null) return NotFound();
+
+        if (req.WhatsappMode is not null)
+        {
+            var valid = new[] { "own", "platform", "none" };
+            if (!valid.Contains(req.WhatsappMode)) return BadRequest("WhatsappMode inválido.");
+            company.WhatsappMode = req.WhatsappMode;
+        }
+        if (req.OwnerAlertPhone is not null)
+            company.OwnerAlertPhone = req.OwnerAlertPhone.Trim().Length > 0
+                ? req.OwnerAlertPhone.Trim()
+                : null;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await BuildDetailDtoAsync(id, ct));
+    }
+
     // ── GET /master/companies/{id}/settings ───────────────────
 
     [HttpGet("{id:guid}/settings")]
@@ -500,7 +526,8 @@ public class MasterCompaniesController : ControllerBase
         return new CompanyDetailDto(
             c.Id, c.Name, c.Slug, c.Segment, c.Plan, c.PlanExpiresAtUtc,
             c.IsActive, c.IsDeleted, c.SuspendedAtUtc, c.SuspendedReason,
-            c.CreatedAtUtc, hasSettings, hasWhatsapp, adminCount
+            c.CreatedAtUtc, hasSettings, hasWhatsapp, adminCount,
+            c.WhatsappMode, c.OwnerAlertPhone
         );
     }
 

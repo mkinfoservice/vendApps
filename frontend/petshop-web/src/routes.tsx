@@ -61,6 +61,7 @@ import { PdvProvider } from "@/features/pdv/PdvContext";
 import MasterLogin from "./pages/master/Login";
 import MasterCompanies from "./pages/master/Companies";
 import MasterCompanyDetail from "./pages/master/CompanyDetail";
+import MasterPlatformWhatsapp from "./pages/master/PlatformWhatsapp";
 
 // ── Entregador ────────────────────────────────────────────────────────────────
 import DelivererLogin from "./pages/deliverer/Login";
@@ -202,6 +203,7 @@ export function AppRoutes() {
         <Route path="/master/login" element={<MasterLogin />} />
         <Route path="/master" element={<MasterGuard><MasterCompanies /></MasterGuard>} />
         <Route path="/master/companies/:id" element={<MasterGuard><MasterCompanyDetail /></MasterGuard>} />
+        <Route path="/master/platform/whatsapp" element={<MasterGuard><MasterPlatformWhatsapp /></MasterGuard>} />
 
         {/* ── Entregador ──────────────────────────────────────────────── */}
         <Route path="/deliverer/login" element={<DelivererLogin />} />

@@ -52,6 +52,13 @@ function buildCartKey(productId: string, addonIds: string[]) {
   return `${productId}::${[...addonIds].sort().join(",")}`;
 }
 
+function paymentMethodLabel(method: string) {
+  if (method === "PIX") return "Pix";
+  if (method === "CARD") return "Cartão";
+  if (method === "CASH") return "Dinheiro";
+  return method;
+}
+
 function toPseudoProduct(item: CartItem): ProductListItem {
   return {
     id: item.product.id,
@@ -729,7 +736,7 @@ export default function PhoneOrderBuilder() {
               </Section>
 
               <Section title="Pagamento">
-                <Row label="Forma" value={paymentMethod} />
+                <Row label="Forma" value={paymentMethodLabel(paymentMethod)} />
                 <Row label="Subtotal" value={formatCents(subtotal)} />
                 <Row label="Entrega" value={formatCents(deliveryCents)} />
                 <Row label="Total" value={formatCents(total)} bold />

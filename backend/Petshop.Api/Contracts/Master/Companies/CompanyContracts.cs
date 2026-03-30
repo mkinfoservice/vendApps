@@ -39,7 +39,17 @@ public record CompanyDetailDto(
     DateTime CreatedAtUtc,
     bool HasSettings,
     bool HasWhatsapp,
-    int AdminCount
+    int AdminCount,
+    // ── Prefs de alerta ──
+    string WhatsappMode,
+    string? OwnerAlertPhone
+);
+
+// ── Prefs de alerta WhatsApp ──────────────────────────────────
+
+public record UpdateWhatsappPrefsRequest(
+    string? WhatsappMode,
+    string? OwnerAlertPhone
 );
 
 // ── Criação ───────────────────────────────────────────────────
