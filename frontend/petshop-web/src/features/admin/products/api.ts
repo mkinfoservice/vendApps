@@ -19,6 +19,7 @@ export type ProductListItem = {
   updatedAtUtc: string | null;
   imageUrl: string | null;
   hasAddons: boolean;
+  isBestSeller: boolean;
 };
 
 export type ProductListResponse = {

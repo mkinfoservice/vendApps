@@ -1,4 +1,4 @@
-namespace Petshop.Api.Contracts.Admin.Products;
+﻿namespace Petshop.Api.Contracts.Admin.Products;
 
 public record ProductListResponse(int Page, int PageSize, int Total, IReadOnlyList<ProductListItem> Items);
 
@@ -18,9 +18,8 @@ public record ProductListItem(
     bool IsActive,
     DateTime? UpdatedAtUtc,
     string? ImageUrl,
-    // ── Balança ──
     bool IsSoldByWeight,
     string? ScaleProductCode,
-    // ── Adicionais ──
-    bool HasAddons
+    bool HasAddons,
+    bool IsBestSeller
 );

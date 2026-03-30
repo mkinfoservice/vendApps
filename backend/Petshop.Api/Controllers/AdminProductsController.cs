@@ -74,7 +74,7 @@ public class AdminProductsController : ControllerBase
                 p.Category.Name, p.Brand != null ? p.Brand.Name : null,
                 p.Unit, p.PriceCents, p.CostCents, p.MarginPercent, p.StockQty,
                 p.IsActive, p.UpdatedAtUtc, p.ImageUrl,
-                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons))
+                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons, p.IsBestSeller))
             .ToListAsync(ct);
 
         return Ok(new ProductListResponse(page, pageSize, total, items));

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useRef, useState, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 import {
@@ -9,16 +9,16 @@ import {
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import OpenSessionPage from "./OpenSessionPage";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const brl = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
 const payMethodLabel = (m: string): string =>
-  ({ PIX: "PIX", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "Cartão Crédito",
-     CARTAO_DEBITO: "Cartão Débito", CHEQUE: "Cheque" }[m] ?? m);
+  ({ PIX: "PIX", DINHEIRO: "Dinheiro", CARTAO_CREDITO: "CartÃ£o CrÃ©dito",
+     CARTAO_DEBITO: "CartÃ£o DÃ©bito", CHEQUE: "Cheque" }[m] ?? m);
 
-// ── Cupom ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Cupom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function printCupom(data: CupomData) {
   const itemRows = data.items.map((i) => {
@@ -42,7 +42,7 @@ function printCupom(data: CupomData) {
   ).join("");
 
   const contingNote = data.fiscalDecision === "PermanentContingency"
-    ? `<p style="font-size:9px;color:#c00;text-align:center;margin-top:4px">⚠ VENDA EM CONTINGÊNCIA — NFC-e não emitida</p>` : "";
+    ? `<p style="font-size:9px;color:#c00;text-align:center;margin-top:4px">âš  VENDA EM CONTINGÃŠNCIA â€” NFC-e nÃ£o emitida</p>` : "";
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -60,7 +60,7 @@ function printCupom(data: CupomData) {
 </style>
 </head><body>
 <p class="co">${data.companyName}</p>
-<p class="sub">CUPOM NÃO FISCAL</p>
+<p class="sub">CUPOM NÃƒO FISCAL</p>
 <p class="sub">${data.publicId}</p>
 <p class="sub">${new Date(data.createdAtUtc).toLocaleString("pt-BR")}</p>
 ${data.customerName ? `<p class="sub">Cliente: ${data.customerName}</p>` : ""}
@@ -77,7 +77,7 @@ ${data.customerName ? `<p class="sub">Cliente: ${data.customerName}</p>` : ""}
 <hr class="sep-dash">
 <table><tbody>${payRows}</tbody></table>
 ${contingNote}
-<p class="thanks">Obrigado pela preferência!</p>
+<p class="thanks">Obrigado pela preferÃªncia!</p>
 </body></html>`;
 
   const win = window.open("", "_blank", "width=380,height=640");
@@ -88,7 +88,7 @@ ${contingNote}
   win.print();
 }
 
-// ── Movement Modal (Sangria / Suprimento) ─────────────────────────────────────
+// â”€â”€ Movement Modal (Sangria / Suprimento) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface MovementModalProps {
   sessionId: string;
@@ -154,12 +154,12 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500">Descrição (opcional)</label>
+            <label className="text-xs text-gray-500">DescriÃ§Ã£o (opcional)</label>
             <input
               className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: Reforço de troco"}
+              placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: ReforÃ§o de troco"}
             />
           </div>
         </div>
@@ -185,7 +185,7 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
   );
 }
 
-// ── Close Session Modal ────────────────────────────────────────────────────────
+// â”€â”€ Close Session Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface CloseModalProps {
   sessionId: string;
@@ -270,15 +270,15 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
               </div>
             )}
 
-            {/* Conferência */}
+            {/* ConferÃªncia */}
             <div className="space-y-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Conferência de Caixa</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">ConferÃªncia de Caixa</p>
               <div className="flex justify-between text-sm bg-blue-50 rounded-xl px-4 py-3">
                 <span className="text-blue-700">Saldo esperado</span>
                 <span className="font-semibold text-blue-800">{brl(expectedCash)}</span>
               </div>
               <div>
-                <label className="text-xs text-gray-500">Contagem física (R$)</label>
+                <label className="text-xs text-gray-500">Contagem fÃ­sica (R$)</label>
                 <input
                   type="number" min={0} step={0.01}
                   className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
@@ -293,7 +293,7 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
                   : divergence > 0 ? "bg-yellow-50 text-yellow-700"
                   : "bg-red-50 text-red-700"
                 }`}>
-                  <span>Divergência</span>
+                  <span>DivergÃªncia</span>
                   <span className="font-semibold">
                     {divergence > 0 ? "+" : ""}{brl(divergence)}
                   </span>
@@ -301,9 +301,9 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
               )}
             </div>
 
-            {/* Observações */}
+            {/* ObservaÃ§Ãµes */}
             <div>
-              <label className="text-xs text-gray-500">Observações (opcional)</label>
+              <label className="text-xs text-gray-500">ObservaÃ§Ãµes (opcional)</label>
               <textarea
                 className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none"
                 rows={2}
@@ -333,15 +333,15 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
   );
 }
 
-// ── Payment Panel ─────────────────────────────────────────────────────────────
+// â”€â”€ Payment Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type PayMethod = { method: string; label: string; color: string };
 
 const PAY_METHODS: PayMethod[] = [
   { method: "PIX",            label: "PIX",           color: "#00bfa5" },
   { method: "DINHEIRO",       label: "Dinheiro",       color: "#43a047" },
-  { method: "CARTAO_CREDITO", label: "Crédito",        color: "#1e88e5" },
-  { method: "CARTAO_DEBITO",  label: "Débito",         color: "#5e35b1" },
+  { method: "CARTAO_CREDITO", label: "CrÃ©dito",        color: "#1e88e5" },
+  { method: "CARTAO_DEBITO",  label: "DÃ©bito",         color: "#5e35b1" },
 ];
 
 interface PayPanelProps {
@@ -400,7 +400,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
   );
 }
 
-// ── DAV Search Modal ─────────────────────────────────────────────────────────
+// â”€â”€ DAV Search Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface DavSummary { id: string; publicId: string; customerName: string; totalCents: number; itemCount: number; status: string; }
 
@@ -427,20 +427,20 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-3 pb-3 sm:pb-0">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[70vh]">
         <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800 text-sm">Buscar Orçamento (DAV)</h3>
+          <h3 className="font-semibold text-gray-800 text-sm">Buscar OrÃ§amento (DAV)</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
         </div>
         <div className="px-4 pt-3 pb-2">
           <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2">
             <Search size={14} className="text-gray-400" />
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="Código ou nome do cliente…"
+              placeholder="CÃ³digo ou nome do clienteâ€¦"
               className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400" />
           </div>
         </div>
         <div className="overflow-y-auto flex-1 px-2 pb-3">
-          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregando…</p>}
-          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orçamento encontrado.</p>}
+          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregandoâ€¦</p>}
+          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orÃ§amento encontrado.</p>}
           {filtered.map((d) => (
             <button key={d.id} type="button"
               onClick={() => { onSelect(d.publicId); onClose(); }}
@@ -448,7 +448,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
             >
               <div>
                 <p className="text-sm font-semibold text-emerald-700">{d.publicId}</p>
-                <p className="text-xs text-gray-400">{d.customerName || "—"} · {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-gray-400">{d.customerName || "â€”"} Â· {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
               </div>
               <p className="text-sm font-bold text-gray-700">{fmt(d.totalCents)}</p>
             </button>
@@ -459,7 +459,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
   );
 }
 
-// ── Quick Products (atalhos no estado vazio) ──────────────────────────────────
+// â”€â”€ Quick Products (atalhos no estado vazio) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface QuickProduct {
   id: string;
@@ -467,6 +467,7 @@ interface QuickProduct {
   priceCents: number;
   imageUrl?: string | null;
   hasAddons: boolean;
+  isBestSeller?: boolean;
   barcode?: string | null;
   internalCode?: string | null;
 }
@@ -533,7 +534,7 @@ function AddonModal({
         {loading ? (
           <p className="text-sm text-gray-400 py-4 text-center">Carregando...</p>
         ) : addons.length === 0 ? (
-          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponível.</p>
+          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponÃ­vel.</p>
         ) : (
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {addons.map((a) => (
@@ -554,7 +555,7 @@ function AddonModal({
                     backgroundColor: selected.has(a.id) ? "#7c5cf8" : "transparent",
                   }}
                 >
-                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">✓</span>}
+                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">âœ“</span>}
                 </div>
                 <span className="flex-1 text-sm text-gray-700 font-medium">{a.name}</span>
                 <span className="text-sm font-bold text-[#7c5cf8]">+{brl(a.priceCents)}</span>
@@ -577,7 +578,7 @@ function AddonModal({
             disabled={adding}
             className="flex-1 py-2.5 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
           >
-            Não, obrigado
+            NÃ£o, obrigado
           </button>
           <button
             type="button"
@@ -611,16 +612,52 @@ function QuickProducts({
   onAdded: (name: string) => void;
 }) {
   const [products, setProducts]   = useState<QuickProduct[]>([]);
+  const [loading, setLoading]     = useState(false);
   const [adding, setAdding]       = useState<string | null>(null);
   const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const p = new URLSearchParams({ pageSize: "60", active: "true" });
-    if (search.trim()) p.set("search", search.trim());
-    adminFetch<{ items: QuickProduct[] }>(`/admin/products?${p.toString()}`)
-      .then((r) => setProducts(r.items))
-      .catch(() => {});
+    let cancelled = false;
+
+    async function loadAllProducts() {
+      setLoading(true);
+      try {
+        const pageSize = 200;
+        let page = 1;
+        let all: QuickProduct[] = [];
+        let total = 0;
+        do {
+          const p = new URLSearchParams({
+            page: String(page),
+            pageSize: String(pageSize),
+            active: "true",
+          });
+          if (search.trim()) p.set("search", search.trim());
+
+          const r = await adminFetch<{ total: number; items: QuickProduct[] }>(`/admin/products?${p.toString()}`);
+          total = r.total ?? 0;
+          all = all.concat(r.items ?? []);
+          page += 1;
+        } while (all.length < total && page <= 10);
+
+        all.sort((a, b) => {
+          const bestA = a.isBestSeller ? 1 : 0;
+          const bestB = b.isBestSeller ? 1 : 0;
+          if (bestA !== bestB) return bestB - bestA;
+          return a.name.localeCompare(b.name, "pt-BR");
+        });
+
+        if (!cancelled) setProducts(all);
+      } catch {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadAllProducts();
+    return () => { cancelled = true; };
   }, [search]);
 
   async function handleAdd(p: QuickProduct) {
@@ -638,10 +675,18 @@ function QuickProducts({
     }
   }
 
+  if (loading) {
+    return (
+      <div className="h-full min-h-[240px] flex items-center justify-center text-gray-400 text-sm">
+        Carregando catÃ¡logo...
+      </div>
+    );
+  }
+
   if (products.length === 0) {
     return (
-      <div className="h-full min-h-[160px] flex items-center justify-center text-gray-300 text-sm">
-        Nenhum item adicionado
+      <div className="h-full min-h-[240px] flex items-center justify-center text-gray-300 text-sm">
+        Nenhum produto encontrado
       </div>
     );
   }
@@ -663,7 +708,7 @@ function QuickProducts({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, código interno ou código de barras"
+              placeholder="Buscar por nome, cÃ³digo interno ou cÃ³digo de barras"
               className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
             />
           </div>
@@ -675,8 +720,14 @@ function QuickProducts({
               type="button"
               disabled={adding === p.id || !saleId}
               onClick={() => handleAdd(p)}
-              className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50 relative"
+              className="flex flex-col items-center gap-1 p-2 rounded-xl border bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50 relative"
+              style={{ borderColor: p.isBestSeller ? "rgba(245,158,11,0.45)" : "#f3f4f6" }}
             >
+              {p.isBestSeller && (
+                <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none" style={{ background: "#f59e0b" }}>
+                  Mais vendido
+                </span>
+              )}
               {p.hasAddons && (
                 <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none" style={{ background: "#7c5cf8" }}>+</span>
               )}
@@ -684,7 +735,7 @@ function QuickProducts({
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-2xl text-gray-200">📦</span>
+                  <span className="text-2xl text-gray-200">ðŸ“¦</span>
                 )}
               </div>
               <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
@@ -706,7 +757,67 @@ function QuickProducts({
   );
 }
 
-// ── Main PDV Page ─────────────────────────────────────────────────────────────
+function CartTable({
+  sale,
+  onRemove,
+}: {
+  sale: Sale | null;
+  onRemove: (itemId: string) => void;
+}) {
+  return (
+    <div className="overflow-y-auto h-full">
+      <table className="w-full text-sm text-gray-900">
+        <thead className="border-b sticky top-0 bg-white z-10">
+          <tr className="text-left text-xs text-gray-400">
+            <th className="px-4 py-3">Produto</th>
+            <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
+            <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
+            <th className="px-3 py-3 text-right">Total</th>
+            <th className="px-3 py-3 w-8" />
+          </tr>
+        </thead>
+        <tbody>
+          {!sale || sale.items.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+                Nenhum item no carrinho
+              </td>
+            </tr>
+          ) : sale.items.map((item) => (
+            <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
+              <td className="px-4 py-2.5 font-medium text-gray-900">
+                <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
+                <span className="sm:hidden text-xs text-gray-400 mt-0.5">
+                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} Â· {brl(item.unitPriceCentsSnapshot)}
+                </span>
+                {item.addons && item.addons.length > 0 && (
+                  <span className="block mt-1 text-[11px] text-[#7c5cf8]">
+                    + {item.addons.map((a) => a.nameSnapshot).join(", ")}
+                  </span>
+                )}
+              </td>
+              <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
+                {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
+              </td>
+              <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
+                {brl(item.unitPriceCentsSnapshot)}
+                {item.isSoldByWeight && <span className="text-xs">/kg</span>}
+              </td>
+              <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
+              <td className="px-3 py-2.5">
+                <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-600 text-sm leading-none">
+                  âœ•
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// â”€â”€ Main PDV Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function PdvPage() {
   const { session, sale, loading, refreshSession, refreshSale, setSale } = usePdv();
@@ -762,7 +873,7 @@ export default function PdvPage() {
       setBarcode("");
       barcodeRef.current?.focus();
     } catch (e: unknown) {
-      flash(e instanceof Error ? e.message : "Produto não encontrado", false);
+      flash(e instanceof Error ? e.message : "Produto nÃ£o encontrado", false);
     } finally {
       setScanning(false);
     }
@@ -772,7 +883,7 @@ export default function PdvPage() {
     e.preventDefault();
     if (!sale || !davCode.trim()) return;
     setImportingDav(true);
-    // Accept "DAV-XXXX" or just "XXXX" — backend stores with DAV- prefix
+    // Accept "DAV-XXXX" or just "XXXX" â€” backend stores with DAV- prefix
     const code = davCode.trim().toUpperCase().startsWith("DAV-")
       ? davCode.trim().toUpperCase()
       : `DAV-${davCode.trim().toUpperCase()}`;
@@ -782,7 +893,7 @@ export default function PdvPage() {
       flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
       setDavCode("");
     } catch (e: unknown) {
-      flash(e instanceof Error ? e.message : "DAV não encontrado", false);
+      flash(e instanceof Error ? e.message : "DAV nÃ£o encontrado", false);
     } finally {
       setImportingDav(false);
     }
@@ -877,7 +988,7 @@ export default function PdvPage() {
         <span className="font-bold text-base" style={{ color: "#7c5cf8" }}>PDV</span>
         <span className="text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{session.registerName}</span>
         <span className="hidden sm:block text-xs text-gray-400 ml-1">
-          · {session.openedByUserName}
+          Â· {session.openedByUserName}
         </span>
         <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
           <button
@@ -912,7 +1023,7 @@ export default function PdvPage() {
         </div>
       )}
 
-      {/* ── Mobile: Payment panel overlay when showPay ──────────── */}
+      {/* â”€â”€ Mobile: Payment panel overlay when showPay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showPay && (
         <div className="lg:hidden fixed inset-0 z-30 bg-black/50 flex items-end" onClick={() => setShowPay(false)}>
           <div
@@ -945,7 +1056,7 @@ export default function PdvPage() {
       )}
 
       <div className="flex flex-col lg:flex-row flex-1 gap-3 p-3 sm:p-4 min-h-0">
-        {/* ── Left: Barcode + Item list ───────────────────────── */}
+        {/* â”€â”€ Left: Barcode + Item list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="flex-1 flex flex-col gap-3 min-w-0">
           <form onSubmit={handleScan} className="flex gap-2">
             <input
@@ -953,7 +1064,7 @@ export default function PdvPage() {
               autoFocus
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
-              placeholder="Código de barras..."
+              placeholder="CÃ³digo de barras..."
               className="flex-1 border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
             />
             <button
@@ -966,14 +1077,14 @@ export default function PdvPage() {
             </button>
           </form>
 
-          {/* ── DAV Import ─────────────────────────────────────────── */}
+          {/* â”€â”€ DAV Import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <form onSubmit={handleImportDav} className="flex gap-2 items-center">
             <div className="flex-1 flex items-center border border-emerald-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-400 overflow-hidden">
               <span className="pl-3 pr-1 text-xs font-bold text-emerald-600 select-none whitespace-nowrap">DAV-</span>
               <input
                 value={davCode}
                 onChange={(e) => setDavCode(e.target.value.replace(/^DAV-/i, ""))}
-                placeholder="código ou escaneie…"
+                placeholder="cÃ³digo ou escaneieâ€¦"
                 className="flex-1 py-2 pr-3 text-sm bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none"
               />
             </div>
@@ -983,11 +1094,11 @@ export default function PdvPage() {
               className="px-4 py-2 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
               style={{ background: "#10b981" }}
             >
-              {importingDav ? "…" : "Importar"}
+              {importingDav ? "â€¦" : "Importar"}
             </button>
             <button
               type="button"
-              title="Buscar orçamento"
+              title="Buscar orÃ§amento"
               onClick={() => setShowDavSearch(true)}
               className="p-2 rounded-xl border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition"
             >
@@ -996,75 +1107,20 @@ export default function PdvPage() {
           </form>
 
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-100" style={{ minHeight: 200, flex: "1 1 0" }}>
-            <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Catalogo de produtos</p>
-            </div>
-            <div className="border-b border-gray-100" style={{ maxHeight: "46vh" }}>
-              <QuickProducts
-                saleId={currentSale?.id ?? ""}
-                onAdded={async (name) => {
-                  if (currentSale) await refreshSale(currentSale.id);
-                  flash(`${name} adicionado`, true);
-                  barcodeRef.current?.focus();
-                }}
-              />
-            </div>
-            <div className="px-3 py-2 border-b border-gray-100 bg-gray-50">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Carrinho da venda</p>
-            </div>
-            <div className="overflow-y-auto h-full">
-              <table className="w-full text-sm text-gray-900">
-                <thead className="border-b sticky top-0 bg-white z-10">
-                  <tr className="text-left text-xs text-gray-400">
-                    <th className="px-4 py-3">Produto</th>
-                    <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
-                    <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
-                    <th className="px-3 py-3 text-right">Total</th>
-                    <th className="px-3 py-3 w-8" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {!currentSale || currentSale.items.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
-                        Nenhum item no carrinho
-                      </td>
-                    </tr>
-                  ) : currentSale.items.map((item) => (
-                    <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-                      <td className="px-4 py-2.5 font-medium text-gray-900">
-                        <span className="block truncate max-w-[180px] sm:max-w-xs md:max-w-none">{item.productNameSnapshot}</span>
-                        <span className="sm:hidden text-xs text-gray-400 mt-0.5">
-                          {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
-                        </span>
-                        {item.addons && item.addons.length > 0 && (
-                          <span className="block mt-1 text-[11px] text-[#7c5cf8]">
-                            + {item.addons.map((a) => a.nameSnapshot).join(", ")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
-                        {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
-                      </td>
-                      <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
-                        {brl(item.unitPriceCentsSnapshot)}
-                        {item.isSoldByWeight && <span className="text-xs">/kg</span>}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
-                      <td className="px-3 py-2.5">
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          className="text-red-400 hover:text-red-600 text-sm leading-none"
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <QuickProducts
+              saleId={currentSale?.id ?? ""}
+              onAdded={async (name) => {
+                if (currentSale) await refreshSale(currentSale.id);
+                flash(`${name} adicionado`, true);
+                barcodeRef.current?.focus();
+              }}
+            />
           </div>
+
+          <div className="lg:hidden bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100" style={{ minHeight: 180 }}>
+            <CartTable sale={currentSale} onRemove={handleRemoveItem} />
+          </div>
+
 
           {/* Mobile: sticky cobrar bar */}
           <div className="lg:hidden">
@@ -1088,8 +1144,8 @@ export default function PdvPage() {
           </div>
         </div>
 
-        {/* ── Right: Totals + Payment (desktop only) ──────────── */}
-        <div className="hidden lg:flex w-80 xl:w-96 flex-col gap-3 shrink-0">
+        {/* â”€â”€ Right: Totals + Payment (desktop only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <div className="hidden lg:flex w-[420px] xl:w-[460px] flex-col gap-3 shrink-0">
           <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 border border-gray-100">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo da venda</p>
             <div className="flex justify-between text-sm text-gray-500">
@@ -1124,6 +1180,10 @@ export default function PdvPage() {
                 paying={paying}
               />
             )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex-1 min-h-[340px]">
+            <CartTable sale={currentSale} onRemove={handleRemoveItem} />
           </div>
 
           {currentSale?.publicId && (
