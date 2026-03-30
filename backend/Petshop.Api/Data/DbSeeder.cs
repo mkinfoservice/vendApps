@@ -92,11 +92,11 @@ public static class DbSeeder
 
         var products = new List<Product>
         {
-            new() { Name = "Ração Premium para Cães",       Slug = "racao-premium-caes",       PriceCents = 19990, CostCents = 12000, StockQty = 50,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/dogfood/800/600"  },
-            new() { Name = "Petiscos Naturais para Cães",   Slug = "petiscos-naturais-caes",   PriceCents =  4990, CostCents =  2500, StockQty = 100, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/treats/800/600"   },
-            new() { Name = "Remédio Antipulgas para Cães",  Slug = "remedio-antipulgas-caes",  PriceCents = 29990, CostCents = 18000, StockQty = 30,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/flea/800/600"     },
-            new() { Name = "Coleira Ajustável para Cães",   Slug = "coleira-ajustavel-caes",   PriceCents = 15990, CostCents =  8000, StockQty = 20,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/collar/800/600"   },
-            new() { Name = "Shampoo Hipoalergênico para Cães", Slug = "shampoo-hipoalergenico-caes", PriceCents = 3990, CostCents = 1800, StockQty = 60, Unit = "UN", CategoryId = Cat("higiene"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/shampoo/800/600" },
+            new() { Name = "Ração Premium para Cães",       Slug = "racao-premium-caes",       PriceCents = 19990, CostCents = 12000, StockQty = 50,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId  },
+            new() { Name = "Petiscos Naturais para Cães",   Slug = "petiscos-naturais-caes",   PriceCents =  4990, CostCents =  2500, StockQty = 100, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId   },
+            new() { Name = "Remédio Antipulgas para Cães",  Slug = "remedio-antipulgas-caes",  PriceCents = 29990, CostCents = 18000, StockQty = 30,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId     },
+            new() { Name = "Coleira Ajustável para Cães",   Slug = "coleira-ajustavel-caes",   PriceCents = 15990, CostCents =  8000, StockQty = 20,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId   },
+            new() { Name = "Shampoo Hipoalergênico para Cães", Slug = "shampoo-hipoalergenico-caes", PriceCents = 3990, CostCents = 1800, StockQty = 60, Unit = "UN", CategoryId = Cat("higiene"), CompanyId = companyId },
         };
 
         ApplyMargins(products);
@@ -124,16 +124,16 @@ public static class DbSeeder
 
         var products = new List<Product>
         {
-            new() { Name = "Ração Royal Canin Adulto",       Slug = "racao-royal-canin-adulto",       PriceCents = 24990, CostCents = 16000, StockQty = 40,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/royalcanin/800/600"   },
-            new() { Name = "Ração Hills Science Diet",       Slug = "racao-hills-science-diet",       PriceCents = 31990, CostCents = 20000, StockQty = 25,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/hillscat/800/600"     },
-            new() { Name = "Petisco Ossinho Dental",         Slug = "petisco-ossinho-dental",         PriceCents =  3990, CostCents =  1800, StockQty = 80,  Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/dentalbone/800/600"   },
-            new() { Name = "Petisco Bifinho Frango",         Slug = "petisco-bifinho-frango",         PriceCents =  5490, CostCents =  2700, StockQty = 120, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/chickentreats/800/600"},
-            new() { Name = "Frontline Antipulgas Top Spot",  Slug = "frontline-antipulgas-top-spot",  PriceCents = 34990, CostCents = 22000, StockQty = 20,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/frontline/800/600"    },
-            new() { Name = "Vermífugo Drontal Plus",         Slug = "vermifugo-drontal-plus",         PriceCents =  8990, CostCents =  5000, StockQty = 35,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/drontal/800/600"      },
-            new() { Name = "Coleira Antiparasitária Seresto",Slug = "coleira-antiparasitaria-seresto",PriceCents = 17990, CostCents = 10000, StockQty = 15,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/seresto/800/600"      },
-            new() { Name = "Cama Pet Confort M",             Slug = "cama-pet-confort-m",             PriceCents = 12990, CostCents =  7000, StockQty = 10,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/petbed/800/600"       },
-            new() { Name = "Shampoo Neutro Sanol Dog",       Slug = "shampoo-neutro-sanol-dog",       PriceCents =  2990, CostCents =  1400, StockQty = 55,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/sanoldog/800/600"     },
-            new() { Name = "Condicionador Hydra Pro Pet",    Slug = "condicionador-hydra-pro-pet",    PriceCents =  4490, CostCents =  2200, StockQty = 45,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/hydrapro/800/600"     },
+            new() { Name = "Ração Royal Canin Adulto",       Slug = "racao-royal-canin-adulto",       PriceCents = 24990, CostCents = 16000, StockQty = 40,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId   },
+            new() { Name = "Ração Hills Science Diet",       Slug = "racao-hills-science-diet",       PriceCents = 31990, CostCents = 20000, StockQty = 25,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId     },
+            new() { Name = "Petisco Ossinho Dental",         Slug = "petisco-ossinho-dental",         PriceCents =  3990, CostCents =  1800, StockQty = 80,  Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId   },
+            new() { Name = "Petisco Bifinho Frango",         Slug = "petisco-bifinho-frango",         PriceCents =  5490, CostCents =  2700, StockQty = 120, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId},
+            new() { Name = "Frontline Antipulgas Top Spot",  Slug = "frontline-antipulgas-top-spot",  PriceCents = 34990, CostCents = 22000, StockQty = 20,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId    },
+            new() { Name = "Vermífugo Drontal Plus",         Slug = "vermifugo-drontal-plus",         PriceCents =  8990, CostCents =  5000, StockQty = 35,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId      },
+            new() { Name = "Coleira Antiparasitária Seresto",Slug = "coleira-antiparasitaria-seresto",PriceCents = 17990, CostCents = 10000, StockQty = 15,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId      },
+            new() { Name = "Cama Pet Confort M",             Slug = "cama-pet-confort-m",             PriceCents = 12990, CostCents =  7000, StockQty = 10,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId       },
+            new() { Name = "Shampoo Neutro Sanol Dog",       Slug = "shampoo-neutro-sanol-dog",       PriceCents =  2990, CostCents =  1400, StockQty = 55,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId     },
+            new() { Name = "Condicionador Hydra Pro Pet",    Slug = "condicionador-hydra-pro-pet",    PriceCents =  4490, CostCents =  2200, StockQty = 45,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId     },
         };
 
         ApplyMargins(products);
@@ -161,16 +161,16 @@ public static class DbSeeder
 
         var products = new List<Product>
         {
-            new() { Name = "Ração Golden Adulto Frango",      Slug = "racao-golden-adulto-frango",      PriceCents = 18990, CostCents = 11000, StockQty = 45,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/golden1/800/600"    },
-            new() { Name = "Ração Purina Pro Plan Cão",       Slug = "racao-purina-pro-plan-cao",       PriceCents = 27990, CostCents = 17000, StockQty = 30,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/purina1/800/600"    },
-            new() { Name = "Petisco Snack Funcional",         Slug = "petisco-snack-funcional",         PriceCents =  4490, CostCents =  2100, StockQty = 90,  Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/snack1/800/600"     },
-            new() { Name = "Petisco Palito de Couro",         Slug = "petisco-palito-de-couro",         PriceCents =  2990, CostCents =  1300, StockQty = 110, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/couro1/800/600"     },
-            new() { Name = "Antipulgas Advantage Cães",       Slug = "antipulgas-advantage-caes",       PriceCents = 32990, CostCents = 20000, StockQty = 18,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/advantage1/800/600" },
-            new() { Name = "Suplemento Condroitina Joint",    Slug = "suplemento-condroitina-joint",    PriceCents = 11990, CostCents =  7000, StockQty = 25,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/joint1/800/600"     },
-            new() { Name = "Guia Retrátil 5m",                Slug = "guia-retratil-5m",                PriceCents =  9990, CostCents =  5500, StockQty = 22,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/guia1/800/600"      },
-            new() { Name = "Comedouro Inox Duplo",             Slug = "comedouro-inox-duplo",            PriceCents =  7990, CostCents =  4000, StockQty = 35,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/inox1/800/600"      },
-            new() { Name = "Shampoo Seco Spray Pet",          Slug = "shampoo-seco-spray-pet",          PriceCents =  3490, CostCents =  1600, StockQty = 50,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/spray1/800/600"     },
-            new() { Name = "Escova Dental Pet Kit",           Slug = "escova-dental-pet-kit",           PriceCents =  2490, CostCents =  1100, StockQty = 60,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId, ImageUrl = "https://picsum.photos/seed/dental1/800/600"    },
+            new() { Name = "Ração Golden Adulto Frango",      Slug = "racao-golden-adulto-frango",      PriceCents = 18990, CostCents = 11000, StockQty = 45,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId    },
+            new() { Name = "Ração Purina Pro Plan Cão",       Slug = "racao-purina-pro-plan-cao",       PriceCents = 27990, CostCents = 17000, StockQty = 30,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = companyId    },
+            new() { Name = "Petisco Snack Funcional",         Slug = "petisco-snack-funcional",         PriceCents =  4490, CostCents =  2100, StockQty = 90,  Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId     },
+            new() { Name = "Petisco Palito de Couro",         Slug = "petisco-palito-de-couro",         PriceCents =  2990, CostCents =  1300, StockQty = 110, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = companyId     },
+            new() { Name = "Antipulgas Advantage Cães",       Slug = "antipulgas-advantage-caes",       PriceCents = 32990, CostCents = 20000, StockQty = 18,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId },
+            new() { Name = "Suplemento Condroitina Joint",    Slug = "suplemento-condroitina-joint",    PriceCents = 11990, CostCents =  7000, StockQty = 25,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = companyId     },
+            new() { Name = "Guia Retrátil 5m",                Slug = "guia-retratil-5m",                PriceCents =  9990, CostCents =  5500, StockQty = 22,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId      },
+            new() { Name = "Comedouro Inox Duplo",             Slug = "comedouro-inox-duplo",            PriceCents =  7990, CostCents =  4000, StockQty = 35,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = companyId      },
+            new() { Name = "Shampoo Seco Spray Pet",          Slug = "shampoo-seco-spray-pet",          PriceCents =  3490, CostCents =  1600, StockQty = 50,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId     },
+            new() { Name = "Escova Dental Pet Kit",           Slug = "escova-dental-pet-kit",           PriceCents =  2490, CostCents =  1100, StockQty = 60,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = companyId    },
         };
 
         ApplyMargins(products);

@@ -311,11 +311,11 @@ public class MasterCompaniesController : ControllerBase
 
             var products = new List<Product>
             {
-                new() { Name = "Ração Premium",     Slug = "racao-premium",     PriceCents = 19990, CostCents = 12000, StockQty = 50,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = id, ImageUrl = "https://picsum.photos/seed/dogfood/800/600"  },
-                new() { Name = "Petisco Natural",   Slug = "petisco-natural",   PriceCents =  4990, CostCents =  2500, StockQty = 100, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = id, ImageUrl = "https://picsum.photos/seed/treats/800/600"   },
-                new() { Name = "Antipulgas",        Slug = "antipulgas",        PriceCents = 29990, CostCents = 18000, StockQty = 30,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = id, ImageUrl = "https://picsum.photos/seed/flea/800/600"     },
-                new() { Name = "Coleira Ajustável", Slug = "coleira-ajustavel", PriceCents = 15990, CostCents =  8000, StockQty = 20,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = id, ImageUrl = "https://picsum.photos/seed/collar/800/600"   },
-                new() { Name = "Shampoo Pet",       Slug = "shampoo-pet",       PriceCents =  3990, CostCents =  1800, StockQty = 60,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = id, ImageUrl = "https://picsum.photos/seed/shampoo/800/600"  },
+                new() { Name = "Ração Premium",     Slug = "racao-premium",     PriceCents = 19990, CostCents = 12000, StockQty = 50,  Unit = "UN", CategoryId = Cat("racao"),      CompanyId = id  },
+                new() { Name = "Petisco Natural",   Slug = "petisco-natural",   PriceCents =  4990, CostCents =  2500, StockQty = 100, Unit = "UN", CategoryId = Cat("petiscos"),   CompanyId = id   },
+                new() { Name = "Antipulgas",        Slug = "antipulgas",        PriceCents = 29990, CostCents = 18000, StockQty = 30,  Unit = "UN", CategoryId = Cat("remedios"),   CompanyId = id     },
+                new() { Name = "Coleira Ajustável", Slug = "coleira-ajustavel", PriceCents = 15990, CostCents =  8000, StockQty = 20,  Unit = "UN", CategoryId = Cat("acessorios"), CompanyId = id   },
+                new() { Name = "Shampoo Pet",       Slug = "shampoo-pet",       PriceCents =  3990, CostCents =  1800, StockQty = 60,  Unit = "UN", CategoryId = Cat("higiene"),    CompanyId = id  },
             };
 
             foreach (var p in products)
