@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useDeleteAllDeliveries, useOrders } from "@/features/admin/orders/queries";
+import { useDeleteAllDeliveries, useDeleteFinalizedDeliveries, useOrders } from "@/features/admin/orders/queries";
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { OrderStatusBadge } from "@/features/admin/orders/components/OrderStatusBadge";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -46,6 +46,7 @@ export default function OrdersList() {
 
   const ordersQuery = useOrders(page, 20, status || undefined, search || undefined);
   const deleteAllDeliveriesMut = useDeleteAllDeliveries();
+  const deleteFinalizedDeliveriesMut = useDeleteFinalizedDeliveries();
 
   const totalPages = useMemo(() => {
     if (!ordersQuery.data) return 1;
@@ -68,26 +69,56 @@ export default function OrdersList() {
           actions={
             <div className="flex items-center gap-2">
               {role === "admin" && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!confirm("Apagar TODOS os registros de entregas/pedidos desta empresa? Esta ação não pode ser desfeita.")) return;
-                    try {
-                      const res = await deleteAllDeliveriesMut.mutateAsync();
-                      alert(
-                        `Limpeza concluída.\nPedidos apagados: ${res.deletedOrders}\nParadas apagadas: ${res.deletedRouteStops}\nRotas órfãs apagadas: ${res.deletedRoutes}\nDAVs de entrega apagados: ${res.deletedDeliveryDavs}`,
-                      );
-                    } catch (err) {
-                      alert(err instanceof Error ? err.message : "Erro ao apagar registros de entregas.");
-                    }
-                  }}
-                  disabled={deleteAllDeliveriesMut.isPending}
-                  className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ background: "linear-gradient(135deg, #b42318 0%, #ef4444 100%)" }}
-                >
-                  <Trash2 size={15} />
-                  {deleteAllDeliveriesMut.isPending ? "Apagando..." : "Apagar entregas"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm("Apagar entregas encerradas (ENTREGUE e CANCELADO)? Esta acao nao pode ser desfeita.")) return;
+                      try {
+                        const res = await deleteFinalizedDeliveriesMut.mutateAsync();
+                        alert(
+                          `Limpeza de entregas encerradas concluida.
+Pedidos apagados: ${res.deletedOrders}
+Paradas apagadas: ${res.deletedRouteStops}
+Rotas ?rf?s apagadas: ${res.deletedRoutes}
+DAVs de entrega apagados: ${res.deletedDeliveryDavs}`,
+                        );
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Erro ao apagar entregas encerradas.");
+                      }
+                    }}
+                    disabled={deleteFinalizedDeliveriesMut.isPending}
+                    className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg, #b45309 0%, #f59e0b 100%)" }}
+                  >
+                    <Trash2 size={15} />
+                    {deleteFinalizedDeliveriesMut.isPending ? "Apagando..." : "Apagar encerradas"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm("Apagar TODOS os registros de entregas/pedidos desta empresa? Esta a??o n?o pode ser desfeita.")) return;
+                      try {
+                        const res = await deleteAllDeliveriesMut.mutateAsync();
+                        alert(
+                          `Limpeza total conclu?da.
+Pedidos apagados: ${res.deletedOrders}
+Paradas apagadas: ${res.deletedRouteStops}
+Rotas ?rf?s apagadas: ${res.deletedRoutes}
+DAVs de entrega apagados: ${res.deletedDeliveryDavs}`,
+                        );
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : "Erro ao apagar registros de entregas.");
+                      }
+                    }}
+                    disabled={deleteAllDeliveriesMut.isPending}
+                    className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    style={{ background: "linear-gradient(135deg, #b42318 0%, #ef4444 100%)" }}
+                  >
+                    <Trash2 size={15} />
+                    {deleteAllDeliveriesMut.isPending ? "Apagando..." : "Apagar tudo"}
+                  </button>
+                </>
               )}
               <button
                 type="button"

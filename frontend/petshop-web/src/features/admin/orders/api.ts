@@ -98,3 +98,9 @@ export async function deleteAllDeliveries(): Promise<DeleteAllDeliveriesResponse
     method: "DELETE",
   });
 }
+
+export async function deleteFinalizedDeliveries(): Promise<DeleteAllDeliveriesResponse> {
+  return adminFetch<DeleteAllDeliveriesResponse>("/admin/orders/deliveries/finalized", {
+    method: "DELETE",
+  });
+}

@@ -290,6 +290,77 @@ public class AdminOrdersController : ControllerBase
             deletedDeliveryDavs
         });
     }
+
+    // ── DELETE /admin/orders/deliveries/finalized ─────────────────────────────
+    /// <summary>
+    /// Limpa apenas entregas já encerradas (Status = ENTREGUE ou CANCELADO).
+    /// Restrito ao perfil admin.
+    /// </summary>
+    [HttpDelete("deliveries/finalized")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DeleteFinalizedDeliveries(CancellationToken ct = default)
+    {
+        var deliveredOrderIdsQuery = _db.Orders
+            .Where(o => o.CompanyId == CompanyId &&
+                        (o.Status == OrderStatus.ENTREGUE || o.Status == OrderStatus.CANCELADO))
+            .Select(o => o.Id);
+
+        var deliveredOrdersCount = await deliveredOrderIdsQuery.CountAsync(ct);
+        if (deliveredOrdersCount == 0)
+        {
+            return Ok(new
+            {
+                deletedOrders = 0,
+                deletedRouteStops = 0,
+                deletedRoutes = 0,
+                deletedDeliveryDavs = 0
+            });
+        }
+
+        var routeIds = await _db.RouteStops
+            .Where(rs => deliveredOrderIdsQuery.Contains(rs.OrderId))
+            .Select(rs => rs.RouteId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var routeStopsToDelete = await _db.RouteStops
+            .CountAsync(rs => deliveredOrderIdsQuery.Contains(rs.OrderId), ct);
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        var deletedDeliveryDavs = await _db.SalesQuotes
+            .Where(q => q.CompanyId == CompanyId &&
+                        q.OriginOrderId.HasValue &&
+                        deliveredOrderIdsQuery.Contains(q.OriginOrderId.Value))
+            .ExecuteDeleteAsync(ct);
+
+        var deletedOrders = await _db.Orders
+            .Where(o => o.CompanyId == CompanyId &&
+                        (o.Status == OrderStatus.ENTREGUE || o.Status == OrderStatus.CANCELADO))
+            .ExecuteDeleteAsync(ct);
+
+        var deletedRoutes = 0;
+        if (routeIds.Count > 0)
+        {
+            deletedRoutes = await _db.Routes
+                .Where(r => routeIds.Contains(r.Id) && !r.Stops.Any())
+                .ExecuteDeleteAsync(ct);
+        }
+
+        await tx.CommitAsync(ct);
+
+        _logger.LogWarning(
+            "🧹 PURGE_DELIVERIES_CLOSED | CompanyId={CompanyId} | Orders={Orders} | RouteStops={RouteStops} | Routes={Routes} | DeliveryDavs={DeliveryDavs}",
+            CompanyId, deletedOrders, routeStopsToDelete, deletedRoutes, deletedDeliveryDavs);
+
+        return Ok(new
+        {
+            deletedOrders,
+            deletedRouteStops = routeStopsToDelete,
+            deletedRoutes,
+            deletedDeliveryDavs
+        });
+    }
 }
 
 public sealed class RetrogradeOrderRequest
