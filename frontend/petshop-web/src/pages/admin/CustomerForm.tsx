@@ -200,7 +200,7 @@ export default function CustomerForm() {
     setError(null);
     const payload: UpsertCustomerRequest = {
       name: form.name.trim(),
-      phone: unmask(form.phone),
+      phone: unmask(form.phone ?? "") || undefined,
       cpf: unmask(form.cpf ?? "") || undefined,
       cep: unmask(form.cep ?? "") || undefined,
       address: form.address?.trim() || undefined,
