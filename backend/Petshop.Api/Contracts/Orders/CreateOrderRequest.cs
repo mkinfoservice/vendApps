@@ -25,6 +25,12 @@ public sealed class CreateOrderRequest
 
     /// <summary>CPF do cliente para cadastro no programa de fidelidade (opcional).</summary>
     public string? CustomerCpf { get; init; }
+
+    /// <summary>
+    /// ID do cliente já resolvido pelo endpoint /public/customers/identify.
+    /// Quando presente, o OrdersController vincula diretamente sem novo lookup.
+    /// </summary>
+    public Guid? CustomerId { get; init; }
 }
 
 public sealed class CreateOrderItemRequest

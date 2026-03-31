@@ -38,6 +38,7 @@ export type CreateOrderRequest = {
   // ── Auto-atendimento via mesa ──────────────────────────────────────────────
   tableId?: string;
   customerCpf?: string;
+  customerId?: string;
 };
 
 export type CreateOrderResponse = {
@@ -59,6 +60,31 @@ export type CreateOrderResponse = {
 
   coupon?: string | null;
 };
+
+export type IdentifyCustomerResponse = {
+  customerId: string;
+  name: string;
+  pointsBalance: number;
+  isNew: boolean;
+};
+
+export async function identifyCustomer(
+  tableId: string,
+  name: string,
+  phone: string,
+  cpf?: string,
+): Promise<IdentifyCustomerResponse> {
+  const r = await fetch(`${API_URL}/public/customers/identify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ tableId, name, phone, cpf }),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`Erro ao identificar cliente: ${r.status} ${text}`);
+  }
+  return r.json();
+}
 
 export async function CreateOrder(payload: CreateOrderRequest): Promise<CreateOrderResponse> {
   const r = await fetch(`${API_URL}/orders`, {

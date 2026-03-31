@@ -782,33 +782,39 @@ public class OrdersController : ControllerBase
         };
 
         // Se pedido de mesa e cliente forneceu telefone, tenta vincular/criar customer
-        if (isTableOrder && !string.IsNullOrWhiteSpace(req.Phone))
+        if (isTableOrder)
         {
-            var phone = req.Phone.Trim().Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "");
-            // Resolve CompanyId do primeiro produto para buscar o customer
-            var firstProduct = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == req.Items[0].ProductId, ct);
-            if (firstProduct is not null)
+            if (req.CustomerId.HasValue)
             {
-                var existing = await _db.Customers.FirstOrDefaultAsync(
-                    c => c.CompanyId == firstProduct.CompanyId && c.Phone == phone, ct);
-                if (existing is not null)
+                // ID já resolvido pelo /public/customers/identify — vincula diretamente
+                order.CustomerId = req.CustomerId.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(req.Phone))
+            {
+                var phone = req.Phone.Trim().Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "");
+                var firstProduct = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == req.Items[0].ProductId, ct);
+                if (firstProduct is not null)
                 {
-                    order.CustomerId = existing.Id;
-                }
-                else if (!string.IsNullOrWhiteSpace(req.Name))
-                {
-                    // Cadastro automático no programa de fidelidade
-                    var newCustomer = new Entities.Customer
+                    var existing = await _db.Customers.FirstOrDefaultAsync(
+                        c => c.CompanyId == firstProduct.CompanyId && c.Phone == phone, ct);
+                    if (existing is not null)
                     {
-                        CompanyId = firstProduct.CompanyId,
-                        Name = req.Name.Trim(),
-                        Phone = phone,
-                        Cpf = string.IsNullOrWhiteSpace(req.CustomerCpf) ? null
-                            : new string(req.CustomerCpf.Where(char.IsDigit).ToArray()),
-                    };
-                    _db.Customers.Add(newCustomer);
-                    await _db.SaveChangesAsync(ct);
-                    order.CustomerId = newCustomer.Id;
+                        order.CustomerId = existing.Id;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(req.Name))
+                    {
+                        var newCustomer = new Entities.Customer
+                        {
+                            CompanyId = firstProduct.CompanyId,
+                            Name = req.Name.Trim(),
+                            Phone = phone,
+                            Cpf = string.IsNullOrWhiteSpace(req.CustomerCpf) ? null
+                                : new string(req.CustomerCpf.Where(char.IsDigit).ToArray()),
+                        };
+                        _db.Customers.Add(newCustomer);
+                        await _db.SaveChangesAsync(ct);
+                        order.CustomerId = newCustomer.Id;
+                    }
                 }
             }
         }

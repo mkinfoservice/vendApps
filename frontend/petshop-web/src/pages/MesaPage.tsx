@@ -6,7 +6,7 @@ import {
   CheckCircle2, Star, ChevronRight,
 } from "lucide-react";
 import type { Category, Product, StoreFrontConfig } from "@/features/catalog/api";
-import { CreateOrder } from "@/features/orders/api";
+import { CreateOrder, identifyCustomer } from "@/features/orders/api";
 
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
@@ -165,18 +165,29 @@ function StepName({ brand, tableNum, tableName, maxGuests, initialName, initialG
 }
 
 // ── Step 2: Fidelidade ─────────────────────────────────────────────────────────
-function StepRegister({ name, primaryColor, onSkip, onRegister }: {
-  name: string; primaryColor?: string;
-  onSkip: () => void; onRegister: (phone: string, cpf: string) => void;
+function StepRegister({ name, tableId, primaryColor, onSkip, onRegister }: {
+  name: string; tableId: string; primaryColor?: string;
+  onSkip: () => void;
+  onRegister: (phone: string, cpf: string, customerId: string, pointsBalance: number, isNew: boolean) => void;
 }) {
-  const [phone, setPhone] = useState("");
-  const [cpf,   setCpf]   = useState("");
+  const [phone,   setPhone]   = useState("");
+  const [cpf,     setCpf]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err,     setErr]     = useState<string | null>(null);
   const color = primaryColor || "#7c5cf8";
 
-  function handleRegister() {
+  async function handleRegister() {
     const digits = phone.replace(/\D/g, "");
     if (digits.length < 10) return;
-    onRegister(digits, cpf.replace(/\D/g, ""));
+    setLoading(true); setErr(null);
+    try {
+      const res = await identifyCustomer(tableId, name, digits, cpf.replace(/\D/g, "") || undefined);
+      onRegister(digits, cpf.replace(/\D/g, ""), res.customerId, res.pointsBalance, res.isNew);
+    } catch {
+      setErr("Não foi possível identificar. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -249,18 +260,21 @@ function StepRegister({ name, primaryColor, onSkip, onRegister }: {
             </div>
           </div>
 
+          {err && <p className="text-sm text-red-500 text-center font-medium">{err}</p>}
+
           <button
             onClick={handleRegister}
-            disabled={phone.replace(/\D/g, "").length < 10}
+            disabled={phone.replace(/\D/g, "").length < 10 || loading}
             className="w-full h-12 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition active:scale-[0.98]"
             style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
           >
-            Cadastrar e ganhar pontos
+            {loading ? "Identificando…" : "Cadastrar e ganhar pontos"}
           </button>
 
           <button
             onClick={onSkip}
-            className="w-full text-sm text-gray-400 hover:text-gray-700 transition py-1 font-medium"
+            disabled={loading}
+            className="w-full text-sm text-gray-400 hover:text-gray-700 transition py-1 font-medium disabled:opacity-40"
           >
             Agora não, só quero pedir →
           </button>
@@ -343,15 +357,15 @@ function MesaProductCard({ product, qty, primaryColor, onAdd, onInc, onDec }: {
 }
 
 // ── Cart Sheet ─────────────────────────────────────────────────────────────────
-function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone, cpf, primaryColor,
+function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone, cpf, customerId, primaryColor,
   onInc, onDec, onRemove, onClose, onSuccess }: {
   items: CartItem[]; totalCents: number; tableId: string;
   tableLabel?: string;
   guests: number;
-  name: string; phone: string; cpf: string; primaryColor?: string;
+  name: string; phone: string; cpf: string; customerId: string | null; primaryColor?: string;
   onInc: (id: string) => void; onDec: (id: string) => void;
   onRemove: (id: string) => void; onClose: () => void;
-  onSuccess: (orderNum: string) => void;
+  onSuccess: (orderNum: string, davCode?: string | null) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -365,10 +379,10 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
         items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
         paymentMethodStr: "PAY_AT_COUNTER", tableId,
         complement: `Mesa com ${guests} pessoa(s)`,
-        customerPhone: phone || undefined,
         customerCpf: cpf || undefined,
+        ...(customerId ? { customerId } : {}),
       } as any);
-      onSuccess(res.orderNumber);
+      onSuccess(res.orderNumber, res.davPublicId);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro ao enviar pedido.");
     } finally { setLoading(false); }
@@ -454,8 +468,8 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
 }
 
 // ── Confirmation ───────────────────────────────────────────────────────────────
-function Confirmation({ orderNum, name, primaryColor, onNewOrder }: {
-  orderNum: string; name: string; primaryColor?: string; onNewOrder: () => void;
+function Confirmation({ orderNum, davCode, name, primaryColor, onNewOrder }: {
+  orderNum: string; davCode?: string | null; name: string; primaryColor?: string; onNewOrder: () => void;
 }) {
   const color = primaryColor || "#7c5cf8";
   return (
@@ -478,10 +492,17 @@ function Confirmation({ orderNum, name, primaryColor, onNewOrder }: {
             <span className="text-xs font-semibold">Pedido</span>
             <span className="text-lg font-black ml-2">#{orderNum}</span>
           </div>
+          {davCode && (
+            <div className="inline-block px-4 py-2 rounded-2xl mt-2"
+              style={{ backgroundColor: "#ecfdf3", color: "#047857" }}>
+              <span className="text-xs font-semibold">Codigo para pagamento no caixa</span>
+              <span className="text-lg font-black ml-2">{davCode}</span>
+            </div>
+          )}
         </div>
 
         <p className="text-sm text-gray-400 leading-relaxed">
-          Seu pedido foi recebido e está sendo preparado. O pagamento será no caixa quando finalizar a mesa.
+          Seu pedido foi recebido e está sendo preparado. {davCode ? "Mostre o codigo DAV no caixa para importar e pagar." : "O pagamento sera no caixa quando finalizar a mesa."}
         </p>
 
         <button
@@ -511,12 +532,16 @@ export default function MesaPage() {
   const [step,     setStep]     = useState<Step>("name");
   const [name,     setName]     = useState(initialHost);
   const [guests,   setGuests]   = useState(initialGuests);
-  const [phone,    setPhone]    = useState("");
-  const [cpf,      setCpf]      = useState("");
+  const [phone,        setPhone]        = useState("");
+  const [cpf,          setCpf]          = useState("");
+  const [customerId,   setCustomerId]   = useState<string | null>(null);
+  const [customerPoints, setCustomerPoints] = useState(0);
+  const [customerIsNew,  setCustomerIsNew]  = useState(false);
   const [catSlug,  setCatSlug]  = useState("");
   const [search,   setSearch]   = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [orderNum, setOrderNum] = useState("");
+  const [davCode, setDavCode] = useState<string>("");
 
   const cart = useLocalCart();
 
@@ -556,10 +581,22 @@ export default function MesaPage() {
   const safeGuests = Math.min(Math.max(guests, 1), Math.max(tableCapacity, 1));
 
   function handleNameNext(n: string, g: number) { setName(n); setGuests(g); setStep("register"); }
-  function handleRegister(p: string, c: string) { setPhone(p); setCpf(c); setStep("catalog"); }
-  function handleSkipRegister() { setStep("catalog"); }
-  function handleSuccess(num: string) { setOrderNum(num); setCartOpen(false); cart.clear(); setStep("done"); }
-  function handleNewOrder() { setStep("register"); }
+  function handleRegister(p: string, c: string, cid: string, pts: number, isNew: boolean) {
+    setPhone(p); setCpf(c); setCustomerId(cid); setCustomerPoints(pts); setCustomerIsNew(isNew);
+    setStep("catalog");
+  }
+  function handleSkipRegister() { setCustomerId(null); setStep("catalog"); }
+  function handleSuccess(num: string, code?: string | null) {
+    setOrderNum(num);
+    setDavCode(code ?? "");
+    setCartOpen(false);
+    cart.clear();
+    setStep("done");
+  }
+  function handleNewOrder() {
+    setDavCode(""); setCustomerId(null); setCustomerPoints(0); setCustomerIsNew(false);
+    setStep("register");
+  }
 
   if (step === "name") {
     return (
@@ -577,10 +614,18 @@ export default function MesaPage() {
     );
   }
   if (step === "register") {
-    return <StepRegister name={name} primaryColor={primaryColor} onSkip={handleSkipRegister} onRegister={handleRegister} />;
+    return (
+      <StepRegister
+        name={name}
+        tableId={tableId ?? ""}
+        primaryColor={primaryColor}
+        onSkip={handleSkipRegister}
+        onRegister={handleRegister}
+      />
+    );
   }
   if (step === "done") {
-    return <Confirmation orderNum={orderNum} name={name} primaryColor={primaryColor} onNewOrder={handleNewOrder} />;
+    return <Confirmation orderNum={orderNum} davCode={davCode} name={name} primaryColor={primaryColor} onNewOrder={handleNewOrder} />;
   }
 
   // ── Catalog ─────────────────────────────────────────────────────────────────
@@ -726,6 +771,7 @@ export default function MesaPage() {
           name={name}
           phone={phone}
           cpf={cpf}
+          customerId={customerId}
           primaryColor={primaryColor}
           onInc={cart.inc}
           onDec={cart.dec}
