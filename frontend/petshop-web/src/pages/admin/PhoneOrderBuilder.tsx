@@ -108,7 +108,6 @@ export default function PhoneOrderBuilder() {
   const [cashGiven, setCashGiven] = useState("");
   const [deliveryCents, setDeliveryCents] = useState(0);
 
-  const [showRegisterForm, setShowRegisterForm] = useState(false);
   const [registerLoading, setRegisterLoading] = useState(false);
   const [registerError, setRegisterError]     = useState<string | null>(null);
 
@@ -319,7 +318,6 @@ export default function PhoneOrderBuilder() {
       setGuestPhone(isCpf ? "" : lookupValue);
       setGuestCpf(isCpf ? lookupValue : "");
     }
-    setShowRegisterForm(false);
     setStep("cart");
   }
 
@@ -334,7 +332,6 @@ export default function PhoneOrderBuilder() {
         cpf:   guestCpf.trim()   || undefined,
       });
       setCustomer(created);
-      setShowRegisterForm(false);
       setStep("cart");
     } catch (e) {
       setRegisterError(e instanceof Error ? e.message : "Erro ao cadastrar cliente.");
