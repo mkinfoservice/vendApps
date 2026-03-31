@@ -1,14 +1,17 @@
 using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Petshop.Api.Data;
 
 #nullable disable
 
 namespace Petshop.Api.Migrations;
 
-/// <inheritdoc />
-public partial class AddTables : Migration
+[Migration("20260330200000_AddTables")]
+[DbContext(typeof(AppDbContext))]
+public class AddTables : Migration
 {
-    /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         // ── Tables (Mesas) ────────────────────────────────────────────────────
@@ -57,7 +60,6 @@ public partial class AddTables : Migration
             filter: "\"TableId\" IS NOT NULL");
     }
 
-    /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.DropIndex(name: "IX_Orders_TableId", table: "Orders");
