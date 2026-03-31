@@ -253,6 +253,7 @@ public class AdminProductsController : ControllerBase
         foreach (var img in product.Images)
             await _imageStorage.DeleteAsync(img.Url, ct);
 
+        await _db.StockMovements.Where(m => m.ProductId == id).ExecuteDeleteAsync(ct);
         await _db.ProductPriceHistories.Where(h => h.ProductId == id).ExecuteDeleteAsync(ct);
         await _db.ProductChangeLogs.Where(l => l.ProductId == id).ExecuteDeleteAsync(ct);
 
@@ -298,6 +299,7 @@ public class AdminProductsController : ControllerBase
         var deletableIds = deletable.Select(p => p.Id).ToList();
         if (deletableIds.Count > 0)
         {
+            await _db.StockMovements.Where(m => deletableIds.Contains(m.ProductId)).ExecuteDeleteAsync(ct);
             await _db.ProductPriceHistories.Where(h => deletableIds.Contains(h.ProductId)).ExecuteDeleteAsync(ct);
             await _db.ProductChangeLogs.Where(l => deletableIds.Contains(l.ProductId)).ExecuteDeleteAsync(ct);
             _db.Products.RemoveRange(deletable);
@@ -349,6 +351,7 @@ public class AdminProductsController : ControllerBase
             catch { /* best effort */ }
         }
 
+        await _db.StockMovements.Where(m => candidateIds.Contains(m.ProductId)).ExecuteDeleteAsync(ct);
         await _db.ProductPriceHistories.Where(h => candidateIds.Contains(h.ProductId)).ExecuteDeleteAsync(ct);
         await _db.ProductChangeLogs.Where(l => candidateIds.Contains(l.ProductId)).ExecuteDeleteAsync(ct);
         await _db.ProductImages.Where(i => candidateIds.Contains(i.ProductId)).ExecuteDeleteAsync(ct);
