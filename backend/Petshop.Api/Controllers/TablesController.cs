@@ -84,7 +84,7 @@ public class TablesController : ControllerBase
         _db.Tables.Add(table);
         await _db.SaveChangesAsync(ct);
 
-        return Ok(MapTable(table, GetCatalogBaseUrl()));
+        return Ok(MapTable(table, await GetCatalogBaseUrlAsync(ct)));
     }
 
     // ── PUT /admin/tables/{id} ────────────────────────────────────────────────
@@ -112,7 +112,7 @@ public class TablesController : ControllerBase
         table.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
 
-        return Ok(MapTable(table, GetCatalogBaseUrl()));
+        return Ok(MapTable(table, await GetCatalogBaseUrlAsync(ct)));
     }
 
     // ── DELETE /admin/tables/{id} ─────────────────────────────────────────────
@@ -169,7 +169,7 @@ public class TablesController : ControllerBase
     public async Task<IActionResult> Overview(CancellationToken ct)
     {
         var companyId = CompanyId;
-        var baseUrl   = GetCatalogBaseUrl();
+        var baseUrl   = await GetCatalogBaseUrlAsync(ct);
 
         var tables = await _db.Tables
             .AsNoTracking()
@@ -204,13 +204,39 @@ public class TablesController : ControllerBase
         return Ok(result);
     }
 
+    // ── GET /public/tables/{tableId} (sem auth) ───────────────────────────────
+    [AllowAnonymous]
+    [HttpGet("/public/tables/{tableId:guid}")]
+    public async Task<IActionResult> PublicTableInfo(Guid tableId, CancellationToken ct)
+    {
+        var result = await _db.Tables
+            .AsNoTracking()
+            .Where(t => t.Id == tableId && t.IsActive)
+            .Join(_db.Companies.AsNoTracking(),
+                t => t.CompanyId,
+                c => c.Id,
+                (t, c) => new { t.Number, t.Name, c.Slug })
+            .FirstOrDefaultAsync(ct);
+
+        if (result is null) return NotFound();
+        return Ok(new { result.Slug, result.Number, result.Name });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private string GetCatalogBaseUrl()
+    private async Task<string> GetCatalogBaseUrlAsync(CancellationToken ct)
     {
-        // Em produção, usa o slug da empresa no domínio.
-        // Fallback para a base URL configurada.
-        return _config["App:CatalogBaseUrl"] ?? "https://vendapps.com.br";
+        var baseDomain = _config["App:BaseDomain"] ?? "vendapps.com.br";
+        var slug = await _db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == CompanyId)
+            .Select(c => c.Slug)
+            .FirstOrDefaultAsync(ct);
+
+        if (!string.IsNullOrEmpty(slug))
+            return $"https://{slug}.{baseDomain}";
+
+        return _config["App:CatalogBaseUrl"] ?? $"https://{baseDomain}";
     }
 
     private static object MapTable(Table t, string baseUrl) => new

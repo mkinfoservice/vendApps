@@ -5,9 +5,32 @@ import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
   CheckCircle2, Star, ChevronLeft, UtensilsCrossed,
 } from "lucide-react";
-import { fetchCategories, fetchProducts, fetchStoreFront } from "@/features/catalog/api";
+import type { Category, Product, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder } from "@/features/orders/api";
-import type { Product } from "@/features/catalog/api";
+
+// ── Catalog helpers com slug explícito ────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
+
+async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null }> {
+  const r = await fetch(`${API_URL}/public/tables/${tableId}`);
+  if (!r.ok) throw new Error("Mesa não encontrada");
+  return r.json();
+}
+
+function makeCatalogApi(slug: string) {
+  const base = `${API_URL}/catalog/${slug}`;
+  return {
+    storefront: (): Promise<StoreFrontConfig> => fetch(`${base}/storefront`).then(r => r.json()),
+    categories: (): Promise<Category[]>      => fetch(`${base}/categories`).then(r => r.json()),
+    products:   (catSlug?: string, search?: string): Promise<Product[]> => {
+      const p = new URLSearchParams();
+      if (catSlug) p.set("categorySlug", catSlug);
+      if (search)  p.set("search", search);
+      const qs = p.toString();
+      return fetch(`${base}/products${qs ? `?${qs}` : ""}`).then(r => r.json());
+    },
+  };
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -453,15 +476,26 @@ export default function MesaPage() {
 
   const cart = useLocalCart();
 
-  const { data: sf }          = useQuery({ queryKey: ["storefront"], queryFn: fetchStoreFront });
-  const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ["products", catSlug, search],
-    queryFn: () => fetchProducts(catSlug || undefined, search || undefined),
+  // Resolve slug da empresa a partir do tableId (endpoint público, sem auth)
+  const { data: tableInfo } = useQuery({
+    queryKey: ["mesa-info", tableId],
+    queryFn: () => fetchTableInfo(tableId!),
+    enabled: !!tableId,
+    staleTime: Infinity,
   });
 
-  const brand = sf?.storeName || "Cardápio";
-  const tableNum = undefined; // Could fetch table info here if needed
+  const api = tableInfo ? makeCatalogApi(tableInfo.slug) : null;
+
+  const { data: sf }               = useQuery({ queryKey: ["storefront", tableInfo?.slug], queryFn: api!.storefront,  enabled: !!api });
+  const { data: categories = [] }  = useQuery<Category[]>({ queryKey: ["categories", tableInfo?.slug], queryFn: api!.categories,  enabled: !!api });
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
+    queryKey: ["products", tableInfo?.slug, catSlug, search],
+    queryFn: () => api!.products(catSlug || undefined, search || undefined),
+    enabled: !!api,
+  });
+
+  const brand    = sf?.storeName || "Cardápio";
+  const tableNum = tableInfo?.number;
 
   // Debounce search
   const searchRef = useRef(search);
