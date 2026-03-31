@@ -775,8 +775,8 @@ export default function MesaPage() {
   const [phone,        setPhone]        = useState("");
   const [cpf,          setCpf]          = useState("");
   const [customerId,   setCustomerId]   = useState<string | null>(null);
-  const [customerPoints, setCustomerPoints] = useState(0);
-  const [customerIsNew,  setCustomerIsNew]  = useState(false);
+  const [_customerPoints, setCustomerPoints] = useState(0);
+  const [_customerIsNew,  setCustomerIsNew]  = useState(false);
   const [catSlug,      setCatSlug]      = useState("");
   const [search,       setSearch]       = useState("");
   const [cartOpen,     setCartOpen]     = useState(false);
