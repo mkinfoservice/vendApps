@@ -284,7 +284,7 @@ function StepRegister({ name, tableId, primaryColor, onSkip, onRegister }: {
   const [cpf,     setCpf]     = useState("");
   const [loading, setLoading] = useState(false);
   const [err,     setErr]     = useState<string | null>(null);
-  const color = primaryColor || "#7c5cf8";
+  const color = primaryColor || GC.caramel;
 
   async function handleRegister() {
     const digits = phone.replace(/\D/g, "");
@@ -698,7 +698,7 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
 }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const color = primaryColor || "#7c5cf8";
+  const color = primaryColor || GC.caramel;
 
   async function handleOrder() {
     setLoading(true); setErr(null);
@@ -722,23 +722,24 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl" style={{ background: GC.bg }}>
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-12 h-1 rounded-full bg-gray-200" />
+          <div className="w-12 h-1 rounded-full" style={{ background: `rgba(107,79,58,0.2)` }} />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-5 pb-4" style={{ borderBottom: `1px solid rgba(107,79,58,0.12)` }}>
           <div>
-            <h2 className="font-black text-gray-900 text-lg">Seu pedido</h2>
-            <p className="text-xs text-gray-400">
+            <h2 className="font-black text-lg" style={{ color: GC.dark }}>Seu pedido</h2>
+            <p className="text-xs" style={{ color: GC.brown, opacity: 0.6 }}>
               {tableLabel ? `${tableLabel} · ` : ""}{items.length} iten{items.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition hover:bg-gray-200">
-            <X size={15} className="text-gray-500" />
+          <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center transition active:scale-90"
+            style={{ background: GC.cream }}>
+            <X size={15} style={{ color: GC.brown }} />
           </button>
         </div>
 
@@ -748,26 +749,29 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
             <div key={product.id} className="flex items-center gap-3">
               {product.imageUrl && (
                 <img src={product.imageUrl} alt={product.name}
-                  className="w-14 h-14 rounded-2xl object-cover bg-gray-50 shrink-0 shadow-sm" />
+                  className="w-14 h-14 rounded-2xl object-cover shrink-0 shadow-sm"
+                  style={{ background: GC.cream }} />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{fmtBRL(product.priceCents)} · un.</p>
+                <p className="text-sm font-semibold truncate" style={{ color: GC.dark }}>{product.name}</p>
+                <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>{fmtBRL(product.priceCents)} · un.</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => onDec(product.id)}
-                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center transition hover:bg-gray-50 active:scale-90">
-                  <Minus size={11} className="text-gray-600" />
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
+                  style={{ border: `1.5px solid rgba(107,79,58,0.18)`, color: GC.brown }}>
+                  <Minus size={11} />
                 </button>
-                <span className="w-6 text-center text-sm font-black text-gray-900">{qty}</span>
+                <span className="w-6 text-center text-sm font-black" style={{ color: GC.dark }}>{qty}</span>
                 <button onClick={() => onInc(product.id)}
                   className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
                   style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
                   <Plus size={11} />
                 </button>
                 <button onClick={() => onRemove(product.id)}
-                  className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center ml-1 transition hover:bg-red-100 active:scale-90">
-                  <Trash2 size={11} className="text-red-400" />
+                  className="w-7 h-7 rounded-full flex items-center justify-center ml-1 transition active:scale-90"
+                  style={{ background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>
+                  <Trash2 size={11} />
                 </button>
               </div>
             </div>
@@ -775,21 +779,21 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
         </div>
 
         {/* Footer */}
-        <div className="px-5 pb-10 pt-4 border-t border-gray-100 space-y-4">
+        <div className="px-5 pb-10 pt-4 space-y-4" style={{ borderTop: `1px solid rgba(107,79,58,0.12)` }}>
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-500">Total</span>
-            <span className="text-2xl font-black text-gray-900">{fmtBRL(totalCents)}</span>
+            <span className="text-sm font-medium" style={{ color: GC.brown }}>Total</span>
+            <span className="text-2xl font-black" style={{ color: GC.dark }}>{fmtBRL(totalCents)}</span>
           </div>
-          <p className="text-xs text-gray-400 text-center -mt-2">
+          <p className="text-xs text-center -mt-2" style={{ color: GC.brown, opacity: 0.5 }}>
             Pagamento no caixa ao finalizar a mesa · Sem taxa de entrega
           </p>
           {err && <p className="text-sm text-red-500 text-center font-medium">{err}</p>}
           <button
             onClick={handleOrder}
             disabled={loading}
-            className="w-full h-14 rounded-2xl font-black text-base text-white disabled:opacity-50 transition active:scale-[0.98] shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-              boxShadow: `0 8px 24px ${color}40` }}
+            className="w-full h-14 rounded-2xl font-black text-base text-white disabled:opacity-50 transition active:scale-[0.98]"
+            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+              boxShadow: `0 8px 24px rgba(28,18,9,0.3)` }}
           >
             {loading ? "Enviando…" : "Confirmar pedido"}
           </button>
@@ -800,47 +804,47 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
 }
 
 // ── Confirmation ───────────────────────────────────────────────────────────────
-function Confirmation({ orderNum, davCode, name, primaryColor, onNewOrder }: {
+function Confirmation({ orderNum, davCode, name, onNewOrder }: {
   orderNum: string; davCode?: string | null; name: string; primaryColor?: string; onNewOrder: () => void;
 }) {
-  const color = primaryColor || "#7c5cf8";
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: "#fafafa" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: GC.bg }}>
       <div className="w-full max-w-xs space-y-6">
         <div
           className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto shadow-lg"
-          style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+          style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 8px 32px rgba(28,18,9,0.25)" }}
         >
-          <CheckCircle2 className="w-12 h-12 text-white" />
+          <CheckCircle2 className="w-12 h-12" style={{ color: GC.caramel }} />
         </div>
 
         <div className="space-y-2">
-          <h2 className="text-3xl font-black text-gray-900">Pedido enviado!</h2>
-          <p className="text-gray-500">
-            Obrigado, <strong className="text-gray-800">{name.split(" ")[0]}</strong>!
+          <h2 className="text-3xl font-black" style={{ color: GC.dark }}>Pedido enviado!</h2>
+          <p style={{ color: GC.brown, opacity: 0.7 }}>
+            Obrigado, <strong style={{ color: GC.dark, opacity: 1 }}>{name.split(" ")[0]}</strong>!
           </p>
           <div className="inline-block px-4 py-2 rounded-2xl mt-2"
-            style={{ backgroundColor: `${color}10`, color }}>
+            style={{ background: `${GC.caramel}18`, color: GC.caramel }}>
             <span className="text-xs font-semibold">Pedido</span>
             <span className="text-lg font-black ml-2">#{orderNum}</span>
           </div>
           {davCode && (
-            <div className="inline-block px-4 py-2 rounded-2xl mt-2"
-              style={{ backgroundColor: "#ecfdf3", color: "#047857" }}>
-              <span className="text-xs font-semibold">Codigo para pagamento no caixa</span>
-              <span className="text-lg font-black ml-2">{davCode}</span>
+            <div className="block px-4 py-3 rounded-2xl mt-2"
+              style={{ background: "linear-gradient(135deg, #059669, #047857)", color: "#fff" }}>
+              <span className="text-xs font-semibold block opacity-80">Código para pagamento no caixa</span>
+              <span className="text-2xl font-black tracking-widest">{davCode}</span>
             </div>
           )}
         </div>
 
-        <p className="text-sm text-gray-400 leading-relaxed">
-          Seu pedido foi recebido e está sendo preparado. {davCode ? "Mostre o codigo DAV no caixa para importar e pagar." : "O pagamento sera no caixa quando finalizar a mesa."}
+        <p className="text-sm leading-relaxed" style={{ color: GC.brown, opacity: 0.55 }}>
+          Seu pedido foi recebido e está sendo preparado.{" "}
+          {davCode ? "Mostre o código DAV no caixa para importar e pagar." : "O pagamento será no caixa quando finalizar a mesa."}
         </p>
 
         <button
           onClick={onNewOrder}
           className="w-full h-12 rounded-2xl font-bold text-sm text-white transition active:scale-[0.98]"
-          style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+          style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}
         >
           Fazer mais um pedido
         </button>
