@@ -5,7 +5,7 @@ import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
   CheckCircle2, Star, ChevronRight,
 } from "lucide-react";
-import type { Category, Product, StoreFrontConfig } from "@/features/catalog/api";
+import type { Category, Product, ProductAddon, ProductVariant, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder, identifyCustomer } from "@/features/orders/api";
 
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
@@ -305,82 +305,294 @@ function StepRegister({ name, tableId, primaryColor, onSkip, onRegister }: {
   );
 }
 
-// ── Product Card ───────────────────────────────────────────────────────────────
-function MesaProductCard({ product, qty, primaryColor, onAdd, onInc, onDec }: {
+// ── Product Detail Sheet ───────────────────────────────────────────────────────
+function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart }: {
+  product: Product; primaryColor?: string;
+  onClose: () => void;
+  onAddToCart: (product: Product, variant: ProductVariant | null, addons: ProductAddon[], qty: number) => void;
+}) {
+  const color = primaryColor || GC.caramel;
+  const hasVariants = product.variants.length > 0;
+  const hasAddons   = product.addons.length > 0;
+
+  // Group variants by key
+  const variantGroups = product.variants.reduce<Record<string, ProductVariant[]>>((acc, v) => {
+    (acc[v.variantKey] ??= []).push(v);
+    return acc;
+  }, {});
+
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    hasVariants ? product.variants[0] : null
+  );
+  const [selectedAddons, setSelectedAddons] = useState<Set<string>>(new Set());
+  const [qty, setQty] = useState(1);
+
+  function toggleAddon(id: string) {
+    setSelectedAddons(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const activeAddons = product.addons.filter(a => selectedAddons.has(a.id));
+  const basePrice    = selectedVariant?.priceCents ?? product.priceCents;
+  const addonsTotal  = activeAddons.reduce((s, a) => s + a.priceCents, 0);
+  const total        = (basePrice + addonsTotal) * qty;
+
+  function handleAdd() {
+    onAddToCart(product, selectedVariant, activeAddons, qty);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative rounded-t-3xl overflow-hidden flex flex-col max-h-[92vh]"
+        style={{ background: GC.bg }}>
+
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 rounded-full" style={{ background: "rgba(107,79,58,0.2)" }} />
+        </div>
+
+        {/* Image */}
+        {product.imageUrl && (
+          <div className="relative w-full shrink-0" style={{ height: 200 }}>
+            <img src={product.imageUrl} alt={product.name}
+              className="w-full h-full object-cover" />
+            <div className="absolute inset-0"
+              style={{ background: "linear-gradient(to top, rgba(250,247,242,1) 0%, transparent 60%)" }} />
+          </div>
+        )}
+
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 px-5 pb-2">
+
+          {/* Title + description */}
+          <div className="pt-3 pb-4 border-b" style={{ borderColor: "rgba(107,79,58,0.1)" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                {product.isBestSeller && (
+                  <span className="inline-block text-[10px] font-black px-2 py-0.5 rounded-full mb-1.5"
+                    style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A87830)`, color: "#fff" }}>
+                    ★ Favorito
+                  </span>
+                )}
+                <h2 className="text-xl font-black leading-tight" style={{ color: GC.dark }}>{product.name}</h2>
+                {product.description && (
+                  <p className="text-sm mt-1 leading-relaxed" style={{ color: GC.brown, opacity: 0.8 }}>
+                    {product.description}
+                  </p>
+                )}
+              </div>
+              <button onClick={onClose}
+                className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-0.5"
+                style={{ background: GC.cream }}>
+                <X size={14} style={{ color: GC.brown }} />
+              </button>
+            </div>
+            <p className="text-2xl font-black mt-3" style={{ color }}>
+              {fmtBRL(basePrice)}
+              {addonsTotal > 0 && (
+                <span className="text-sm font-medium ml-1.5" style={{ color: GC.brown, opacity: 0.6 }}>
+                  + {fmtBRL(addonsTotal)} extras
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Variants */}
+          {Object.entries(variantGroups).map(([key, variants]) => (
+            <div key={key} className="py-4 border-b" style={{ borderColor: "rgba(107,79,58,0.1)" }}>
+              <p className="text-xs font-black uppercase tracking-widest mb-3"
+                style={{ color: GC.brown, opacity: 0.5 }}>{key}</p>
+              <div className="flex flex-wrap gap-2">
+                {variants.map(v => {
+                  const active = selectedVariant?.id === v.id;
+                  return (
+                    <button key={v.id} onClick={() => setSelectedVariant(v)}
+                      className="px-4 py-2 rounded-2xl text-sm font-bold transition-all duration-150"
+                      style={active ? {
+                        background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+                        color: "#fff",
+                        boxShadow: "0 4px 14px rgba(28,18,9,0.25)",
+                      } : {
+                        background: GC.cream,
+                        color: GC.brown,
+                        border: `1.5px solid rgba(200,149,58,0.2)`,
+                      }}>
+                      {v.variantValue}
+                      {v.priceCents != null && v.priceCents !== product.priceCents && (
+                        <span className="ml-1.5 text-[11px] opacity-70">{fmtBRL(v.priceCents)}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Addons */}
+          {hasAddons && (
+            <div className="py-4">
+              <p className="text-xs font-black uppercase tracking-widest mb-3"
+                style={{ color: GC.brown, opacity: 0.5 }}>Adicionais</p>
+              <div className="space-y-2">
+                {product.addons.map(a => {
+                  const checked = selectedAddons.has(a.id);
+                  return (
+                    <button key={a.id} onClick={() => toggleAddon(a.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-150 text-left"
+                      style={checked ? {
+                        background: `linear-gradient(135deg, ${GC.dark}08, ${GC.dark}12)`,
+                        border: `1.5px solid ${GC.dark}22`,
+                      } : {
+                        background: GC.cream,
+                        border: `1.5px solid transparent`,
+                      }}>
+                      <div className="w-5 h-5 rounded-md shrink-0 flex items-center justify-center transition-all"
+                        style={checked ? {
+                          background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+                        } : {
+                          border: `2px solid rgba(107,79,58,0.25)`,
+                          background: "transparent",
+                        }}>
+                        {checked && <span className="text-white text-[10px] font-black">✓</span>}
+                      </div>
+                      <span className="flex-1 text-sm font-semibold" style={{ color: GC.dark }}>{a.name}</span>
+                      <span className="text-sm font-bold shrink-0"
+                        style={{ color: a.priceCents === 0 ? GC.brown : color, opacity: a.priceCents === 0 ? 0.5 : 1 }}>
+                        {a.priceCents === 0 ? "Grátis" : `+${fmtBRL(a.priceCents)}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer: qty + add */}
+        <div className="px-5 pt-4 pb-8 shrink-0"
+          style={{ borderTop: "1px solid rgba(107,79,58,0.08)", background: GC.bg }}>
+          <div className="flex items-center gap-3">
+            {/* Qty */}
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl"
+              style={{ background: GC.cream }}>
+              <button onClick={() => setQty(q => Math.max(1, q - 1))}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition active:scale-90"
+                style={{ background: qty <= 1 ? "rgba(107,79,58,0.1)" : GC.dark, color: qty <= 1 ? GC.brown : "#fff" }}>
+                <Minus size={13} />
+              </button>
+              <span className="w-6 text-center font-black text-base" style={{ color: GC.dark }}>{qty}</span>
+              <button onClick={() => setQty(q => q + 1)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
+                <Plus size={13} />
+              </button>
+            </div>
+
+            {/* Add button */}
+            <button onClick={handleAdd}
+              className="flex-1 h-12 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition active:scale-[0.98]"
+              style={{
+                background: `linear-gradient(135deg, ${color}, #A87830)`,
+                boxShadow: `0 6px 20px ${color}50`,
+              }}>
+              <ShoppingCart size={16} />
+              Adicionar · {fmtBRL(total)}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Product Card (horizontal) ──────────────────────────────────────────────────
+function MesaProductCard({ product, qty, primaryColor, onOpen, onInc, onDec }: {
   product: Product; qty: number; primaryColor?: string;
-  onAdd: () => void; onInc: () => void; onDec: () => void;
+  onOpen: () => void; onInc: () => void; onDec: () => void;
 }) {
   const color = primaryColor || GC.caramel;
   const discount = product.discountPercent;
   const original = discount ? Math.round(product.priceCents / (1 - discount / 100)) : null;
+  const hasOptions = product.variants.length > 0 || product.addons.length > 0;
 
   return (
-    <div className="bg-white rounded-3xl overflow-hidden flex flex-col group"
-      style={{ boxShadow: "0 2px 16px rgba(28,18,9,0.08), 0 1px 4px rgba(28,18,9,0.04)" }}>
+    <button onClick={onOpen} className="w-full text-left"
+      style={{ WebkitTapHighlightColor: "transparent" }}>
+      <div className="bg-white rounded-2xl overflow-hidden flex gap-0 transition-all duration-200 active:scale-[0.98]"
+        style={{ boxShadow: "0 2px 12px rgba(28,18,9,0.07), 0 1px 3px rgba(28,18,9,0.04)" }}>
 
-      {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: GC.cream }}>
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${GC.cream}, #EDE0CE)` }}>
-            <span style={{ fontSize: 36, opacity: 0.35 }}>☕</span>
-          </div>
-        )}
-        {discount ? (
-          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full"
-            style={{ background: "#E05252" }}>
-            -{discount}%
-          </div>
-        ) : product.isBestSeller ? (
-          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full"
-            style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A87830)` }}>
-            ★ Top
-          </div>
-        ) : null}
-      </div>
-
-      {/* Info */}
-      <div className="p-3 flex flex-col flex-1 gap-1.5">
-        <p className="text-[13px] font-bold leading-snug flex-1 line-clamp-2"
-          style={{ color: GC.dark }}>{product.name}</p>
-        {product.description && (
-          <p className="text-[10px] leading-tight line-clamp-1" style={{ color: GC.brown, opacity: 0.7 }}>
-            {product.description}
+        {/* Text side */}
+        <div className="flex-1 p-3.5 flex flex-col gap-1 min-w-0">
+          {product.isBestSeller && (
+            <span className="text-[9px] font-black uppercase tracking-wider w-fit px-1.5 py-0.5 rounded-full"
+              style={{ background: `${GC.caramel}20`, color: GC.caramel }}>★ Top</span>
+          )}
+          <p className="text-[13px] font-bold leading-snug line-clamp-2" style={{ color: GC.dark }}>
+            {product.name}
           </p>
-        )}
-        <div className="flex items-center justify-between gap-1 mt-0.5">
-          <div>
-            <p className="text-[15px] font-black" style={{ color }}>{fmtBRL(product.priceCents)}</p>
-            {original && <p className="text-[10px] line-through" style={{ color: GC.brown, opacity: 0.4 }}>{fmtBRL(original)}</p>}
-          </div>
-          {qty === 0 ? (
-            <button onClick={onAdd}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition active:scale-90"
-              style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 12px ${color}44` }}>
-              <Plus size={16} />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button onClick={onDec}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
-                style={{ background: GC.cream, color: GC.brown }}>
-                <Minus size={11} />
-              </button>
-              <span className="w-5 text-center text-sm font-black" style={{ color: GC.dark }}>{qty}</span>
-              <button onClick={onInc}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
-                style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)` }}>
-                <Plus size={11} />
-              </button>
+          {product.description && (
+            <p className="text-[11px] leading-snug line-clamp-2 mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>
+              {product.description}
+            </p>
+          )}
+          <div className="flex items-center justify-between mt-auto pt-2">
+            <div>
+              <p className="text-[14px] font-black" style={{ color }}>{fmtBRL(product.priceCents)}</p>
+              {original && (
+                <p className="text-[10px] line-through" style={{ color: GC.brown, opacity: 0.35 }}>{fmtBRL(original)}</p>
+              )}
             </div>
+            {qty === 0 ? (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white transition"
+                style={{ background: `linear-gradient(135deg, ${color}, #A87830)`, boxShadow: `0 3px 10px ${color}44` }}>
+                <Plus size={15} />
+              </div>
+            ) : (
+              <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                <button onClick={onDec}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
+                  style={{ background: GC.cream, color: GC.brown }}>
+                  <Minus size={11} />
+                </button>
+                <span className="w-5 text-center text-sm font-black" style={{ color: GC.dark }}>{qty}</span>
+                <button onClick={e => { e.stopPropagation(); onInc(); }}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                  style={{ background: `linear-gradient(135deg, ${color}, #A87830)` }}>
+                  <Plus size={11} />
+                </button>
+              </div>
+            )}
+          </div>
+          {hasOptions && qty === 0 && (
+            <p className="text-[10px] font-medium mt-0.5" style={{ color: GC.caramel, opacity: 0.8 }}>
+              Toque para personalizar →
+            </p>
           )}
         </div>
+
+        {/* Image side */}
+        <div className="w-28 shrink-0 relative self-stretch" style={{ backgroundColor: GC.cream }}>
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.name}
+              className="w-full h-full object-cover" loading="lazy" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${GC.cream}, #EDE0CE)` }}>
+              <span style={{ fontSize: 28, opacity: 0.3 }}>☕</span>
+            </div>
+          )}
+          {discount ? (
+            <div className="absolute top-2 right-2 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full"
+              style={{ background: "#E05252" }}>-{discount}%</div>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -565,9 +777,10 @@ export default function MesaPage() {
   const [customerId,   setCustomerId]   = useState<string | null>(null);
   const [customerPoints, setCustomerPoints] = useState(0);
   const [customerIsNew,  setCustomerIsNew]  = useState(false);
-  const [catSlug,  setCatSlug]  = useState("");
-  const [search,   setSearch]   = useState("");
-  const [cartOpen, setCartOpen] = useState(false);
+  const [catSlug,      setCatSlug]      = useState("");
+  const [search,       setSearch]       = useState("");
+  const [cartOpen,     setCartOpen]     = useState(false);
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
   const [orderNum, setOrderNum] = useState("");
   const [davCode, setDavCode] = useState<string>("");
 
@@ -785,7 +998,7 @@ export default function MesaPage() {
             <p className="text-sm font-medium" style={{ color: GC.brown }}>Nenhum produto encontrado</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-2">
             {(products as Product[]).map(p => {
               const qty = cart.items.find(i => i.product.id === p.id)?.qty ?? 0;
               return (
@@ -794,7 +1007,7 @@ export default function MesaPage() {
                   product={p}
                   qty={qty}
                   primaryColor={primaryColor}
-                  onAdd={() => cart.add(p)}
+                  onOpen={() => setSheetProduct(p)}
                   onInc={() => cart.inc(p.id)}
                   onDec={() => cart.dec(p.id)}
                 />
@@ -824,6 +1037,30 @@ export default function MesaPage() {
             <span className="font-black">{fmtBRL(cart.totalCents)}</span>
           </button>
         </div>
+      )}
+
+      {/* Product detail sheet */}
+      {sheetProduct && (
+        <ProductDetailSheet
+          product={sheetProduct}
+          primaryColor={primaryColor}
+          onClose={() => setSheetProduct(null)}
+          onAddToCart={(product, variant, addons, qty) => {
+            const extraCents = addons.reduce((s, a) => s + a.priceCents, 0);
+            const baseCents  = variant?.priceCents ?? product.priceCents;
+            const synthetic: Product = {
+              ...product,
+              id: variant ? `${product.id}__${variant.id}` : product.id,
+              name: [
+                product.name,
+                variant ? variant.variantValue : null,
+                addons.length ? addons.map(a => a.name).join(", ") : null,
+              ].filter(Boolean).join(" · "),
+              priceCents: baseCents + extraCents,
+            };
+            for (let i = 0; i < qty; i++) cart.add(synthetic);
+          }}
+        />
       )}
 
       {/* Cart sheet */}

@@ -20,9 +20,15 @@ export type Category = {
 
 export type ProductVariant = {
   id: string;
-  variantKey: string;   // ex: "Tamanho", "Tipo de pão"
-  variantValue: string; // ex: "P 400ml", "Pão de Batata"
+  variantKey: string;
+  variantValue: string;
   priceCents: number | null;
+};
+
+export type ProductAddon = {
+  id: string;
+  name: string;
+  priceCents: number;
 };
 
 export type Product = {
@@ -37,6 +43,7 @@ export type Product = {
   discountPercent: number | null;
   category: { id: string; name: string; slug: string };
   variants: ProductVariant[];
+  addons: ProductAddon[];
 };
 
 export async function fetchCategories(): Promise<Category[]> {

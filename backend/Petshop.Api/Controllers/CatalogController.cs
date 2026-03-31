@@ -134,7 +134,11 @@ public class CatalogController : ControllerBase
                 Variants = p.Variants
                     .Where(v => v.IsActive)
                     .OrderBy(v => v.PriceCents)
-                    .Select(v => new { v.Id, v.VariantKey, v.VariantValue, v.PriceCents })
+                    .Select(v => new { v.Id, v.VariantKey, v.VariantValue, v.PriceCents }),
+                Addons = p.Addons
+                    .Where(a => a.IsActive)
+                    .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
+                    .Select(a => new { a.Id, a.Name, a.PriceCents })
             })
             .ToListAsync(ct);
 
