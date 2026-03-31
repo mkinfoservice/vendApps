@@ -2,8 +2,10 @@ import type { PrintOrderPayload } from "./types";
 
 const PAYMENT_LABELS: Record<string, string> = {
   PIX: "Pix",
-  CARD: "Cartão",
+  CARD: "Cartao",
+  CARD_ON_DELIVERY: "Cartao na entrega",
   CASH: "Dinheiro",
+  PAY_AT_COUNTER: "Pagamento pendente",
 };
 
 function fmt(cents: number) {
@@ -24,17 +26,15 @@ type Props = {
 export function PrintReceipt({ payload }: Props) {
   return (
     <div className="receipt-root">
-      {/* Empresa / Cabeçalho */}
       <div className="receipt-header">
         <p className="receipt-title">PEDIDO CONFIRMADO</p>
         <p className="receipt-order-id">{payload.publicId}</p>
         <p className="receipt-date">{fmtDate(payload.createdAtUtc)}</p>
-        {payload.isPhoneOrder && <p className="receipt-phone-badge">📞 Pedido por telefone</p>}
+        {payload.isPhoneOrder && <p className="receipt-phone-badge">Pedido por telefone</p>}
       </div>
 
       <div className="receipt-divider" />
 
-      {/* Cliente */}
       <section className="receipt-section">
         <p className="receipt-label">CLIENTE</p>
         <p className="receipt-value">{payload.customerName}</p>
@@ -46,7 +46,6 @@ export function PrintReceipt({ payload }: Props) {
 
       <div className="receipt-divider" />
 
-      {/* Itens */}
       <section className="receipt-section">
         <p className="receipt-label">ITENS</p>
         {payload.items.map((item, i) => (
@@ -59,7 +58,6 @@ export function PrintReceipt({ payload }: Props) {
 
       <div className="receipt-divider" />
 
-      {/* Totais */}
       <section className="receipt-section">
         <div className="receipt-total-row">
           <span>Subtotal</span>
@@ -94,7 +92,7 @@ export function PrintReceipt({ payload }: Props) {
       </section>
 
       <div className="receipt-divider" />
-      <p className="receipt-footer">Obrigado pela preferência!</p>
+      <p className="receipt-footer">Obrigado pela preferencia!</p>
     </div>
   );
 }

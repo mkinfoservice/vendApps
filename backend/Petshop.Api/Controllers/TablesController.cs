@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
+using Petshop.Api.Entities.Dav;
 using Petshop.Api.Entities.StoreFront;
+using Petshop.Api.Services.Dav;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -307,13 +309,55 @@ public class TablesController : ControllerBase
             order.Status = OrderStatus.ENTREGUE;
             order.UpdatedAtUtc = now;
         }
+
+        // Gera DAV consolidado para o caixa importar e cobrar
+        var allOrderIds = toFinalize.Select(o => o.Id).ToList();
+        var allItems = await _db.OrderItems
+            .AsNoTracking()
+            .Where(i => allOrderIds.Contains(i.OrderId))
+            .ToListAsync(ct);
+
+        string? davPublicId = null;
+        if (allItems.Count > 0)
+        {
+            var firstOrder = toFinalize[0];
+            var subtotal = allItems.Sum(i => i.UnitPriceCentsSnapshot * i.Qty);
+
+            var dav = new SalesQuote
+            {
+                CompanyId    = CompanyId,
+                PublicId     = DavPublicIdGenerator.NewPublicId(),
+                Origin       = SalesQuoteOrigin.TableOrder,
+                CustomerName = firstOrder.CustomerName ?? $"Mesa {table.Number}",
+                CustomerPhone = firstOrder.Phone,
+                PaymentMethod = "PAY_AT_COUNTER",
+                SubtotalCents = subtotal,
+                TotalCents    = subtotal,
+                Notes         = $"Mesa {table.Number}{(table.Name is not null ? $" · {table.Name}" : "")} — {toFinalize.Count} pedido{(toFinalize.Count > 1 ? "s" : "")}",
+                Items = allItems.Select(i => new SalesQuoteItem
+                {
+                    ProductId               = i.ProductId,
+                    ProductNameSnapshot     = i.ProductNameSnapshot,
+                    Qty                     = i.Qty,
+                    UnitPriceCentsSnapshot  = i.UnitPriceCentsSnapshot,
+                    TotalCents              = i.UnitPriceCentsSnapshot * i.Qty,
+                }).ToList(),
+            };
+
+            _db.SalesQuotes.Add(dav);
+            davPublicId = dav.PublicId;
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new
         {
             finalized = toFinalize.Count,
             pending = 0,
-            message = "Mesa finalizada e liberada para reuso."
+            davPublicId,
+            message = davPublicId is not null
+                ? $"Mesa finalizada. DAV {davPublicId} gerado para o caixa."
+                : "Mesa finalizada e liberada para reuso.",
         });
     }
 

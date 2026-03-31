@@ -364,6 +364,7 @@ function ServiceModal({
   const [hostName, setHostName] = useState("");
   const [guests, setGuests] = useState("1");
   const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(null);
+  const [davResult, setDavResult] = useState<{ davPublicId?: string; message: string } | null>(null);
 
   const serviceQ = useQuery({
     queryKey: ["table-service", table.id],
@@ -374,7 +375,7 @@ function ServiceModal({
   const finalizeMut = useMutation({
     mutationFn: () => finalizeTable(table.id),
     onSuccess: (res) => {
-      alert(res.message);
+      setDavResult({ davPublicId: res.davPublicId, message: res.message });
       qc.invalidateQueries({ queryKey: ["tables-overview"] });
       qc.invalidateQueries({ queryKey: ["table-service", table.id] });
     },
@@ -432,6 +433,34 @@ function ServiceModal({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-80px)]">
+
+          {/* DAV result banner */}
+          {davResult && (
+            <div className="rounded-2xl p-4 flex items-start gap-3"
+              style={{ background: davResult.davPublicId ? `linear-gradient(135deg, #059669, #047857)` : GC.cream }}>
+              <CircleCheck size={18} className="mt-0.5 shrink-0" style={{ color: davResult.davPublicId ? "#fff" : "#059669" }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: davResult.davPublicId ? "#fff" : GC.dark }}>
+                  {davResult.davPublicId ? `Mesa finalizada · DAV gerado` : "Mesa finalizada"}
+                </p>
+                {davResult.davPublicId && (
+                  <p className="text-xl font-black mt-1 tracking-widest" style={{ color: "#fff" }}>
+                    {davResult.davPublicId}
+                  </p>
+                )}
+                <p className="text-xs mt-1 font-medium" style={{ color: davResult.davPublicId ? "rgba(255,255,255,0.75)" : GC.brown }}>
+                  {davResult.davPublicId
+                    ? "Informe este código no caixa (PDV → DAV) para cobrar."
+                    : davResult.message}
+                </p>
+              </div>
+              <button onClick={() => setDavResult(null)}
+                className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "rgba(255,255,255,0.2)" }}>
+                <X size={11} style={{ color: davResult.davPublicId ? "#fff" : GC.brown }} />
+              </button>
+            </div>
+          )}
 
           {/* KPIs */}
           <div className="grid grid-cols-3 gap-3">

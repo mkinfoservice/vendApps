@@ -924,8 +924,14 @@ export default function MesaPage() {
     setStep("done");
   }
   function handleNewOrder() {
-    setDavCode(""); setCustomerId(null); setCustomerPoints(0); setCustomerIsNew(false);
-    setStep("register");
+    setDavCode("");
+    // Se o usuário já está identificado (tem nome), volta direto ao catálogo
+    if (name.trim()) {
+      setStep("catalog");
+    } else {
+      setCustomerId(null); setCustomerPoints(0); setCustomerIsNew(false);
+      setStep("name");
+    }
   }
 
   if (step === "name") {

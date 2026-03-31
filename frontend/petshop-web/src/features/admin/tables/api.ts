@@ -97,8 +97,8 @@ export function deleteTable(id: string): Promise<void> {
   return adminFetch<void>(`/admin/tables/${id}`, { method: "DELETE" });
 }
 
-export function finalizeTable(id: string): Promise<{ finalized: number; pending: number; message: string }> {
-  return adminFetch<{ finalized: number; pending: number; message: string }>(`/admin/tables/${id}/finalize`, {
+export function finalizeTable(id: string): Promise<{ finalized: number; pending: number; message: string; davPublicId?: string }> {
+  return adminFetch<{ finalized: number; pending: number; message: string; davPublicId?: string }>(`/admin/tables/${id}/finalize`, {
     method: "POST",
   });
 }
