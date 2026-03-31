@@ -5,6 +5,7 @@ type Props = {
   value: OrderStatus;
   onChange: (next: OrderStatus) => void;
   disabled?: boolean;
+  isTableOrder?: boolean;
 };
 
 const ALL_STATUSES: OrderStatus[] = [
@@ -16,7 +17,11 @@ const ALL_STATUSES: OrderStatus[] = [
   "CANCELADO",
 ];
 
-export function OrderStatusSelect({ value, onChange, disabled = false }: Props) {
+export function OrderStatusSelect({ value, onChange, disabled = false, isTableOrder = false }: Props) {
+  const statuses = isTableOrder
+    ? (["RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA", "CANCELADO"] as OrderStatus[])
+    : ALL_STATUSES;
+
   return (
     <select
       className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm text-[var(--text)]"
@@ -24,7 +29,7 @@ export function OrderStatusSelect({ value, onChange, disabled = false }: Props) 
       disabled={disabled}
       onChange={(e) => onChange(e.target.value as OrderStatus)}
     >
-      {ALL_STATUSES.map((s) => {
+      {statuses.map((s) => {
         const isCurrent = s === value;
 
         if (value === "CANCELADO" && !isCurrent) return null;

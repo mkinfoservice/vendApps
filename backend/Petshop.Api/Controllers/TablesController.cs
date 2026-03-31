@@ -15,6 +15,13 @@ public class TablesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private static readonly OrderStatus[] ActiveTableOrderStatuses =
+    [
+        OrderStatus.RECEBIDO,
+        OrderStatus.EM_PREPARO,
+        OrderStatus.PRONTO_PARA_ENTREGA,
+        OrderStatus.SAIU_PARA_ENTREGA,
+    ];
 
     public TablesController(AppDbContext db, IConfiguration config)
     {
@@ -181,9 +188,9 @@ public class TablesController : ControllerBase
         var openOrders = await _db.Orders
             .AsNoTracking()
             .Where(o => o.CompanyId == companyId &&
+                        o.IsTableOrder &&
                         o.TableId != null &&
-                        o.Status != OrderStatus.CANCELADO &&
-                        o.Status != OrderStatus.ENTREGUE)
+                        ActiveTableOrderStatuses.Contains(o.Status))
             .GroupBy(o => o.TableId!.Value)
             .Select(g => new { TableId = g.Key, Count = g.Count() })
             .ToListAsync(ct);
@@ -204,6 +211,152 @@ public class TablesController : ControllerBase
         return Ok(result);
     }
 
+    // ── GET /admin/tables/{id}/service ───────────────────────────────────────
+    [HttpGet("{id:guid}/service")]
+    public async Task<IActionResult> Service(Guid id, CancellationToken ct)
+    {
+        var table = await _db.Tables
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == CompanyId, ct);
+        if (table is null) return NotFound();
+
+        var orders = await _db.Orders
+            .AsNoTracking()
+            .Where(o => o.CompanyId == CompanyId &&
+                        o.IsTableOrder &&
+                        o.TableId == id &&
+                        o.Status != OrderStatus.CANCELADO &&
+                        o.Status != OrderStatus.ENTREGUE)
+            .OrderBy(o => o.CreatedAtUtc)
+            .Select(o => new
+            {
+                o.Id,
+                o.PublicId,
+                o.CustomerName,
+                status = o.Status.ToString(),
+                o.TotalCents,
+                o.CreatedAtUtc
+            })
+            .ToListAsync(ct);
+
+        return Ok(new
+        {
+            table = new
+            {
+                table.Id,
+                table.Number,
+                table.Name,
+                table.Capacity,
+                table.IsActive,
+            },
+            activeOrders = orders,
+            totals = new
+            {
+                orders = orders.Count,
+                amountCents = orders.Sum(o => o.TotalCents),
+            }
+        });
+    }
+
+    // ── POST /admin/tables/{id}/finalize ─────────────────────────────────────
+    [HttpPost("{id:guid}/finalize")]
+    public async Task<IActionResult> FinalizeTable(Guid id, CancellationToken ct)
+    {
+        var table = await _db.Tables
+            .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == CompanyId, ct);
+        if (table is null) return NotFound();
+
+        var activeOrders = await _db.Orders
+            .Where(o => o.CompanyId == CompanyId &&
+                        o.IsTableOrder &&
+                        o.TableId == id &&
+                        o.Status != OrderStatus.CANCELADO &&
+                        o.Status != OrderStatus.ENTREGUE)
+            .ToListAsync(ct);
+
+        if (activeOrders.Count == 0)
+        {
+            return Ok(new
+            {
+                finalized = 0,
+                pending = 0,
+                message = "Mesa já está livre."
+            });
+        }
+
+        var pending = activeOrders
+            .Where(o => o.Status == OrderStatus.RECEBIDO || o.Status == OrderStatus.EM_PREPARO)
+            .ToList();
+
+        if (pending.Count > 0)
+        {
+            return Conflict(new
+            {
+                error = "Ainda existem pedidos em preparo/recebidos. Só é possível finalizar mesa quando estiver PRONTO_PARA_ENTREGA.",
+                pendingOrders = pending.Select(o => o.PublicId).ToList(),
+            });
+        }
+
+        var toFinalize = activeOrders
+            .Where(o => o.Status == OrderStatus.PRONTO_PARA_ENTREGA || o.Status == OrderStatus.SAIU_PARA_ENTREGA)
+            .ToList();
+
+        var now = DateTime.UtcNow;
+        foreach (var order in toFinalize)
+        {
+            order.Status = OrderStatus.ENTREGUE;
+            order.UpdatedAtUtc = now;
+        }
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            finalized = toFinalize.Count,
+            pending = 0,
+            message = "Mesa finalizada e liberada para reuso."
+        });
+    }
+
+    // ── POST /admin/tables/{id}/cancel-open ──────────────────────────────────
+    [HttpPost("{id:guid}/cancel-open")]
+    public async Task<IActionResult> CancelOpen(Guid id, CancellationToken ct)
+    {
+        var table = await _db.Tables
+            .FirstOrDefaultAsync(t => t.Id == id && t.CompanyId == CompanyId, ct);
+        if (table is null) return NotFound();
+
+        var openOrders = await _db.Orders
+            .Where(o => o.CompanyId == CompanyId &&
+                        o.IsTableOrder &&
+                        o.TableId == id &&
+                        o.Status != OrderStatus.CANCELADO &&
+                        o.Status != OrderStatus.ENTREGUE)
+            .ToListAsync(ct);
+
+        if (openOrders.Count == 0)
+        {
+            return Ok(new
+            {
+                cancelled = 0,
+                message = "Nenhuma comanda aberta para cancelar."
+            });
+        }
+
+        var now = DateTime.UtcNow;
+        foreach (var order in openOrders)
+        {
+            order.Status = OrderStatus.CANCELADO;
+            order.UpdatedAtUtc = now;
+        }
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            cancelled = openOrders.Count,
+            message = "Comanda cancelada com sucesso."
+        });
+    }
+
     // ── GET /public/tables/{tableId} (sem auth) ───────────────────────────────
     [AllowAnonymous]
     [HttpGet("/public/tables/{tableId:guid}")]
@@ -215,11 +368,11 @@ public class TablesController : ControllerBase
             .Join(_db.Companies.AsNoTracking(),
                 t => t.CompanyId,
                 c => c.Id,
-                (t, c) => new { t.Number, t.Name, c.Slug })
+                (t, c) => new { t.Number, t.Name, t.Capacity, c.Slug })
             .FirstOrDefaultAsync(ct);
 
         if (result is null) return NotFound();
-        return Ok(new { result.Slug, result.Number, result.Name });
+        return Ok(new { result.Slug, result.Number, result.Name, result.Capacity });
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

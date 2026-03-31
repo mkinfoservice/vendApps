@@ -32,6 +32,30 @@ export type TableMetrics = {
   lastOrderUtc: string | null;
 };
 
+export type TableServiceOrder = {
+  id: string;
+  publicId: string;
+  customerName: string;
+  status: string;
+  totalCents: number;
+  createdAtUtc: string;
+};
+
+export type TableServiceResponse = {
+  table: {
+    id: string;
+    number: number;
+    name: string | null;
+    capacity: number;
+    isActive: boolean;
+  };
+  activeOrders: TableServiceOrder[];
+  totals: {
+    orders: number;
+    amountCents: number;
+  };
+};
+
 export type UpsertTableRequest = {
   number: number;
   name?: string;
@@ -51,6 +75,10 @@ export function fetchTableMetrics(id: string): Promise<TableMetrics> {
   return adminFetch<TableMetrics>(`/admin/tables/${id}/metrics`);
 }
 
+export function fetchTableService(id: string): Promise<TableServiceResponse> {
+  return adminFetch<TableServiceResponse>(`/admin/tables/${id}/service`);
+}
+
 export function createTable(body: UpsertTableRequest): Promise<TableDto> {
   return adminFetch<TableDto>("/admin/tables", {
     method: "POST",
@@ -67,4 +95,16 @@ export function updateTable(id: string, body: Partial<UpsertTableRequest>): Prom
 
 export function deleteTable(id: string): Promise<void> {
   return adminFetch<void>(`/admin/tables/${id}`, { method: "DELETE" });
+}
+
+export function finalizeTable(id: string): Promise<{ finalized: number; pending: number; message: string }> {
+  return adminFetch<{ finalized: number; pending: number; message: string }>(`/admin/tables/${id}/finalize`, {
+    method: "POST",
+  });
+}
+
+export function cancelTableOpenOrders(id: string): Promise<{ cancelled: number; message: string }> {
+  return adminFetch<{ cancelled: number; message: string }>(`/admin/tables/${id}/cancel-open`, {
+    method: "POST",
+  });
 }

@@ -12,6 +12,7 @@ using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
+using Petshop.Api.Entities.StoreFront;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -104,6 +105,14 @@ public class OrdersController : ControllerBase
         if (order is null)
             return NotFound("Pedido não encontrado.");
 
+        Table? table = null;
+        if (order.TableId.HasValue)
+        {
+            table = await _db.Tables
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == order.TableId.Value);
+        }
+
         var res = new GetOrderResponse
         {
             Id = order.Id,
@@ -114,6 +123,10 @@ public class OrdersController : ControllerBase
             Phone = order.Phone,
             Cep = order.Cep,
             Address = order.Address,
+            IsTableOrder = order.IsTableOrder,
+            TableId = order.TableId,
+            TableNumber = table?.Number,
+            TableName = table?.Name,
 
             SubtotalCents = order.SubtotalCents,
             DeliveryCents = order.DeliveryCents,
@@ -158,6 +171,7 @@ public class OrdersController : ControllerBase
         var q = _db.Orders
             .AsNoTracking()
             .Where(o => o.CompanyId == CompanyId &&
+                        !o.IsTableOrder &&
                         o.Status == OrderStatus.PRONTO_PARA_ENTREGA);
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -227,14 +241,14 @@ public class OrdersController : ControllerBase
             query = query.Where(o => o.PublicId.Contains(term));
         }
 
-        query = query.OrderByDescending(o => o.CreatedAtUtc);
-
         var total = await query.CountAsync(ct);
 
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(o => new OrderListItemResponse(
+        var items = await (
+            from o in query
+            join t in _db.Tables.AsNoTracking() on o.TableId equals (Guid?)t.Id into tableJoin
+            from t in tableJoin.DefaultIfEmpty()
+            orderby o.CreatedAtUtc descending
+            select new OrderListItemResponse(
                 o.Id,
                 o.PublicId,
                 o.CustomerName,
@@ -242,8 +256,14 @@ public class OrdersController : ControllerBase
                 o.Status.ToString(),
                 o.TotalCents,
                 o.PaymentMethod,
-                o.CreatedAtUtc
+                o.CreatedAtUtc,
+                o.IsTableOrder,
+                o.TableId,
+                t != null ? (int?)t.Number : null,
+                t != null ? t.Name : null
             ))
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         return Ok(new ListOrdersResponse(page, pageSize, total, items));
@@ -282,13 +302,19 @@ public class OrdersController : ControllerBase
         if (!Enum.TryParse<OrderStatus>(raw, ignoreCase: true, out var newStatus))
             return BadRequest($"Status inválido: {raw}");
 
+        if (order.IsTableOrder &&
+            (newStatus == OrderStatus.SAIU_PARA_ENTREGA || newStatus == OrderStatus.ENTREGUE))
+        {
+            return BadRequest("Pedidos de mesa encerram em PRONTO_PARA_ENTREGA. Use 'Finalizar mesa' para liberar a mesa.");
+        }
+
         var oldStatus = order.Status;
 
         if (!IsValidTransition(oldStatus, newStatus))
             return BadRequest($"Transição inválida: {oldStatus} → {newStatus}.");
 
         // ✅ PASSO 5: ao marcar PRONTO_PARA_ENTREGA, tenta geocoding (sem travar o fluxo se falhar)
-        if (newStatus == OrderStatus.PRONTO_PARA_ENTREGA)
+        if (newStatus == OrderStatus.PRONTO_PARA_ENTREGA && !order.IsTableOrder)
         {
             var needsGeo = order.Latitude is null || order.Longitude is null;
 
@@ -438,6 +464,7 @@ public class OrdersController : ControllerBase
 
         var orders = await _db.Orders
             .Where(o => o.CompanyId == CompanyId &&
+                        !o.IsTableOrder &&
                         o.Status == OrderStatus.PRONTO_PARA_ENTREGA &&
                         (o.Latitude == null || o.Longitude == null))
             .OrderBy(o => o.CreatedAtUtc)
@@ -705,6 +732,15 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<CreateOrderResponse>> Create([FromBody] CreateOrderRequest req, CancellationToken ct = default)
     {
         var isTableOrder = req.TableId.HasValue;
+        Table? table = null;
+        if (isTableOrder)
+        {
+            table = await _db.Tables
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == req.TableId!.Value && t.IsActive, ct);
+            if (table is null)
+                return BadRequest("Mesa inválida ou inativa.");
+        }
 
         if (req.Items is null || req.Items.Count == 0)
             return BadRequest("Carrinho vazio.");
@@ -732,7 +768,9 @@ public class OrdersController : ControllerBase
             CustomerName = req.Name.Trim(),
             Phone = req.Phone?.Trim() ?? "",
             Cep = req.Cep?.Trim() ?? "",
-            Address = isTableOrder ? $"Mesa {req.TableId}" : req.Address.Trim(),
+            Address = isTableOrder
+                ? $"Mesa {table!.Number}{(string.IsNullOrWhiteSpace(table.Name) ? "" : $" - {table.Name}")}"
+                : req.Address.Trim(),
             Complement = string.IsNullOrWhiteSpace(req.Complement) ? null : req.Complement.Trim(),
             Coupon = string.IsNullOrWhiteSpace(req.Coupon) ? null : req.Coupon.Trim(),
             Status = OrderStatus.RECEBIDO,
@@ -799,10 +837,12 @@ public class OrdersController : ControllerBase
         order.DeliveryCents = isTableOrder ? 0 : 500;
         order.TotalCents = order.SubtotalCents + order.DeliveryCents;
 
-        var pm = (req.PaymentMethodStr ?? "PIX").Trim().ToUpperInvariant();
+        var pm = isTableOrder
+            ? "PAY_AT_COUNTER"
+            : (req.PaymentMethodStr ?? "PIX").Trim().ToUpperInvariant();
         order.PaymentMethod = pm;
 
-        if (pm == "CASH")
+        if (!isTableOrder && pm == "CASH")
         {
             if (req.CashGivenCents is null)
                 return BadRequest("CashGivenCents é obrigatório quando PaymentMethodStr = CASH.");

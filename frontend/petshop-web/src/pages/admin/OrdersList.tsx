@@ -282,6 +282,11 @@ DAVs de entrega apagados: ${res.deletedDeliveryDavs}`,
                     >
                       {o.orderNumber}
                     </span>
+                    {o.isTableOrder && (
+                      <div className="text-xs mt-0.5 font-semibold" style={{ color: "#7c5cf8" }}>
+                        Mesa {o.tableNumber ?? "-"}{o.tableName ? ` - ${o.tableName}` : ""}
+                      </div>
+                    )}
                     <div
                       className="sm:hidden text-xs mt-0.5"
                       style={{ color: "var(--text-muted)" }}

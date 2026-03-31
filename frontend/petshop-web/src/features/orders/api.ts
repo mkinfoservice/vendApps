@@ -10,7 +10,7 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
  * - coupon?: string | null
  */
 
-export type PaymentMethodStr = "PIX" | "CARD_ON_DELIVERY" | "CASH";
+export type PaymentMethodStr = "PIX" | "CARD_ON_DELIVERY" | "CASH" | "PAY_AT_COUNTER";
 
 export type CreateOrderItemRequest = {
   productId: string;

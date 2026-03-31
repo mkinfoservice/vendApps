@@ -9,6 +9,10 @@ public sealed class GetOrderResponse
     public string Phone { get; init; } = "";
     public string Cep { get; init; } = "";
     public string Address { get; init; } = "";
+    public bool IsTableOrder { get; init; }
+    public Guid? TableId { get; init; }
+    public int? TableNumber { get; init; }
+    public string? TableName { get; init; }
 
     public int SubtotalCents { get; init; }
     public int DeliveryCents { get; init; }

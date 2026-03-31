@@ -8,5 +8,9 @@ public sealed record OrderListItemResponse(
     string Status,
     int TotalCents,
     string PaymentMethodStr,
-    DateTime CreatedAtUtc
+    DateTime CreatedAtUtc,
+    bool IsTableOrder,
+    Guid? TableId,
+    int? TableNumber,
+    string? TableName
 );

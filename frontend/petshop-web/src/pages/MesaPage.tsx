@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
@@ -11,7 +11,7 @@ import { CreateOrder } from "@/features/orders/api";
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
 
-async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null }> {
+async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null; capacity: number }> {
   const r = await fetch(`${API_URL}/public/tables/${tableId}`);
   if (!r.ok) throw new Error("Mesa não encontrada");
   return r.json();
@@ -72,11 +72,19 @@ function useLocalCart() {
 }
 
 // ── Step 1: Nome ───────────────────────────────────────────────────────────────
-function StepName({ brand, tableNum, logoUrl, primaryColor, onNext }: {
-  brand: string; tableNum?: number; logoUrl?: string | null; primaryColor?: string;
-  onNext: (name: string) => void;
+function StepName({ brand, tableNum, tableName, maxGuests, initialName, initialGuests, logoUrl, primaryColor, onNext }: {
+  brand: string;
+  tableNum?: number;
+  tableName?: string | null;
+  maxGuests: number;
+  initialName?: string;
+  initialGuests?: number;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  onNext: (name: string, guests: number) => void;
 }) {
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName ?? "");
+  const [guests, setGuests] = useState(Math.min(Math.max(initialGuests ?? 1, 1), Math.max(maxGuests, 1)));
   const color = primaryColor || "#7c5cf8";
 
   return (
@@ -102,7 +110,7 @@ function StepName({ brand, tableNum, logoUrl, primaryColor, onNext }: {
               {tableNum && (
                 <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold"
                   style={{ backgroundColor: `${color}15`, color }}>
-                  Mesa {tableNum} · Auto-atendimento
+                  Mesa {tableNum}{tableName ? ` - ${tableName}` : ""} · Auto-atendimento
                 </div>
               )}
             </div>
@@ -112,21 +120,36 @@ function StepName({ brand, tableNum, logoUrl, primaryColor, onNext }: {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-5">
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-gray-900">Olá! Qual é o seu nome?</h2>
-              <p className="text-sm text-gray-400">Para personalizarmos seu atendimento</p>
+              <p className="text-sm text-gray-400">Pedido de mesa com pagamento no caixa ao final do atendimento.</p>
             </div>
 
             <input
               autoFocus
               value={name}
               onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim()); }}
+              onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim(), guests); }}
               placeholder="Seu nome"
               className="w-full h-13 rounded-2xl border border-gray-200 px-4 text-base text-gray-900 placeholder-gray-300 focus:outline-none focus:border-transparent focus:ring-2 transition"
               style={{ height: 52, ["--tw-ring-color" as string]: color + "40" }}
             />
 
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                Quantas pessoas nesta mesa? (max {maxGuests})
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={maxGuests}
+                value={guests}
+                onChange={(e) => setGuests(Math.min(Math.max(parseInt(e.target.value || "1"), 1), maxGuests))}
+                className="w-full h-12 rounded-2xl border border-gray-200 px-4 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 transition"
+                style={{ ["--tw-ring-color" as string]: color + "40" }}
+              />
+            </div>
+
             <button
-              onClick={() => name.trim() && onNext(name.trim())}
+              onClick={() => name.trim() && onNext(name.trim(), guests)}
               disabled={!name.trim()}
               className="w-full h-13 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ height: 52, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
@@ -320,9 +343,11 @@ function MesaProductCard({ product, qty, primaryColor, onAdd, onInc, onDec }: {
 }
 
 // ── Cart Sheet ─────────────────────────────────────────────────────────────────
-function CartSheet({ items, totalCents, tableId, name, phone, cpf, primaryColor,
+function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone, cpf, primaryColor,
   onInc, onDec, onRemove, onClose, onSuccess }: {
   items: CartItem[]; totalCents: number; tableId: string;
+  tableLabel?: string;
+  guests: number;
   name: string; phone: string; cpf: string; primaryColor?: string;
   onInc: (id: string) => void; onDec: (id: string) => void;
   onRemove: (id: string) => void; onClose: () => void;
@@ -338,7 +363,8 @@ function CartSheet({ items, totalCents, tableId, name, phone, cpf, primaryColor,
       const res = await CreateOrder({
         name, phone: phone || "00000000000", cep: "", address: "",
         items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
-        paymentMethodStr: "PIX", tableId,
+        paymentMethodStr: "PAY_AT_COUNTER", tableId,
+        complement: `Mesa com ${guests} pessoa(s)`,
         customerPhone: phone || undefined,
         customerCpf: cpf || undefined,
       } as any);
@@ -361,7 +387,9 @@ function CartSheet({ items, totalCents, tableId, name, phone, cpf, primaryColor,
         <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
           <div>
             <h2 className="font-black text-gray-900 text-lg">Seu pedido</h2>
-            <p className="text-xs text-gray-400">{items.length} iten{items.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-gray-400">
+              {tableLabel ? `${tableLabel} · ` : ""}{items.length} iten{items.length !== 1 ? "s" : ""}
+            </p>
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition hover:bg-gray-200">
             <X size={15} className="text-gray-500" />
@@ -407,7 +435,7 @@ function CartSheet({ items, totalCents, tableId, name, phone, cpf, primaryColor,
             <span className="text-2xl font-black text-gray-900">{fmtBRL(totalCents)}</span>
           </div>
           <p className="text-xs text-gray-400 text-center -mt-2">
-            Pagamento na saída · Sem taxa de entrega
+            Pagamento no caixa ao finalizar a mesa · Sem taxa de entrega
           </p>
           {err && <p className="text-sm text-red-500 text-center font-medium">{err}</p>}
           <button
@@ -453,7 +481,7 @@ function Confirmation({ orderNum, name, primaryColor, onNewOrder }: {
         </div>
 
         <p className="text-sm text-gray-400 leading-relaxed">
-          Seu pedido foi recebido e está sendo preparado. Aguarde, fique à vontade! 🙂
+          Seu pedido foi recebido e está sendo preparado. O pagamento será no caixa quando finalizar a mesa.
         </p>
 
         <button
@@ -473,9 +501,16 @@ type Step = "name" | "register" | "catalog" | "done";
 
 export default function MesaPage() {
   const { tableId } = useParams<{ tableId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialHost = useMemo(() => searchParams.get("host")?.trim() ?? "", [searchParams]);
+  const initialGuests = useMemo(() => {
+    const raw = parseInt(searchParams.get("guests") ?? "1");
+    return Number.isFinite(raw) ? Math.max(raw, 1) : 1;
+  }, [searchParams]);
 
   const [step,     setStep]     = useState<Step>("name");
-  const [name,     setName]     = useState("");
+  const [name,     setName]     = useState(initialHost);
+  const [guests,   setGuests]   = useState(initialGuests);
   const [phone,    setPhone]    = useState("");
   const [cpf,      setCpf]      = useState("");
   const [catSlug,  setCatSlug]  = useState("");
@@ -516,15 +551,30 @@ export default function MesaPage() {
   const brand        = sf?.storeName || "Cardápio";
   const logoUrl      = sf?.logoUrl;
   const tableNum     = tableInfo?.number;
+  const tableName    = tableInfo?.name;
+  const tableCapacity = tableInfo?.capacity ?? 4;
+  const safeGuests = Math.min(Math.max(guests, 1), Math.max(tableCapacity, 1));
 
-  function handleNameNext(n: string) { setName(n); setStep("register"); }
+  function handleNameNext(n: string, g: number) { setName(n); setGuests(g); setStep("register"); }
   function handleRegister(p: string, c: string) { setPhone(p); setCpf(c); setStep("catalog"); }
   function handleSkipRegister() { setStep("catalog"); }
   function handleSuccess(num: string) { setOrderNum(num); setCartOpen(false); cart.clear(); setStep("done"); }
   function handleNewOrder() { setStep("register"); }
 
   if (step === "name") {
-    return <StepName brand={brand} tableNum={tableNum} logoUrl={logoUrl} primaryColor={primaryColor} onNext={handleNameNext} />;
+    return (
+      <StepName
+        brand={brand}
+        tableNum={tableNum}
+        tableName={tableName}
+        maxGuests={Math.max(tableCapacity, 1)}
+        initialName={name}
+        initialGuests={safeGuests}
+        logoUrl={logoUrl}
+        primaryColor={primaryColor}
+        onNext={handleNameNext}
+      />
+    );
   }
   if (step === "register") {
     return <StepRegister name={name} primaryColor={primaryColor} onSkip={handleSkipRegister} onRegister={handleRegister} />;
@@ -543,7 +593,7 @@ export default function MesaPage() {
         <div className="max-w-2xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-400 font-medium">
-              {tableNum ? `Mesa ${tableNum}` : "Auto-atendimento"} · Olá, <span className="font-semibold text-gray-700">{name.split(" ")[0]}</span>
+              {tableNum ? `Mesa ${tableNum}` : "Auto-atendimento"} · {safeGuests} pessoa{safeGuests > 1 ? "s" : ""} · Olá, <span className="font-semibold text-gray-700">{name.split(" ")[0]}</span>
             </p>
             <p className="text-sm font-bold text-gray-900 truncate">{brand}</p>
           </div>
@@ -671,6 +721,8 @@ export default function MesaPage() {
           items={cart.items}
           totalCents={cart.totalCents}
           tableId={tableId}
+          tableLabel={tableNum ? `Mesa ${tableNum}` : undefined}
+          guests={safeGuests}
           name={name}
           phone={phone}
           cpf={cpf}

@@ -10,6 +10,10 @@ export type OrderListItem = {
   totalCents: number;
   paymentMethodStr: string;
   createdAtUtc: string;
+  isTableOrder: boolean;
+  tableId: string | null;
+  tableNumber: number | null;
+  tableName: string | null;
 };
 
 export type ListOrdersResponse = {
@@ -43,6 +47,10 @@ export type GetOrderResponse = {
   phone: string;
   cep: string;
   address: string;
+  isTableOrder: boolean;
+  tableId: string | null;
+  tableNumber: number | null;
+  tableName: string | null;
   subtotalCents: number;
   deliveryCents: number;
   totalCents: number;

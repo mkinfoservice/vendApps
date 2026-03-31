@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   QrCode, Plus, Pencil, Trash2, Copy, Check, X,
-  ShoppingBag, BarChart2, Users,
+  ShoppingBag, BarChart2, Users, ClipboardList, CircleCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   fetchTablesOverview, fetchTableMetrics,
-  createTable, updateTable, deleteTable,
+  createTable, updateTable, deleteTable, fetchTableService, finalizeTable, cancelTableOpenOrders,
   type TableOverviewItem,
 } from "@/features/admin/tables/api";
 
@@ -15,6 +15,17 @@ import {
 
 function fmtCurrency(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function orderStatusLabel(status: string) {
+  const s = (status || "").toUpperCase();
+  if (s === "RECEBIDO") return "Recebido";
+  if (s === "EM_PREPARO") return "Em preparo";
+  if (s === "PRONTO_PARA_ENTREGA") return "Pronto para entrega";
+  if (s === "SAIU_PARA_ENTREGA") return "Saiu para entrega";
+  if (s === "ENTREGUE") return "Entregue";
+  if (s === "CANCELADO") return "Cancelado";
+  return status;
 }
 
 // ── QR Modal ───────────────────────────────────────────────────────────────────
@@ -219,15 +230,203 @@ function TableFormModal({
   );
 }
 
+function ServiceModal({
+  table,
+  onClose,
+}: {
+  table: TableOverviewItem;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [hostName, setHostName] = useState("");
+  const [guests, setGuests] = useState("1");
+
+  const serviceQ = useQuery({
+    queryKey: ["table-service", table.id],
+    queryFn: () => fetchTableService(table.id),
+    refetchInterval: 5000,
+  });
+
+  const finalizeMut = useMutation({
+    mutationFn: () => finalizeTable(table.id),
+    onSuccess: (res) => {
+      alert(res.message);
+      qc.invalidateQueries({ queryKey: ["tables-overview"] });
+      qc.invalidateQueries({ queryKey: ["table-service", table.id] });
+    },
+    onError: (e: Error) => alert(e.message),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: () => cancelTableOpenOrders(table.id),
+    onSuccess: (res) => {
+      alert(res.message);
+      qc.invalidateQueries({ queryKey: ["tables-overview"] });
+      qc.invalidateQueries({ queryKey: ["table-service", table.id] });
+    },
+    onError: (e: Error) => alert(e.message),
+  });
+
+  const service = serviceQ.data;
+  const maxGuests = table.capacity > 0 ? table.capacity : 1;
+  const safeGuests = Math.min(Math.max(parseInt(guests || "1"), 1), maxGuests);
+
+  function handleOpenComanda() {
+    const qs = new URLSearchParams();
+    qs.set("guests", String(safeGuests));
+    if (hostName.trim()) qs.set("host", hostName.trim());
+    const url = `/mesa/${table.id}?${qs.toString()}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-2xl border shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+        style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+          <div>
+            <h3 className="text-base font-bold" style={{ color: "var(--text)" }}>
+              Mesa {table.number}{table.name ? ` - ${table.name}` : ""}
+            </h3>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Gerencie a comanda e libere a mesa quando o atendimento terminar.
+            </p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--surface-2)" }}>
+            <X size={14} style={{ color: "var(--text-muted)" }} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-72px)]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
+              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Capacidade</p>
+              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{table.capacity}</p>
+            </div>
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
+              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Pedidos ativos</p>
+              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{service?.totals.orders ?? 0}</p>
+            </div>
+            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
+              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Valor em aberto</p>
+              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{fmtCurrency(service?.totals.amountCents ?? 0)}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
+            <div className="flex items-center gap-2">
+              <ClipboardList size={14} style={{ color: "var(--brand)" }} />
+              <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Abrir comanda para atendimento rapido</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Nome do responsavel</label>
+                <input
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="Ex: Joao"
+                  className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>
+                  Pessoas (max {maxGuests})
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={maxGuests}
+                  value={guests}
+                  onChange={(e) => setGuests(e.target.value)}
+                  className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleOpenComanda}
+              className="w-full h-10 rounded-xl text-sm font-semibold text-white"
+              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            >
+              Abrir comanda da mesa
+            </button>
+          </div>
+
+          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+            <div className="px-4 py-2 border-b text-xs font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+              Pedidos da mesa
+            </div>
+            <div className="max-h-56 overflow-y-auto">
+              {serviceQ.isLoading ? (
+                <div className="p-4 text-sm" style={{ color: "var(--text-muted)" }}>Carregando pedidos...</div>
+              ) : (service?.activeOrders.length ?? 0) === 0 ? (
+                <div className="p-4 text-sm" style={{ color: "var(--text-muted)" }}>Nenhuma comanda ativa nesta mesa.</div>
+              ) : (
+                service!.activeOrders.map((o) => (
+                  <div key={o.id} className="px-4 py-3 border-b flex items-center justify-between gap-3" style={{ borderColor: "var(--border)" }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{o.publicId}</p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        {o.customerName} - {orderStatusLabel(o.status)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold" style={{ color: "var(--text)" }}>{fmtCurrency(o.totalCents)}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                if (!confirm("Cancelar todas as comandas abertas desta mesa?")) return;
+                cancelMut.mutate();
+              }}
+              disabled={cancelMut.isPending}
+              className="h-11 rounded-xl text-sm font-semibold border transition disabled:opacity-60"
+              style={{ borderColor: "#fca5a5", color: "#dc2626", backgroundColor: "#fff1f2" }}
+            >
+              {cancelMut.isPending ? "Cancelando..." : "Cancelar comanda"}
+            </button>
+            <button
+              onClick={() => {
+                if (!confirm("Finalizar mesa e liberar para reuso? Pedidos PRONTO serao marcados como ENTREGUE.")) return;
+                finalizeMut.mutate();
+              }}
+              disabled={finalizeMut.isPending}
+              className="h-11 rounded-xl text-sm font-semibold text-white transition disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
+            >
+              <CircleCheck size={15} />
+              {finalizeMut.isPending ? "Finalizando..." : "Finalizar mesa"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Table Card ─────────────────────────────────────────────────────────────────
 
 function TableCard({
   table,
+  onManage,
   onQr,
   onEdit,
   onDelete,
 }: {
   table: TableOverviewItem;
+  onManage: () => void;
   onQr: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -239,8 +438,9 @@ function TableCard({
 
   return (
     <div
-      className="rounded-2xl border p-4 flex flex-col gap-3 transition-all hover:shadow-md"
+      className="rounded-2xl border p-4 flex flex-col gap-3 transition-all hover:shadow-md cursor-pointer"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+      onClick={onManage}
     >
       {/* Header row */}
       <div className="flex items-start justify-between">
@@ -265,14 +465,14 @@ function TableCard({
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={onEdit}
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
             style={{ backgroundColor: "var(--surface-2)" }}
           >
             <Pencil size={12} style={{ color: "var(--text-muted)" }} />
           </button>
           <button
-            onClick={onDelete}
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
             style={{ backgroundColor: "var(--surface-2)" }}
           >
@@ -297,7 +497,7 @@ function TableCard({
 
       {/* QR Button */}
       <button
-        onClick={onQr}
+        onClick={(e) => { e.stopPropagation(); onQr(); }}
         className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:brightness-110"
         style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)", color: "#fff" }}
       >
@@ -313,6 +513,7 @@ function TableCard({
 export default function TablesPage() {
   const qc = useQueryClient();
   const [qrTable,   setQrTable]   = useState<TableOverviewItem | null>(null);
+  const [serviceTable, setServiceTable] = useState<TableOverviewItem | null>(null);
   const [editTable, setEditTable] = useState<TableOverviewItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [mutErr,    setMutErr]    = useState<string | undefined>();
@@ -447,6 +648,7 @@ export default function TablesPage() {
               <TableCard
                 key={t.id}
                 table={t}
+                onManage={() => setServiceTable(t)}
                 onQr={() => setQrTable(t)}
                 onEdit={() => { setEditTable(t); setMutErr(undefined); }}
                 onDelete={() => handleDelete(t)}
@@ -479,6 +681,7 @@ export default function TablesPage() {
 
       {/* Modals */}
       {qrTable && <QrModal table={qrTable} onClose={() => setQrTable(null)} />}
+      {serviceTable && <ServiceModal table={serviceTable} onClose={() => setServiceTable(null)} />}
 
       {showCreate && (
         <TableFormModal

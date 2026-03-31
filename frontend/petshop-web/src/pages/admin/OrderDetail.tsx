@@ -126,6 +126,7 @@ export default function OrderDetail() {
 
               <OrderStatusSelect
                 value={status}
+                isTableOrder={order.isTableOrder}
                 disabled={!canEdit || isUpdating}
                 onChange={(next) => {
                   if (next === status) return;
@@ -176,11 +177,22 @@ export default function OrderDetail() {
               <div className="text-sm text-[var(--text-muted)]">{order.phone}</div>
             </div>
 
-            {/* Endereço */}
+            {/* Endereço / Mesa */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-1">
-              <div className="text-sm font-extrabold mb-2">Entrega</div>
-              <div className="text-sm text-[var(--text)]">{order.address}</div>
-              <div className="text-xs text-[var(--text-muted)]">CEP: {order.cep}</div>
+              <div className="text-sm font-extrabold mb-2">{order.isTableOrder ? "Mesa" : "Entrega"}</div>
+              {order.isTableOrder ? (
+                <>
+                  <div className="text-sm text-[var(--text)]">
+                    Mesa {order.tableNumber ?? "-"}{order.tableName ? ` - ${order.tableName}` : ""}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">Pedido de auto-atendimento via QR</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-sm text-[var(--text)]">{order.address}</div>
+                  <div className="text-xs text-[var(--text-muted)]">CEP: {order.cep}</div>
+                </>
+              )}
             </div>
 
             {/* Itens */}
@@ -197,7 +209,7 @@ export default function OrderDetail() {
                 <span className="font-bold text-[var(--text)]">{formatBRL(order.subtotalCents)}</span>
               </div>
               <div className="flex justify-between text-sm text-[var(--text-muted)]">
-                <span>Entrega</span>
+                <span>{order.isTableOrder ? "Serviço de mesa" : "Entrega"}</span>
                 <span className="font-bold text-[var(--text)]">{formatBRL(order.deliveryCents)}</span>
               </div>
               <div className="h-px bg-[var(--border)] my-1" />
