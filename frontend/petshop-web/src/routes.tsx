@@ -52,6 +52,7 @@ import DavListPage from "./pages/admin/DavListPage";
 import DavBuilderPage from "./pages/admin/DavBuilderPage";
 import CatalogEnrichmentPage from "./pages/admin/CatalogEnrichmentPage";
 import StoreFrontConfigPage from "./pages/admin/StoreFrontConfigPage";
+import TablesPage from "./pages/admin/TablesPage";
 
 // ── PDV ───────────────────────────────────────────────────────────────────────
 import PdvPage from "./pages/pdv/PdvPage";
@@ -103,6 +104,7 @@ export function AppRoutes() {
         <Route path="/app" element={<AppPage><OperationCenter /></AppPage>} />
 
         {/* ── /app — Operação ─────────────────────────────────────────── */}
+        <Route path="/app/mesas" element={<AppPage><TablesPage /></AppPage>} />
         <Route path="/app/pedidos" element={<AppPage><OrdersList /></AppPage>} />
         <Route path="/app/pedidos/:id" element={<AppPage><OrderDetail /></AppPage>} />
 

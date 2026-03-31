@@ -23,6 +23,7 @@ import {
   FileText,
   Sparkles,
   Store,
+  UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +87,18 @@ export function getGroupOrder(): ModuleGroup[] {
 
 export const APP_MODULES: AppModule[] = [
   // ── OPERAÇÃO ──────────────────────────────────────────────────────────────
+  {
+    id: "mesas",
+    label: "Mesas",
+    description: "Auto-atendimento via QR Code e gestão de mesas",
+    icon: UtensilsCrossed,
+    iconColor: "#f97316",
+    iconBg: "rgba(249,115,22,0.12)",
+    route: "/app/mesas",
+    group: "OPERACAO",
+    roles: null,
+    isActive: true,
+  },
   {
     id: "pdv",
     label: "Frente de Caixa",
