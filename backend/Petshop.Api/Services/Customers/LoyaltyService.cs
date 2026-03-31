@@ -81,6 +81,54 @@ public class LoyaltyService
         return points;
     }
 
+    // ── Earn (delivery order) ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Acumula pontos para um cliente após um pedido de delivery/mesa ser entregue.
+    /// </summary>
+    public async Task<int> EarnForOrderAsync(Guid orderId, CancellationToken ct)
+    {
+        var order = await _db.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == orderId, ct);
+
+        if (order is null || order.CustomerId is null || order.CompanyId is null) return 0;
+
+        var cfg = await GetOrCreateConfigAsync(order.CompanyId.Value, ct);
+        if (!cfg.IsEnabled) return 0;
+
+        var points = (int)Math.Floor(order.TotalCents / 100m * cfg.PointsPerReal);
+        if (points <= 0) return 0;
+
+        var customer = await _db.Customers
+            .FirstOrDefaultAsync(c => c.Id == order.CustomerId.Value && c.CompanyId == order.CompanyId.Value, ct);
+        if (customer is null) return 0;
+
+        var before = customer.PointsBalance;
+        customer.PointsBalance   += points;
+        customer.TotalSpentCents += order.TotalCents;
+        customer.TotalOrders++;
+        customer.LastOrderUtc = DateTime.UtcNow;
+        customer.UpdatedAtUtc = DateTime.UtcNow;
+
+        _db.LoyaltyTransactions.Add(new LoyaltyTransaction
+        {
+            CompanyId     = order.CompanyId.Value,
+            CustomerId    = order.CustomerId.Value,
+            Points        = points,
+            BalanceBefore = before,
+            BalanceAfter  = customer.PointsBalance,
+            Description   = $"Acúmulo — pedido {order.PublicId} {order.TotalCents / 100m:C}",
+        });
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("[Loyalty] +{Pts} pontos para cliente {Id} (pedido {Pid}). Saldo: {Bal}.",
+            points, order.CustomerId, order.PublicId, customer.PointsBalance);
+
+        return points;
+    }
+
     // ── Redeem ────────────────────────────────────────────────────────────────
 
     /// <summary>

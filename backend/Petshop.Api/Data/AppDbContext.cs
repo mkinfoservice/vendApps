@@ -59,6 +59,7 @@ public class AppDbContext : DbContext
 
     // ── Loja Online (StoreFront) ──────────────────────────────────────────────
     public DbSet<StoreFrontConfig> StoreFrontConfigs => Set<StoreFrontConfig>();
+    public DbSet<Table>            Tables            => Set<Table>();
     public DbSet<BannerSlide>      BannerSlides      => Set<BannerSlide>();
 
     // ── Sync ─────────────────────────────────────────────────
@@ -1018,5 +1019,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<EnrichmentConfig>()
             .HasIndex(e => e.CompanyId)
             .IsUnique();
+
+        // ── Table (Mesas) ─────────────────────────────────────────────────────
+        modelBuilder.Entity<Table>()
+            .HasIndex(t => new { t.CompanyId, t.Number })
+            .IsUnique();
+
+        // ── Order.TableId ─────────────────────────────────────────────────────
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.TableId)
+            .HasFilter("\"TableId\" IS NOT NULL");
     }
 }

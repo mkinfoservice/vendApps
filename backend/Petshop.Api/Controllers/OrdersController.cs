@@ -7,6 +7,7 @@ using Petshop.Api.Contracts.Orders;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Services;
+using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
@@ -26,8 +27,9 @@ public class OrdersController : ControllerBase
     private readonly ILogger<OrdersController> _logger;
     private readonly IBackgroundJobClient _jobs;
     private readonly PrintService _print;
+    private readonly LoyaltyService _loyalty;
 
-    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print)
+    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty)
     {
         _db = db;
         _geo = geo;
@@ -36,6 +38,7 @@ public class OrdersController : ControllerBase
         _logger = logger;
         _jobs = jobs;
         _print = print;
+        _loyalty = loyalty;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -385,8 +388,15 @@ public class OrdersController : ControllerBase
 
         // DAV automático — pedido entregue gera DAV aguardando confirmação fiscal
         if (newStatus == OrderStatus.ENTREGUE)
+        {
             _jobs.Enqueue<DeliveryOrderToDavJob>(
                 j => j.RunAsync(order.Id, CancellationToken.None));
+
+            // Fidelidade — acumula pontos se cliente cadastrado
+            if (order.CustomerId.HasValue)
+                _jobs.Enqueue<LoyaltyService>(
+                    s => s.EarnForOrderAsync(order.Id, CancellationToken.None));
+        }
 
         return Ok(new UpdateOrderStatusResponse(
             order.Id,

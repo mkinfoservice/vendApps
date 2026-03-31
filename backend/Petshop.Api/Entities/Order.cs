@@ -18,6 +18,12 @@ namespace Petshop.Api.Entities
        /// <summary>True = pedido criado pelo atendente via telefone.</summary>
        public bool IsPhoneOrder { get; set; } = false;
 
+       /// <summary>Mesa de origem (auto-atendimento via QR). Null = delivery/balcão.</summary>
+       public Guid? TableId { get; set; }
+
+       /// <summary>True = pedido originado pelo cliente via QR da mesa.</summary>
+       public bool IsTableOrder { get; set; } = false;
+
        /// <summary>ID do AdminUser (atendente/gerente) que criou o pedido por telefone.</summary>
        public Guid? AttendantUserId { get; set; }
 
