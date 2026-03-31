@@ -92,8 +92,8 @@ function useLocalCart() {
   return { items, add, inc, dec, remove, clear, totalCents, totalItems };
 }
 
-// ── Step 1: Nome ───────────────────────────────────────────────────────────────
-function StepName({ brand, tableNum, tableName, maxGuests, initialName, initialGuests, logoUrl, primaryColor, onNext }: {
+// ── Step 1: Entrada ────────────────────────────────────────────────────────────
+function StepName({ brand, tableNum, tableName, maxGuests, initialName, initialGuests, logoUrl, tableId, onNext, onLogin }: {
   brand: string;
   tableNum?: number;
   tableName?: string | null;
@@ -101,83 +101,172 @@ function StepName({ brand, tableNum, tableName, maxGuests, initialName, initialG
   initialName?: string;
   initialGuests?: number;
   logoUrl?: string | null;
-  primaryColor?: string;
+  tableId: string;
   onNext: (name: string, guests: number) => void;
+  onLogin: (name: string, phone: string, customerId: string, pointsBalance: number) => void;
 }) {
-  const [name, setName] = useState(initialName ?? "");
-  const [guests, setGuests] = useState(Math.min(Math.max(initialGuests ?? 1, 1), Math.max(maxGuests, 1)));
-  const color = primaryColor || "#7c5cf8";
+  const [tab,     setTab]     = useState<"new" | "login">("new");
+  const [name,    setName]    = useState(initialName ?? "");
+  const [guests,  setGuests]  = useState(Math.min(Math.max(initialGuests ?? 1, 1), Math.max(maxGuests, 1)));
+  const [phone,   setPhone]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err,     setErr]     = useState<string | null>(null);
+  const [found,   setFound]   = useState<{ name: string; points: number; customerId: string } | null>(null);
+
+  async function handleLogin() {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return;
+    setLoading(true); setErr(null); setFound(null);
+    try {
+      const res = await identifyCustomer(tableId, "lookup", digits);
+      if (!res.isNew) {
+        setFound({ name: res.name, points: res.pointsBalance, customerId: res.customerId });
+      } else {
+        setErr("Número não encontrado. Tente como novo cliente.");
+      }
+    } catch {
+      setErr("Erro ao buscar cadastro. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function confirmLogin() {
+    if (!found) return;
+    onLogin(found.name, phone.replace(/\D/g, ""), found.customerId, found.points);
+  }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fafafa" }}>
-      {/* Hero */}
-      <div className="flex flex-col items-center justify-center flex-1 px-6 py-12">
-        <div className="w-full max-w-sm space-y-8">
+    <div className="min-h-screen flex flex-col" style={{ background: GC.bg }}>
+      <div className="flex flex-col items-center justify-center flex-1 px-5 py-10">
+        <div className="w-full max-w-sm space-y-6">
 
           {/* Brand */}
           <div className="text-center space-y-3">
             {logoUrl ? (
               <img src={logoUrl} alt={brand} className="h-16 mx-auto object-contain" />
             ) : (
-              <div
-                className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto shadow-lg"
-                style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
-              >
+              <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto"
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 8px 32px rgba(28,18,9,0.25)" }}>
                 <span className="text-3xl font-black text-white">{brand.charAt(0)}</span>
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-black tracking-tight" style={{ color: "#111" }}>{brand}</h1>
+              <h1 className="text-2xl font-black" style={{ color: GC.dark }}>{brand}</h1>
               {tableNum && (
-                <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold"
-                  style={{ backgroundColor: `${color}15`, color }}>
-                  Mesa {tableNum}{tableName ? ` - ${tableName}` : ""} · Auto-atendimento
+                <div className="inline-flex items-center gap-1.5 mt-1.5 px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{ background: `${GC.caramel}18`, color: GC.caramel }}>
+                  Mesa {tableNum}{tableName ? ` · ${tableName}` : ""} · Auto-atendimento
                 </div>
               )}
             </div>
           </div>
 
+          {/* Tabs */}
+          <div className="p-1 rounded-2xl flex gap-1" style={{ background: GC.cream }}>
+            {(["new", "login"] as const).map(t => (
+              <button key={t} onClick={() => { setTab(t); setErr(null); setFound(null); }}
+                className="flex-1 h-10 rounded-xl text-sm font-bold transition-all duration-200"
+                style={tab === t ? {
+                  background: GC.dark, color: "#fff",
+                  boxShadow: "0 2px 10px rgba(28,18,9,0.2)",
+                } : { color: GC.brown }}>
+                {t === "new" ? "Sou novo aqui" : "Já tenho cadastro"}
+              </button>
+            ))}
+          </div>
+
           {/* Card */}
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-5">
-            <div className="space-y-1">
-              <h2 className="text-xl font-bold text-gray-900">Olá! Qual é o seu nome?</h2>
-              <p className="text-sm text-gray-400">Pedido de mesa com pagamento no caixa ao final do atendimento.</p>
-            </div>
+          <div className="bg-white rounded-3xl p-6 space-y-4"
+            style={{ boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
 
-            <input
-              autoFocus
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim(), guests); }}
-              placeholder="Seu nome"
-              className="w-full h-13 rounded-2xl border border-gray-200 px-4 text-base text-gray-900 placeholder-gray-300 focus:outline-none focus:border-transparent focus:ring-2 transition"
-              style={{ height: 52, ["--tw-ring-color" as string]: color + "40" }}
-            />
+            {tab === "new" ? (
+              <>
+                <div>
+                  <h2 className="text-lg font-black" style={{ color: GC.dark }}>Olá! Qual é o seu nome?</h2>
+                  <p className="text-sm mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>Pagamento no caixa ao finalizar a mesa.</p>
+                </div>
+                <input autoFocus value={name} onChange={e => setName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim(), guests); }}
+                  placeholder="Seu nome"
+                  className="w-full rounded-2xl px-4 text-base focus:outline-none focus:ring-2 transition"
+                  style={{ height: 52, border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.dark, ["--tw-ring-color" as string]: GC.caramel + "40" }}
+                />
+                <div>
+                  <label className="block text-xs font-semibold mb-1.5" style={{ color: GC.brown, opacity: 0.6 }}>
+                    Quantas pessoas? (max {maxGuests})
+                  </label>
+                  <div className="flex items-center gap-3 px-4 rounded-2xl" style={{ height: 52, border: `1.5px solid rgba(107,79,58,0.15)` }}>
+                    <button onClick={() => setGuests(g => Math.max(1, g - 1))}
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg transition"
+                      style={{ background: GC.cream, color: GC.brown }}>−</button>
+                    <span className="flex-1 text-center font-black text-lg" style={{ color: GC.dark }}>{guests}</span>
+                    <button onClick={() => setGuests(g => Math.min(maxGuests, g + 1))}
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg transition"
+                      style={{ background: GC.cream, color: GC.brown }}>+</button>
+                  </div>
+                </div>
+                <button onClick={() => name.trim() && onNext(name.trim(), guests)} disabled={!name.trim()}
+                  className="w-full h-13 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
+                  style={{ height: 52, background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
+                  Continuar <ChevronRight size={16} />
+                </button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="text-lg font-black" style={{ color: GC.dark }}>Bem-vindo de volta!</h2>
+                  <p className="text-sm mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>Digite seu telefone para entrar e pontuar.</p>
+                </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                Quantas pessoas nesta mesa? (max {maxGuests})
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={maxGuests}
-                value={guests}
-                onChange={(e) => setGuests(Math.min(Math.max(parseInt(e.target.value || "1"), 1), maxGuests))}
-                className="w-full h-12 rounded-2xl border border-gray-200 px-4 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 transition"
-                style={{ ["--tw-ring-color" as string]: color + "40" }}
-              />
-            </div>
-
-            <button
-              onClick={() => name.trim() && onNext(name.trim(), guests)}
-              disabled={!name.trim()}
-              className="w-full h-13 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
-              style={{ height: 52, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
-            >
-              Continuar
-              <ChevronRight size={18} />
-            </button>
+                {!found ? (
+                  <>
+                    <input autoFocus type="tel" value={phone} onChange={e => setPhone(maskPhone(e.target.value))}
+                      onKeyDown={e => { if (e.key === "Enter") handleLogin(); }}
+                      placeholder="(11) 99999-9999"
+                      className="w-full rounded-2xl px-4 text-base focus:outline-none focus:ring-2 transition"
+                      style={{ height: 52, border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.dark, ["--tw-ring-color" as string]: GC.caramel + "40" }}
+                    />
+                    {err && <p className="text-sm text-red-500 font-medium">{err}</p>}
+                    <button onClick={handleLogin} disabled={phone.replace(/\D/g, "").length < 10 || loading}
+                      className="w-full h-13 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition active:scale-[0.98]"
+                      style={{ height: 52, background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
+                      {loading ? "Buscando…" : "Entrar"}
+                    </button>
+                    <button onClick={() => { setTab("new"); setErr(null); }}
+                      className="w-full text-sm font-medium text-center transition"
+                      style={{ color: GC.brown, opacity: 0.6 }}>
+                      Primeiro acesso? Cadastre-se →
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl px-5 py-4 text-center"
+                      style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
+                      <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">Olá,</p>
+                      <p className="text-white text-2xl font-black mt-0.5">{found.name.split(" ")[0]}</p>
+                      {found.points > 0 && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full"
+                          style={{ background: `${GC.caramel}30` }}>
+                          <Star className="w-3 h-3 fill-current" style={{ color: GC.caramel }} />
+                          <span className="text-xs font-bold" style={{ color: GC.caramel }}>{found.points} pontos</span>
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={confirmLogin}
+                      className="w-full h-12 rounded-2xl font-bold text-white transition active:scale-[0.98]"
+                      style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A87830)`, boxShadow: `0 4px 16px ${GC.caramel}44` }}>
+                      Entrar no cardápio
+                    </button>
+                    <button onClick={() => setFound(null)}
+                      className="w-full text-sm font-medium text-center"
+                      style={{ color: GC.brown, opacity: 0.5 }}>
+                      Não sou eu
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -346,10 +435,10 @@ function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative rounded-t-3xl overflow-hidden flex flex-col max-h-[92vh]"
-        style={{ background: GC.bg }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh]"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
 
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -497,8 +586,8 @@ function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart }: {
             <button onClick={handleAdd}
               className="flex-1 h-12 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2 transition active:scale-[0.98]"
               style={{
-                background: `linear-gradient(135deg, ${color}, #A87830)`,
-                boxShadow: `0 6px 20px ${color}50`,
+                background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+                boxShadow: "0 4px 16px rgba(28,18,9,0.30)",
               }}>
               <ShoppingCart size={16} />
               Adicionar · {fmtBRL(total)}
@@ -549,7 +638,7 @@ function MesaProductCard({ product, qty, primaryColor, onOpen, onInc, onDec }: {
             </div>
             {qty === 0 ? (
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white transition"
-                style={{ background: `linear-gradient(135deg, ${color}, #A87830)`, boxShadow: `0 3px 10px ${color}44` }}>
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 3px 10px rgba(28,18,9,0.25)" }}>
                 <Plus size={15} />
               </div>
             ) : (
@@ -562,7 +651,7 @@ function MesaProductCard({ product, qty, primaryColor, onOpen, onInc, onDec }: {
                 <span className="w-5 text-center text-sm font-black" style={{ color: GC.dark }}>{qty}</span>
                 <button onClick={e => { e.stopPropagation(); onInc(); }}
                   className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
-                  style={{ background: `linear-gradient(135deg, ${color}, #A87830)` }}>
+                  style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
                   <Plus size={11} />
                 </button>
               </div>
@@ -849,8 +938,13 @@ export default function MesaPage() {
         initialName={name}
         initialGuests={safeGuests}
         logoUrl={logoUrl}
-        primaryColor={primaryColor}
+        tableId={tableId ?? ""}
         onNext={handleNameNext}
+        onLogin={(n, p, cid, pts) => {
+          setName(n); setPhone(p); setCustomerId(cid);
+          setCustomerPoints(pts); setCustomerIsNew(false);
+          setStep("catalog");
+        }}
       />
     );
   }
