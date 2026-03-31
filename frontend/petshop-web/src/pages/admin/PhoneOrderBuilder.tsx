@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { fetchCustomerByPhoneOrCpf } from "@/features/admin/customers/api";
+import { fetchCustomerByPhoneOrCpf, createCustomer } from "@/features/admin/customers/api";
 import type { CustomerDetailDto } from "@/features/admin/customers/types";
 import { fetchAdminProductById, fetchAdminProducts } from "@/features/admin/products/api";
 import type { ProductAddon, ProductDetail, ProductListItem } from "@/features/admin/products/api";
@@ -107,6 +107,10 @@ export default function PhoneOrderBuilder() {
   const [paymentMethod, setPaymentMethod] = useState("PIX");
   const [cashGiven, setCashGiven] = useState("");
   const [deliveryCents, setDeliveryCents] = useState(0);
+
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [registerLoading, setRegisterLoading] = useState(false);
+  const [registerError, setRegisterError]     = useState<string | null>(null);
 
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string | null>(null);
@@ -315,7 +319,28 @@ export default function PhoneOrderBuilder() {
       setGuestPhone(isCpf ? "" : lookupValue);
       setGuestCpf(isCpf ? lookupValue : "");
     }
+    setShowRegisterForm(false);
     setStep("cart");
+  }
+
+  async function handleRegisterAndContinue() {
+    if (!guestName.trim()) return;
+    setRegisterLoading(true);
+    setRegisterError(null);
+    try {
+      const created = await createCustomer({
+        name:  guestName.trim(),
+        phone: guestPhone.trim() || undefined,
+        cpf:   guestCpf.trim()   || undefined,
+      });
+      setCustomer(created);
+      setShowRegisterForm(false);
+      setStep("cart");
+    } catch (e) {
+      setRegisterError(e instanceof Error ? e.message : "Erro ao cadastrar cliente.");
+    } finally {
+      setRegisterLoading(false);
+    }
   }
 
   function continueQuickGuest() {
@@ -449,40 +474,52 @@ export default function PhoneOrderBuilder() {
                         <>
                           <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
                             <User size={16} />
-                            <span className="text-sm">Cliente não encontrado. Continuar como convidado.</span>
+                            <span className="text-sm">Cliente não encontrado.</span>
                           </div>
                           <div className="space-y-2">
                             <input
                               value={guestName}
                               onChange={(e) => setGuestName(e.target.value)}
-                              placeholder="Nome do cliente *"
+                              placeholder="Nome *"
                               className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                               style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
                             />
-                            <div className="grid md:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               <input
                                 value={guestPhone}
                                 onChange={(e) => setGuestPhone(e.target.value)}
-                                placeholder="Telefone (opcional)"
+                                placeholder="Telefone"
                                 className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                                 style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
                               />
                               <input
                                 value={guestCpf}
                                 onChange={(e) => setGuestCpf(e.target.value)}
-                                placeholder="CPF (opcional)"
+                                placeholder="CPF"
                                 className="w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-brand/30"
                                 style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)", color: "var(--text)" }}
                               />
                             </div>
                           </div>
-                          <button
-                            disabled={!guestName.trim()}
-                            onClick={continueFromSearch}
-                            className="w-full py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition"
-                          >
-                            Continuar sem cadastro
-                          </button>
+                          {registerError && <p className="text-xs text-red-500">{registerError}</p>}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              disabled={!guestName.trim() || registerLoading}
+                              onClick={handleRegisterAndContinue}
+                              className="py-2.5 rounded-xl text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition text-white"
+                              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                            >
+                              {registerLoading ? "Cadastrando…" : "Cadastrar e continuar"}
+                            </button>
+                            <button
+                              disabled={!guestName.trim()}
+                              onClick={continueFromSearch}
+                              className="py-2.5 rounded-xl border text-sm font-semibold hover:bg-[var(--surface)] disabled:opacity-50 transition"
+                              style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+                            >
+                              Só desta vez
+                            </button>
+                          </div>
                         </>
                       )}
                     </div>

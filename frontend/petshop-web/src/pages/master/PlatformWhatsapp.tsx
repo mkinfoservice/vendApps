@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, LogOut, ChevronLeft } from "lucide-react";
 import { clearMasterToken } from "@/features/master/auth/auth";
-import { fetchPlatformWhatsapp, upsertPlatformWhatsapp } from "@/features/master/companies/api";
+import { fetchPlatformWhatsapp, upsertPlatformWhatsapp, importPlatformWhatsappFromCompany, fetchCompanies } from "@/features/master/companies/api";
 
 export default function PlatformWhatsappPage() {
   const qc = useQueryClient();
@@ -14,13 +14,22 @@ export default function PlatformWhatsappPage() {
     retry: false,
   });
 
-  const [wabaId,    setWabaId]    = useState("");
-  const [phoneId,   setPhoneId]   = useState("");
-  const [token,     setToken]     = useState("");
-  const [langCode,  setLangCode]  = useState("pt_BR");
-  const [isActive,  setIsActive]  = useState(false);
-  const [saved,     setSaved]     = useState(false);
-  const [err,       setErr]       = useState<string | null>(null);
+  const { data: companiesData } = useQuery({
+    queryKey: ["master", "companies", {}],
+    queryFn:  () => fetchCompanies({ pageSize: 100 }),
+  });
+
+  const [wabaId,         setWabaId]        = useState("");
+  const [phoneId,        setPhoneId]       = useState("");
+  const [token,          setToken]         = useState("");
+  const [langCode,       setLangCode]      = useState("pt_BR");
+  const [isActive,       setIsActive]      = useState(false);
+  const [saved,          setSaved]         = useState(false);
+  const [err,            setErr]           = useState<string | null>(null);
+  const [importCompany,  setImportCompany] = useState("");
+  const [importLoading,  setImportLoading] = useState(false);
+  const [importErr,      setImportErr]     = useState<string | null>(null);
+  const [importOk,       setImportOk]      = useState(false);
 
   useEffect(() => {
     if (!data) return;
@@ -47,6 +56,28 @@ export default function PlatformWhatsappPage() {
     },
     onError: (e: Error) => setErr(e.message),
   });
+
+  async function handleImport() {
+    if (!importCompany) return;
+    setImportLoading(true);
+    setImportErr(null);
+    setImportOk(false);
+    try {
+      const result = await importPlatformWhatsappFromCompany(importCompany);
+      qc.invalidateQueries({ queryKey: ["master", "platform-whatsapp"] });
+      // preenche os campos com os dados importados
+      setWabaId(result.wabaId ?? "");
+      setPhoneId(result.phoneNumberId ?? "");
+      setLangCode(result.templateLanguageCode ?? "pt_BR");
+      setIsActive(result.isActive);
+      setImportOk(true);
+      setTimeout(() => setImportOk(false), 4000);
+    } catch (e) {
+      setImportErr(e instanceof Error ? e.message : "Erro ao importar.");
+    } finally {
+      setImportLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -172,6 +203,37 @@ export default function PlatformWhatsappPage() {
             >
               {saveMut.isPending ? "Salvando…" : "Salvar configuração"}
             </button>
+
+            {/* ── Importar de empresa ───────────────────────── */}
+            <div className="border-t border-gray-100 pt-4 space-y-3">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Importar credenciais de uma empresa
+              </p>
+              <p className="text-xs text-gray-400">
+                Copia WABA ID, Phone Number ID e Access Token de uma integração cloud_api existente para esta config global.
+              </p>
+              <div className="flex gap-2">
+                <select
+                  value={importCompany}
+                  onChange={(e) => setImportCompany(e.target.value)}
+                  className="flex-1 h-9 rounded-xl border border-gray-200 px-3 text-sm bg-white text-gray-800 focus:outline-none"
+                >
+                  <option value="">Selecione a empresa…</option>
+                  {companiesData?.items.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.slug})</option>
+                  ))}
+                </select>
+                <button
+                  disabled={!importCompany || importLoading}
+                  onClick={handleImport}
+                  className="h-9 px-4 rounded-xl text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40 transition"
+                >
+                  {importLoading ? "Importando…" : "Importar"}
+                </button>
+              </div>
+              {importErr && <p className="text-sm text-red-600">{importErr}</p>}
+              {importOk  && <p className="text-sm text-green-600">✓ Credenciais importadas! Verifique os campos acima e salve.</p>}
+            </div>
           </div>
         )}
       </main>

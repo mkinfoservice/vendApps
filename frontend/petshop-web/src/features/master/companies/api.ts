@@ -185,6 +185,13 @@ export function upsertPlatformWhatsapp(body: {
   });
 }
 
+export function importPlatformWhatsappFromCompany(companyId: string) {
+  return masterFetch<PlatformWhatsappConfigDto>(
+    `/master/integrations/whatsapp/platform/import-from-company/${companyId}`,
+    { method: "POST", body: "{}" },
+  );
+}
+
 // ── Provision ─────────────────────────────────────────────────
 
 export function provisionCompany(

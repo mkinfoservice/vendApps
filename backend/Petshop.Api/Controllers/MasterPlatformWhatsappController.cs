@@ -41,6 +41,48 @@ public class MasterPlatformWhatsappController : ControllerBase
         ));
     }
 
+    /// <summary>
+    /// Copia as credenciais WhatsApp de uma empresa para a config global da plataforma.
+    /// Útil para migrar uma conta existente para o modo compartilhado.
+    /// </summary>
+    [HttpPost("import-from-company/{companyId:guid}")]
+    public async Task<IActionResult> ImportFromCompany(Guid companyId, CancellationToken ct = default)
+    {
+        var source = await _db.CompanyIntegrationsWhatsapp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.Mode == "cloud_api", ct);
+
+        if (source is null)
+            return NotFound("Empresa não possui integração WhatsApp no modo cloud_api configurada.");
+
+        var cfg = await _db.PlatformWhatsappConfigs
+            .OrderByDescending(x => x.UpdatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (cfg is null)
+        {
+            cfg = new PlatformWhatsappConfig();
+            _db.PlatformWhatsappConfigs.Add(cfg);
+        }
+
+        cfg.WabaId               = source.WabaId;
+        cfg.PhoneNumberId        = source.PhoneNumberId;
+        cfg.AccessTokenEncrypted = source.AccessTokenEncrypted; // mesma chave — cópia direta
+        cfg.TemplateLanguageCode = source.TemplateLanguageCode ?? "pt_BR";
+        cfg.IsActive             = true;
+        cfg.UpdatedAtUtc         = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new PlatformWhatsappConfigDto(
+            cfg.WabaId,
+            cfg.PhoneNumberId,
+            cfg.AccessTokenEncrypted is not null,
+            cfg.TemplateLanguageCode,
+            cfg.IsActive
+        ));
+    }
+
     [HttpPut]
     public async Task<IActionResult> Upsert([FromBody] UpsertPlatformWhatsappConfigRequest req, CancellationToken ct = default)
     {

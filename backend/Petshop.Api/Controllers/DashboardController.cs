@@ -5,6 +5,7 @@ using Petshop.Api.Contracts.Dashboard;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Delivery;
+using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
 
@@ -20,45 +21,51 @@ public class DashboardController : ControllerBase
         _db = db;
     }
 
+    private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
+
     // =========================================
     // GET /admin/dashboard
     // =========================================
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
+        var companyId = CompanyId;
+
         // Pedidos por status
         var orderCounts = await _db.Orders
+            .Where(o => o.CompanyId == companyId)
             .GroupBy(o => o.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
         var od = orderCounts.ToDictionary(x => x.Status, x => x.Count);
 
-        // Rotas por status
+        // Rotas por status — filtra por rotas que possuem paradas de pedidos desta empresa
         var routeCounts = await _db.Routes
+            .Where(r => r.Stops.Any(s => s.Order.CompanyId == companyId))
             .GroupBy(r => r.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
         var rd = routeCounts.ToDictionary(x => x.Status, x => x.Count);
 
-        // Entregadores
+        // Entregadores (Deliverer não tem CompanyId — mostra todos os ativos da plataforma)
         var totalDeliverers = await _db.Deliverers.CountAsync(ct);
         var activeDeliverers = await _db.Deliverers.CountAsync(d => d.IsActive, ct);
 
-        // Entregadores com rota ativa (Criada, Atribuida ou EmAndamento)
+        // Entregadores com rota ativa desta empresa
         var deliverersWithRoute = await _db.Routes
-            .Where(r =>
-                r.Status == RouteStatus.Criada ||
-                r.Status == RouteStatus.Atribuida ||
-                r.Status == RouteStatus.EmAndamento)
+            .Where(r => r.Stops.Any(s => s.Order.CompanyId == companyId) &&
+                (r.Status == RouteStatus.Criada ||
+                 r.Status == RouteStatus.Atribuida ||
+                 r.Status == RouteStatus.EmAndamento))
             .Select(r => r.DelivererId)
             .Distinct()
             .CountAsync(ct);
 
         // Pedidos PRONTO_PARA_ENTREGA com e sem coordenadas
         var readyCoords = await _db.Orders
-            .Where(o => o.Status == OrderStatus.PRONTO_PARA_ENTREGA)
+            .Where(o => o.CompanyId == companyId && o.Status == OrderStatus.PRONTO_PARA_ENTREGA)
             .Select(o => new { o.Latitude, o.Longitude })
             .ToListAsync(ct);
 
