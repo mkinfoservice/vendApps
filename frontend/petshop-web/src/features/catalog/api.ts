@@ -18,16 +18,25 @@ export type Category = {
   slug: string;
 };
 
+export type ProductVariant = {
+  id: string;
+  variantKey: string;   // ex: "Tamanho", "Tipo de pão"
+  variantValue: string; // ex: "P 400ml", "Pão de Batata"
+  priceCents: number | null;
+};
+
 export type Product = {
   id: string;
   name: string;
   slug: string;
   priceCents: number;
   imageUrl: string | null;
+  description: string | null;
   isFeatured: boolean;
   isBestSeller: boolean;
   discountPercent: number | null;
   category: { id: string; name: string; slug: string };
+  variants: ProductVariant[];
 };
 
 export async function fetchCategories(): Promise<Category[]> {

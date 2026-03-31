@@ -17,5 +17,7 @@ public class Category
     [Required, MaxLength(80)]
     public string Slug { get; set; } = default!;
 
+    public int SortOrder { get; set; } = 0;
+
     public List<Product> Products { get; set; } = new();
 }

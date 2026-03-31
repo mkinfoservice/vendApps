@@ -31,4 +31,6 @@ public sealed class CreateOrderItemRequest
 {
     public Guid ProductId { get; init; }
     public int Qty { get; init; }
+    /// <summary>ID da variante selecionada (tamanho P/G, tipo de pão, etc.). Opcional — se presente, usa preço da variante.</summary>
+    public Guid? VariantId { get; init; }
 }

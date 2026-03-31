@@ -15,6 +15,7 @@ export type PaymentMethodStr = "PIX" | "CARD_ON_DELIVERY" | "CASH" | "PAY_AT_COU
 export type CreateOrderItemRequest = {
   productId: string;
   qty: number; // ✅ alinhado com o C# (Qty)
+  variantId?: string; // ID da variante selecionada (tamanho, tipo de pão, etc.)
 };
 
 export type CreateOrderRequest = {
@@ -50,6 +51,7 @@ export type CreateOrderResponse = {
   totalCents: number;
 
   paymentMethodStr: string;
+  davPublicId?: string | null;
 
   // ✅ no backend são int? então aqui precisa aceitar null
   cashGivenCents: number | null;

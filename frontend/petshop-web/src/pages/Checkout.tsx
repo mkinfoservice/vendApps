@@ -259,7 +259,10 @@ function handleOpenReview() {
       const payload: CreateOrderRequest = {
         name: review.name, phone: review.phone, cep: review.cep, address: review.fullAddress,
         paymentMethodStr: review.paymentMethodStr,
-        items: cart.items.map((i) => ({ productId: i.product.id, qty: i.qty })),
+        items: cart.items.map((i) => {
+          const [productId, variantId] = i.product.id.split("__");
+          return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
+        }),
         ...(review.paymentMethodStr === "CASH" ? { cashGivenCents: review.cashGivenCents ?? undefined } : {}),
       };
       await CreateOrder(payload);

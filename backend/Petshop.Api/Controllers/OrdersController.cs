@@ -8,11 +8,13 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Services;
 using Petshop.Api.Services.Customers;
+using Petshop.Api.Services.Dav;
 using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
 using Petshop.Api.Entities.StoreFront;
+using Petshop.Api.Entities.Dav;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -821,12 +823,27 @@ public class OrdersController : ControllerBase
             // Herda CompanyId do primeiro produto encontrado (todos os itens pertencem à mesma empresa)
             order.CompanyId ??= product.CompanyId;
 
+            var nameSnapshot = product.Name;
+            var priceSnapshot = product.PriceCents;
+
+            if (item.VariantId.HasValue)
+            {
+                var variant = await _db.Set<Petshop.Api.Entities.Catalog.ProductVariant>()
+                    .FirstOrDefaultAsync(v => v.Id == item.VariantId.Value && v.ProductId == product.Id, ct);
+                if (variant is not null)
+                {
+                    nameSnapshot = $"{product.Name} — {variant.VariantValue}";
+                    if (variant.PriceCents.HasValue)
+                        priceSnapshot = variant.PriceCents.Value;
+                }
+            }
+
             order.Items.Add(new OrderItem
             {
                 Id = Guid.NewGuid(),
                 ProductId = product.Id,
-                ProductNameSnapshot = product.Name,
-                UnitPriceCentsSnapshot = product.PriceCents,
+                ProductNameSnapshot = nameSnapshot,
+                UnitPriceCentsSnapshot = priceSnapshot,
                 Qty = item.Qty
             });
         }
@@ -859,6 +876,43 @@ public class OrdersController : ControllerBase
             order.ChangeCents = null;
         }
 
+        SalesQuote? tableQuote = null;
+        if (isTableOrder && order.CompanyId.HasValue)
+        {
+            var quoteItems = order.Items.Select(i => new SalesQuoteItem
+            {
+                ProductId = i.ProductId,
+                ProductNameSnapshot = i.ProductNameSnapshot,
+                ProductBarcodeSnapshot = null,
+                Qty = i.Qty,
+                UnitPriceCentsSnapshot = i.UnitPriceCentsSnapshot,
+                TotalCents = i.Qty * i.UnitPriceCentsSnapshot,
+                IsSoldByWeight = false,
+                WeightKg = null
+            }).ToList();
+
+            tableQuote = new SalesQuote
+            {
+                CompanyId = order.CompanyId.Value,
+                PublicId = DavPublicIdGenerator.NewPublicId(),
+                Origin = SalesQuoteOrigin.TableOrder,
+                OriginOrderId = order.Id,
+                CustomerId = order.CustomerId,
+                CustomerName = order.CustomerName,
+                CustomerPhone = string.IsNullOrWhiteSpace(order.Phone) ? null : order.Phone,
+                CustomerDocument = string.IsNullOrWhiteSpace(req.CustomerCpf) ? null : new string(req.CustomerCpf.Where(char.IsDigit).ToArray()),
+                PaymentMethod = "PAY_AT_COUNTER",
+                SubtotalCents = order.SubtotalCents,
+                DiscountCents = 0,
+                TotalCents = order.TotalCents,
+                Status = SalesQuoteStatus.Draft,
+                Notes = "Gerado automaticamente a partir de pedido de mesa.",
+                Items = quoteItems
+            };
+
+            _db.SalesQuotes.Add(tableQuote);
+        }
+
         _db.Orders.Add(order);
         await _db.SaveChangesAsync(ct);
 
@@ -879,7 +933,8 @@ public class OrdersController : ControllerBase
             TotalCents = order.TotalCents,
             PaymentMethodStr = order.PaymentMethod,
             CashGivenCents = order.CashGivenCents,
-            ChangeCents = order.ChangeCents
+            ChangeCents = order.ChangeCents,
+            DavPublicId = tableQuote?.PublicId
         });
     }
 }

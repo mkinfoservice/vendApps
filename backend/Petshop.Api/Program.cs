@@ -429,6 +429,11 @@ using (var scope = app.Services.CreateScope())
         ADD COLUMN IF NOT EXISTS "CertificateBase64" text;
         """);
 
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Categories"
+        ADD COLUMN IF NOT EXISTS "SortOrder" integer NOT NULL DEFAULT 0;
+        """);
+
     // Cria tabela de config fiscal por caixa se ainda não existir (idempotente)
     await db.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "CashRegisterFiscalConfigs" (

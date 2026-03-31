@@ -81,8 +81,8 @@ public class CatalogController : ControllerBase
         var categories = await _db.Categories
             .AsNoTracking()
             .Where(c => c.CompanyId == company.Id)
-            .OrderBy(c => c.Name)
-            .Select(c => new { c.Id, c.Name, c.Slug })
+            .OrderBy(c => c.SortOrder).ThenBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Slug, c.SortOrder })
             .ToListAsync(ct);
 
         return Ok(categories);
@@ -108,6 +108,7 @@ public class CatalogController : ControllerBase
             .AsNoTracking()
             .Where(p => p.CompanyId == company.Id && p.IsActive && !p.IsSupply)
             .Include(p => p.Category)
+            .Include(p => p.Variants.Where(v => v.IsActive))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(categorySlug))
@@ -117,7 +118,7 @@ public class CatalogController : ControllerBase
             query = query.Where(p => EF.Functions.ILike(p.Name, $"%{search}%"));
 
         var products = await query
-            .OrderBy(p => p.Name)
+            .OrderBy(p => p.Category.SortOrder).ThenBy(p => p.Name)
             .Select(p => new
             {
                 p.Id,
@@ -125,10 +126,15 @@ public class CatalogController : ControllerBase
                 p.Slug,
                 p.PriceCents,
                 p.ImageUrl,
+                p.Description,
                 p.IsFeatured,
                 p.IsBestSeller,
                 p.DiscountPercent,
-                Category = new { p.Category.Id, p.Category.Name, p.Category.Slug }
+                Category = new { p.Category.Id, p.Category.Name, p.Category.Slug },
+                Variants = p.Variants
+                    .Where(v => v.IsActive)
+                    .OrderBy(v => v.PriceCents)
+                    .Select(v => new { v.Id, v.VariantKey, v.VariantValue, v.PriceCents })
             })
             .ToListAsync(ct);
 
