@@ -4,25 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Variables ─────────────────────────────── */
+/* ─── CSS Variables — Go Coffee palette ──────────── */
 :root {
-  --bg: #f1f5f9;
-  --surface: #ffffff;
-  --surface-2: #f8fafc;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --text-muted: #64748b;
-  --brand: #7c5cf8;
+  --bg: #FAF7F2;
+  --surface: #FFFFFF;
+  --surface-2: #F5EDE0;
+  --border: rgba(107,79,58,0.13);
+  --text: #1C1209;
+  --text-muted: #6B4F3A;
+  --brand: #C8953A;
 }
 
 .dark {
-  --bg: #0d111c;
-  --surface: #131929;
-  --surface-2: #1a2236;
-  --border: #1e2a42;
-  --text: #f1f5f9;
-  --text-muted: #94a3b8;
-  --brand: #7c5cf8;
+  --bg: #1C1209;
+  --surface: #2A1A0E;
+  --surface-2: #3D2314;
+  --border: rgba(200,149,58,0.18);
+  --text: #FAF7F2;
+  --text-muted: rgba(245,237,224,0.55);
+  --brand: #C8953A;
 }
 
 /* ─── Base ───────────────────────────────────────── */

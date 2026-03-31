@@ -705,7 +705,10 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
     try {
       const res = await CreateOrder({
         name, phone: phone || "00000000000", cep: "", address: "",
-        items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
+        items: items.map(i => {
+          const [productId, variantId] = i.product.id.split("__");
+          return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
+        }),
         paymentMethodStr: "PAY_AT_COUNTER", tableId,
         complement: `Mesa com ${guests} pessoa(s)`,
         customerCpf: cpf || undefined,
