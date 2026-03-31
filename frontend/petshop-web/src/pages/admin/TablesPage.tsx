@@ -27,7 +27,8 @@ function QrModal({ table, onClose }: { table: TableOverviewItem; onClose: () => 
     queryFn: () => fetchTableMetrics(table.id),
   });
 
-  const link = table.qrUrl;
+  // Gera a URL usando o origin atual (subdomínio da tenant) em vez do qrUrl do backend
+  const link = `${window.location.origin}/mesa/${table.id}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(link)}`;
 
   function handleCopy() {
