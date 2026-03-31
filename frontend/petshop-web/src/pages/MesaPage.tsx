@@ -35,6 +35,27 @@ function makeCatalogApi(slug: string) {
 function fmtBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+// ── Design tokens Go Coffee ────────────────────────────────────────────────────
+const GC = {
+  bg:      "#FAF7F2",
+  cream:   "#F5EDE0",
+  brown:   "#6B4F3A",
+  dark:    "#1C1209",
+  caramel: "#C8953A",
+};
+
+const CAT_ICONS: [string, string][] = [
+  ["bebidas geladas", "🧊"], ["bebidas quentes", "☕"], ["frappes", "🧋"],
+  ["donuts", "🍩"], ["tortas", "🥧"], ["waffles doces", "🧇"],
+  ["waffles salgados", "🧇"], ["salgados especiais", "⭐"], ["salgados", "🥐"],
+  ["doces", "🍰"], ["go toast", "🍞"], ["sanduíches", "🥪"],
+];
+function catIcon(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [k, v] of CAT_ICONS) if (lower.includes(k)) return v;
+  return "🍽️";
+}
 function maskPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : "";
@@ -289,63 +310,70 @@ function MesaProductCard({ product, qty, primaryColor, onAdd, onInc, onDec }: {
   product: Product; qty: number; primaryColor?: string;
   onAdd: () => void; onInc: () => void; onDec: () => void;
 }) {
-  const color = primaryColor || "#7c5cf8";
+  const color = primaryColor || GC.caramel;
   const discount = product.discountPercent;
   const original = discount ? Math.round(product.priceCents / (1 - discount / 100)) : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col group">
+    <div className="bg-white rounded-3xl overflow-hidden flex flex-col group"
+      style={{ boxShadow: "0 2px 16px rgba(28,18,9,0.08), 0 1px 4px rgba(28,18,9,0.04)" }}>
+
       {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
+      <div className="relative aspect-[4/3] overflow-hidden" style={{ backgroundColor: GC.cream }}>
         {product.imageUrl ? (
-          <img
-            src={product.imageUrl}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
+          <img src={product.imageUrl} alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-gray-50 to-gray-100">
-            🛒
+          <div className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${GC.cream}, #EDE0CE)` }}>
+            <span style={{ fontSize: 36, opacity: 0.35 }}>☕</span>
           </div>
         )}
         {discount ? (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full"
+            style={{ background: "#E05252" }}>
             -{discount}%
           </div>
         ) : product.isBestSeller ? (
-          <div className="absolute top-2 left-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-            ★ Favorito
+          <div className="absolute top-2 left-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full"
+            style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A87830)` }}>
+            ★ Top
           </div>
         ) : null}
       </div>
 
       {/* Info */}
-      <div className="p-3 flex flex-col flex-1 gap-2">
-        <p className="text-xs font-semibold text-gray-800 leading-snug flex-1 line-clamp-2">{product.name}</p>
-        <div className="flex items-center justify-between gap-1">
+      <div className="p-3 flex flex-col flex-1 gap-1.5">
+        <p className="text-[13px] font-bold leading-snug flex-1 line-clamp-2"
+          style={{ color: GC.dark }}>{product.name}</p>
+        {product.description && (
+          <p className="text-[10px] leading-tight line-clamp-1" style={{ color: GC.brown, opacity: 0.7 }}>
+            {product.description}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-1 mt-0.5">
           <div>
-            <p className="text-sm font-black" style={{ color }}>{fmtBRL(product.priceCents)}</p>
-            {original && <p className="text-[10px] text-gray-300 line-through">{fmtBRL(original)}</p>}
+            <p className="text-[15px] font-black" style={{ color }}>{fmtBRL(product.priceCents)}</p>
+            {original && <p className="text-[10px] line-through" style={{ color: GC.brown, opacity: 0.4 }}>{fmtBRL(original)}</p>}
           </div>
           {qty === 0 ? (
-            <button
-              onClick={onAdd}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm transition active:scale-90"
-              style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
-            >
-              <Plus size={15} />
+            <button onClick={onAdd}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition active:scale-90"
+              style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)`, boxShadow: `0 4px 12px ${color}44` }}>
+              <Plus size={16} />
             </button>
           ) : (
             <div className="flex items-center gap-1">
               <button onClick={onDec}
-                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 transition active:scale-90 hover:bg-gray-50">
+                className="w-7 h-7 rounded-full flex items-center justify-center transition active:scale-90"
+                style={{ background: GC.cream, color: GC.brown }}>
                 <Minus size={11} />
               </button>
-              <span className="w-5 text-center text-sm font-black text-gray-900">{qty}</span>
+              <span className="w-5 text-center text-sm font-black" style={{ color: GC.dark }}>{qty}</span>
               <button onClick={onInc}
                 className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
-                style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
+                style={{ background: `linear-gradient(135deg, ${color}, ${color}bb)` }}>
                 <Plus size={11} />
               </button>
             </div>
@@ -630,29 +658,42 @@ export default function MesaPage() {
 
   // ── Catalog ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#fafafa" }}>
+    <div className="min-h-screen" style={{
+      backgroundColor: GC.bg,
+      backgroundImage: `radial-gradient(ellipse 700px 400px at 100% -80px, rgba(200,149,58,0.07), transparent),
+                        radial-gradient(ellipse 500px 300px at 0% 100%, rgba(61,35,20,0.05), transparent)`,
+    }}>
 
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-100" style={{ boxShadow: "0 1px 12px rgba(0,0,0,0.06)" }}>
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md"
+        style={{ boxShadow: "0 1px 0 rgba(28,18,9,0.06), 0 4px 20px rgba(28,18,9,0.04)" }}>
+
         {/* Brand + cart */}
         <div className="max-w-2xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400 font-medium">
-              {tableNum ? `Mesa ${tableNum}` : "Auto-atendimento"} · {safeGuests} pessoa{safeGuests > 1 ? "s" : ""} · Olá, <span className="font-semibold text-gray-700">{name.split(" ")[0]}</span>
+            <p className="text-[11px] font-medium" style={{ color: GC.brown }}>
+              {tableNum ? `Mesa ${tableNum}` : "Auto-atendimento"} · {safeGuests} pessoa{safeGuests > 1 ? "s" : ""}
+              {name ? <> · Olá, <span className="font-bold" style={{ color: GC.dark }}>{name.split(" ")[0]}</span></> : null}
             </p>
-            <p className="text-sm font-bold text-gray-900 truncate">{brand}</p>
+            <p className="text-[15px] font-black truncate" style={{ color: GC.dark }}>{brand}</p>
           </div>
           <button
             onClick={() => setCartOpen(true)}
-            className="relative h-10 rounded-2xl flex items-center gap-2 px-4 text-white text-sm font-bold shrink-0 shadow-sm transition active:scale-95"
-            style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+            className="relative h-10 rounded-2xl flex items-center gap-2 px-4 text-white text-sm font-bold shrink-0 transition active:scale-95"
+            style={{
+              background: cart.totalItems > 0
+                ? `linear-gradient(135deg, ${GC.dark}, #3D2314)`
+                : `linear-gradient(135deg, ${primaryColor}, ${primaryColor}bb)`,
+              boxShadow: cart.totalItems > 0
+                ? "0 4px 16px rgba(28,18,9,0.35)"
+                : `0 4px 16px ${primaryColor}44`,
+            }}
           >
-            <ShoppingCart size={16} />
+            <ShoppingCart size={15} />
             {cart.totalItems > 0 ? (
               <>
-                <span>{cart.totalItems}</span>
-                <span className="text-white/70">·</span>
-                <span>{fmtBRL(cart.totalCents)}</span>
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">{cart.totalItems}</span>
+                <span className="font-black">{fmtBRL(cart.totalCents)}</span>
               </>
             ) : (
               <span>Carrinho</span>
@@ -661,63 +702,87 @@ export default function MesaPage() {
         </div>
 
         {/* Search */}
-        <div className="max-w-2xl mx-auto px-4 pb-2">
-          <div className="flex items-center gap-2 bg-gray-100 rounded-2xl px-3 h-10">
-            <Search size={14} className="text-gray-400 shrink-0" />
+        <div className="max-w-2xl mx-auto px-4 pb-2.5">
+          <div className="flex items-center gap-2 rounded-2xl px-3 h-10"
+            style={{ background: GC.cream, border: `1.5px solid rgba(107,79,58,0.12)` }}>
+            <Search size={14} style={{ color: GC.brown, opacity: 0.5 }} className="shrink-0" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Buscar produto…"
-              className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+              className="flex-1 bg-transparent text-sm focus:outline-none"
+              style={{ color: GC.dark }}
             />
             {search && (
               <button onClick={() => setSearch("")} className="transition hover:opacity-70">
-                <X size={13} className="text-gray-400" />
+                <X size={13} style={{ color: GC.brown }} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Categories */}
+        {/* Categories — redesigned */}
         {categories.length > 0 && (
-          <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            <button
-              onClick={() => setCatSlug("")}
-              className="shrink-0 px-4 h-8 rounded-full text-xs font-bold transition"
-              style={!catSlug
-                ? { backgroundColor: primaryColor, color: "#fff" }
-                : { backgroundColor: "#f3f4f6", color: "#6b7280" }}
-            >
-              Todos
-            </button>
-            {(categories as Category[]).map(c => (
+          <div className="overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
+            <div className="flex gap-2 px-4" style={{ width: "max-content" }}>
               <button
-                key={c.id}
-                onClick={() => setCatSlug(c.slug)}
-                className="shrink-0 px-4 h-8 rounded-full text-xs font-bold transition"
-                style={catSlug === c.slug
-                  ? { backgroundColor: primaryColor, color: "#fff" }
-                  : { backgroundColor: "#f3f4f6", color: "#6b7280" }}
+                onClick={() => setCatSlug("")}
+                className="shrink-0 flex items-center gap-1.5 px-4 h-11 rounded-2xl text-[12px] font-bold transition-all duration-200"
+                style={!catSlug ? {
+                  background: `linear-gradient(135deg, ${GC.dark} 0%, #3D2314 100%)`,
+                  color: "#fff",
+                  boxShadow: "0 4px 16px rgba(28,18,9,0.28)",
+                  transform: "scale(1.02)",
+                } : {
+                  background: GC.cream,
+                  color: GC.brown,
+                  border: `1.5px solid rgba(200,149,58,0.18)`,
+                }}
               >
-                {c.name}
+                <span style={{ fontSize: 16 }}>🍽️</span>
+                Todos
               </button>
-            ))}
+              {(categories as Category[]).map(c => {
+                const active = catSlug === c.slug;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => setCatSlug(c.slug)}
+                    className="shrink-0 flex items-center gap-1.5 px-4 h-11 rounded-2xl text-[12px] font-bold transition-all duration-200"
+                    style={active ? {
+                      background: `linear-gradient(135deg, ${GC.dark} 0%, #3D2314 100%)`,
+                      color: "#fff",
+                      boxShadow: "0 4px 16px rgba(28,18,9,0.28)",
+                      transform: "scale(1.02)",
+                    } : {
+                      background: GC.cream,
+                      color: GC.brown,
+                      border: `1.5px solid rgba(200,149,58,0.18)`,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>{catIcon(c.name)}</span>
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
 
       {/* Product grid */}
-      <div className="max-w-2xl mx-auto px-4 py-4 pb-32">
+      <div className="max-w-2xl mx-auto px-4 py-5 pb-36">
         {productsLoading || !slug ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-gray-100 animate-pulse" style={{ aspectRatio: "4/3" }} />
+              <div key={i} className="rounded-3xl animate-pulse" style={{ aspectRatio: "4/3", background: GC.cream }} />
             ))}
           </div>
         ) : (products as Product[]).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl">🔍</div>
-            <p className="text-sm font-medium text-gray-400">Nenhum produto encontrado</p>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
+              style={{ background: GC.cream }}>🔍</div>
+            <p className="text-sm font-medium" style={{ color: GC.brown }}>Nenhum produto encontrado</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -744,18 +809,19 @@ export default function MesaPage() {
         <div className="fixed bottom-6 left-0 right-0 flex justify-center z-40 px-6">
           <button
             onClick={() => setCartOpen(true)}
-            className="flex items-center gap-3 h-14 px-6 rounded-2xl text-white font-bold text-sm shadow-xl transition active:scale-95"
+            className="flex items-center gap-3 h-14 px-6 rounded-2xl text-white font-bold text-sm transition active:scale-95"
             style={{
-              background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
-              boxShadow: `0 8px 32px ${primaryColor}50`,
+              background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+              boxShadow: "0 8px 32px rgba(28,18,9,0.40), 0 2px 8px rgba(28,18,9,0.20)",
             }}
           >
-            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black"
+              style={{ background: GC.caramel }}>
               {cart.totalItems}
             </div>
             Ver pedido
-            <span className="text-white/80">·</span>
-            <span>{fmtBRL(cart.totalCents)}</span>
+            <span style={{ color: "rgba(255,255,255,0.5)" }}>·</span>
+            <span className="font-black">{fmtBRL(cart.totalCents)}</span>
           </button>
         </div>
       )}
