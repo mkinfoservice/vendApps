@@ -6,5 +6,7 @@ public enum SalesQuoteOrigin
     Manual = 0,
 
     /// <summary>Gerado automaticamente de um pedido de delivery (Order.Status → ENTREGUE).</summary>
-    DeliveryOrder = 1
+    DeliveryOrder = 1,
+
+    TableOrder = 2
 }

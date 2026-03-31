@@ -805,6 +805,21 @@ public class PdvController : ControllerBase
                 WHERE "Id" = {dav.Id}
                 """, ct);
 
+            // DAV de mesa: ao importar no caixa, encerra a comanda da mesa automaticamente.
+            if (dav.Origin == Entities.Dav.SalesQuoteOrigin.TableOrder && dav.OriginOrderId.HasValue)
+            {
+                var nowTable = DateTime.UtcNow;
+                await _db.Database.ExecuteSqlAsync(
+                    $"""
+                    UPDATE "Orders"
+                    SET "Status" = {(int)Petshop.Api.Entities.OrderStatus.ENTREGUE},
+                        "UpdatedAtUtc" = {nowTable}
+                    WHERE "Id" = {dav.OriginOrderId.Value}
+                      AND "CompanyId" = {CompanyId}
+                      AND "Status" <> {(int)Petshop.Api.Entities.OrderStatus.CANCELADO}
+                    """, ct);
+            }
+
             await tx.CommitAsync(ct);
 
             // Retorna totais atualizados

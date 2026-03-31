@@ -14,4 +14,5 @@ public sealed class CreateOrderResponse
     public string PaymentMethodStr { get; init; } = "";
     public int? CashGivenCents { get; init; }
     public int? ChangeCents { get; init; }
+    public string? DavPublicId { get; init; }
 }
