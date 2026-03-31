@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
+
+// ── Design tokens (Go Coffee palette) ─────────────────────────────────────────
+const GC = {
+  bg:      "#FAF7F2",
+  cream:   "#F5EDE0",
+  brown:   "#6B4F3A",
+  dark:    "#1C1209",
+  caramel: "#C8953A",
+};
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
   closeSession, getCupom, getSessionReport, addMovement, importDav, addItem,
@@ -141,22 +150,21 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <h2 className="font-semibold text-gray-800">Movimento de Caixa</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
+      <div className="rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
+        <h2 className="font-black text-base" style={{ color: GC.dark }}>Movimento de Caixa</h2>
 
         <div className="flex gap-2">
           {(["Sangria", "Suprimento"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
-                type === t
-                  ? t === "Sangria"
-                    ? "bg-red-500 text-white"
-                    : "bg-green-600 text-white"
-                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-              }`}
+              className="flex-1 py-2 rounded-xl text-sm font-bold transition"
+              style={type === t
+                ? { background: t === "Sangria" ? "#dc2626" : "#059669", color: "#fff" }
+                : { border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}
             >
               {t}
             </button>
@@ -165,19 +173,21 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500">Valor (R$)</label>
+            <label className="text-[11px] font-bold" style={{ color: GC.brown, opacity: 0.7 }}>Valor (R$)</label>
             <input
               type="number" min={0} step={0.01} autoFocus
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0,00"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500">Descricao (opcional)</label>
+            <label className="text-[11px] font-bold" style={{ color: GC.brown, opacity: 0.7 }}>Descricao (opcional)</label>
             <input
-              className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
+              className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               placeholder={type === "Sangria" ? "Ex: Recolhimento parcial" : "Ex: Reforco de troco"}
@@ -188,15 +198,16 @@ function MovementModal({ sessionId, defaultType, onClose }: MovementModalProps) 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 text-sm rounded-xl font-medium transition hover:opacity-80"
+            style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
             Cancelar
           </button>
           <button
             disabled={!ok || loading}
             onClick={handleSubmit}
-            className={`flex-1 py-2 text-sm font-semibold rounded-xl text-white transition disabled:opacity-40 ${
-              type === "Sangria" ? "bg-red-500 hover:bg-red-600" : "bg-green-600 hover:bg-green-700"
-            }`}
+            className="flex-1 py-2.5 text-sm font-bold rounded-xl text-white transition disabled:opacity-40"
+            style={{ background: type === "Sangria" ? "#dc2626" : "#059669" }}
           >
             {loading ? "Salvando..." : "Confirmar"}
           </button>
@@ -246,36 +257,38 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
-        <h2 className="text-lg font-bold text-gray-800">Fechamento de Caixa</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 overflow-y-auto"
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
+      <div className="rounded-3xl shadow-2xl w-full max-w-md p-6 space-y-5"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
+        <h2 className="text-lg font-black" style={{ color: GC.dark }}>Fechamento de Caixa</h2>
 
         {loadingRpt ? (
-          <p className="text-center text-gray-400 py-8">Carregando...</p>
+          <p className="text-center py-8 text-sm" style={{ color: GC.brown }}>Carregando...</p>
         ) : report && (
           <>
             {/* Resumo vendas */}
-            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Resumo de Vendas</p>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">{report.totalSalesCount} venda(s)</span>
-                <span className="font-semibold">{brl(report.totalSalesCents)}</span>
+            <div className="rounded-2xl p-4 space-y-2" style={{ background: GC.cream }}>
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Resumo de Vendas</p>
+              <div className="flex justify-between text-sm" style={{ color: GC.dark }}>
+                <span style={{ color: GC.brown }}>{report.totalSalesCount} venda(s)</span>
+                <span className="font-bold">{brl(report.totalSalesCents)}</span>
               </div>
               {report.byPaymentMethod.map((b) => (
-                <div key={b.paymentMethod} className="flex justify-between text-sm text-gray-500">
+                <div key={b.paymentMethod} className="flex justify-between text-sm" style={{ color: GC.brown, opacity: 0.75 }}>
                   <span>{payMethodLabel(b.paymentMethod)}</span>
                   <span>{brl(b.totalCents)}</span>
                 </div>
               ))}
               {report.cancelledSalesCount > 0 && (
-                <p className="text-xs text-red-400">{report.cancelledSalesCount} venda(s) cancelada(s)</p>
+                <p className="text-xs text-red-500">{report.cancelledSalesCount} venda(s) cancelada(s)</p>
               )}
             </div>
 
             {/* Movimentos */}
             {(report.totalSangriaCents > 0 || report.totalSuprimentoCents > 0) && (
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Movimentos</p>
+              <div className="rounded-2xl p-4 space-y-2" style={{ background: GC.cream }}>
+                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Movimentos</p>
                 {report.totalSuprimentoCents > 0 && (
                   <div className="flex justify-between text-sm text-green-700">
                     <span>Suprimentos</span>
@@ -293,16 +306,18 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
 
             {/* Conferencia */}
             <div className="space-y-3">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Conferencia de Caixa</p>
-              <div className="flex justify-between text-sm bg-blue-50 rounded-xl px-4 py-3">
-                <span className="text-blue-700">Saldo esperado</span>
-                <span className="font-semibold text-blue-800">{brl(expectedCash)}</span>
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Conferencia de Caixa</p>
+              <div className="flex justify-between text-sm rounded-2xl px-4 py-3"
+                style={{ background: `${GC.caramel}18`, color: GC.caramel }}>
+                <span className="font-medium">Saldo esperado</span>
+                <span className="font-bold">{brl(expectedCash)}</span>
               </div>
               <div>
-                <label className="text-xs text-gray-500">Contagem fisica (R$)</label>
+                <label className="text-[11px] font-bold" style={{ color: GC.brown, opacity: 0.7 }}>Contagem fisica (R$)</label>
                 <input
                   type="number" min={0} step={0.01}
-                  className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+                  className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+                  style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
                   value={closing}
                   onChange={(e) => setClosing(e.target.value)}
                   placeholder="0,00"
@@ -315,18 +330,17 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
                   : "bg-red-50 text-red-700"
                 }`}>
                   <span>Divergencia</span>
-                  <span className="font-semibold">
-                    {divergence > 0 ? "+" : ""}{brl(divergence)}
-                  </span>
+                  <span className="font-semibold">{divergence > 0 ? "+" : ""}{brl(divergence)}</span>
                 </div>
               )}
             </div>
 
             {/* Observacoes */}
             <div>
-              <label className="text-xs text-gray-500">Observacoes (opcional)</label>
+              <label className="text-[11px] font-bold" style={{ color: GC.brown, opacity: 0.7 }}>Observacoes (opcional)</label>
               <textarea
-                className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none"
+                className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none resize-none"
+                style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
                 rows={2}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -338,13 +352,16 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
         {error && <p className="text-xs text-red-500">{error}</p>}
 
         <div className="flex gap-3">
-          <button onClick={onClose} disabled={submitting} className="flex-1 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50">
+          <button onClick={onClose} disabled={submitting}
+            className="flex-1 py-2.5 text-sm rounded-xl font-medium transition hover:opacity-80"
+            style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
             Cancelar
           </button>
           <button
             disabled={loadingRpt || submitting}
             onClick={handleConfirm}
-            className="flex-1 py-2 text-sm font-semibold rounded-xl bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition"
+            className="flex-1 py-2.5 text-sm font-bold rounded-xl text-white transition disabled:opacity-40"
+            style={{ background: "#dc2626" }}
           >
             {submitting ? "Fechando..." : "Fechar Caixa"}
           </button>
@@ -359,10 +376,10 @@ function CloseSessionModal({ sessionId, onClose, onConfirmed }: CloseModalProps)
 type PayMethod = { method: string; label: string; color: string };
 
 const PAY_METHODS: PayMethod[] = [
-  { method: "PIX",            label: "PIX",           color: "#00bfa5" },
-  { method: "DINHEIRO",       label: "Dinheiro",       color: "#43a047" },
-  { method: "CARTAO_CREDITO", label: "Credito",        color: "#1e88e5" },
-  { method: "CARTAO_DEBITO",  label: "Debito",         color: "#5e35b1" },
+  { method: "PIX",            label: "PIX",           color: "#0891b2" },
+  { method: "DINHEIRO",       label: "Dinheiro",       color: "#059669" },
+  { method: "CARTAO_CREDITO", label: "Credito",        color: GC.caramel },
+  { method: "CARTAO_DEBITO",  label: "Debito",         color: GC.brown },
 ];
 
 interface PayPanelProps {
@@ -411,7 +428,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-center text-2xl font-bold text-gray-800">{brl(totalCents)}</p>
+      <p className="text-center text-2xl font-black" style={{ color: GC.dark }}>{brl(totalCents)}</p>
 
       <div className="grid grid-cols-2 gap-3">
         {PAY_METHODS.map((pm) => (
@@ -419,7 +436,7 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
             key={pm.method}
             disabled={paying}
             onClick={() => openDocPrompt(pm.method, totalCents)}
-            className="py-3 rounded-xl text-white font-semibold text-sm transition active:scale-95"
+            className="py-3 rounded-2xl text-white font-bold text-sm transition active:scale-95 hover:opacity-90"
             style={{ background: pm.color }}
           >
             {pm.label}
@@ -431,59 +448,59 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
         <input
           type="number"
           placeholder="Dinheiro recebido (R$)"
-          className="flex-1 border rounded-xl px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none"
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+          style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
           value={cash}
           onChange={(e) => setCash(e.target.value)}
         />
         <button
           disabled={paying || !cash}
           onClick={() => openDocPrompt("DINHEIRO", Math.round(parseFloat(cash || "0") * 100))}
-          className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-medium"
+          className="px-4 py-2.5 rounded-xl text-white text-sm font-bold transition hover:opacity-90 disabled:opacity-40"
+          style={{ background: "#059669" }}
         >
-          Confirmar
+          OK
         </button>
       </div>
 
       {pendingPayment && (
-        <div className="border border-gray-200 rounded-xl p-3 space-y-3 bg-gray-50">
-          <p className="text-sm font-semibold text-gray-700">Incluir CPF/CNPJ na nota fiscal?</p>
+        <div className="rounded-2xl p-4 space-y-3"
+          style={{ background: GC.cream, border: `1.5px solid rgba(200,149,58,0.2)` }}>
+          <p className="text-sm font-bold" style={{ color: GC.dark }}>Incluir CPF/CNPJ na nota fiscal?</p>
           <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => { setDocType("none"); setDocError(null); }}
-              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "none" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
-            >
-              Nao informar
-            </button>
-            <button
-              type="button"
-              onClick={() => { setDocType("cpf"); setDocError(null); }}
-              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "cpf" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
-            >
-              CPF
-            </button>
-            <button
-              type="button"
-              onClick={() => { setDocType("cnpj"); setDocError(null); }}
-              className={`py-2 rounded-lg text-xs font-semibold border ${docType === "cnpj" ? "border-[#7c5cf8] text-[#7c5cf8] bg-white" : "border-gray-200 text-gray-600 bg-white"}`}
-            >
-              CNPJ
-            </button>
+            {(["none", "cpf", "cnpj"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setDocType(t); setDocError(null); }}
+                className="py-2 rounded-xl text-xs font-bold transition"
+                style={docType === t
+                  ? { background: GC.caramel, color: "#fff" }
+                  : { border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: "#fff" }}
+              >
+                {t === "none" ? "Nao informar" : t.toUpperCase()}
+              </button>
+            ))}
           </div>
           {docType !== "none" && (
             <input
               value={docValue}
               onChange={(e) => setDocValue(e.target.value)}
               placeholder={docType === "cpf" ? "Digite o CPF" : "Digite o CNPJ"}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
+              className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
             />
           )}
           {docError && <p className="text-xs text-red-500">{docError}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={closeDocPrompt} className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white">
+            <button type="button" onClick={closeDocPrompt}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium transition hover:opacity-80"
+              style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: "#fff" }}>
               Voltar
             </button>
-            <button type="button" onClick={confirmPay} className="flex-1 py-2 rounded-lg text-sm text-white font-semibold" style={{ background: "#7c5cf8" }}>
+            <button type="button" onClick={confirmPay}
+              className="flex-1 py-2.5 rounded-xl text-sm text-white font-bold transition hover:opacity-90"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
               Confirmar pagamento
             </button>
           </div>
@@ -493,7 +510,8 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
       <button
         onClick={onCancel}
         disabled={paying}
-        className="w-full py-2 rounded-xl border border-red-300 text-red-500 text-sm"
+        className="w-full py-2.5 rounded-xl text-sm font-medium transition hover:opacity-80"
+        style={{ border: `1.5px solid rgba(220,38,38,0.35)`, color: "#dc2626", background: "#fff5f5" }}
       >
         Cancelar venda
       </button>
@@ -525,33 +543,43 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
     : results;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-3 pb-3 sm:pb-0">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm flex flex-col max-h-[70vh]">
-        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-800 text-sm">Buscar Orcamento (DAV)</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-3 pb-3 sm:pb-0"
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
+      <div className="rounded-3xl shadow-2xl w-full max-w-sm flex flex-col max-h-[70vh]"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4"
+          style={{ borderBottom: `1px solid rgba(107,79,58,0.1)` }}>
+          <h3 className="font-black text-sm" style={{ color: GC.dark }}>Buscar Orcamento (DAV)</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: GC.cream }}>
+            <X size={13} style={{ color: GC.brown }} />
+          </button>
         </div>
         <div className="px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2">
-            <Search size={14} className="text-gray-400" />
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+            style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff" }}>
+            <Search size={14} style={{ color: GC.brown, opacity: 0.5 }} />
             <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
               placeholder="Codigo ou nome do cliente..."
-              className="flex-1 text-sm bg-transparent outline-none text-gray-900 placeholder-gray-400" />
+              className="flex-1 text-sm bg-transparent outline-none placeholder-opacity-50"
+              style={{ color: GC.dark }} />
           </div>
         </div>
         <div className="overflow-y-auto flex-1 px-2 pb-3">
-          {loading && <p className="text-center py-6 text-sm text-gray-400">Carregando...</p>}
-          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm text-gray-400">Nenhum orcamento encontrado.</p>}
+          {loading && <p className="text-center py-6 text-sm" style={{ color: GC.brown }}>Carregando...</p>}
+          {!loading && filtered.length === 0 && <p className="text-center py-6 text-sm" style={{ color: GC.brown, opacity: 0.6 }}>Nenhum orcamento encontrado.</p>}
           {filtered.map((d) => (
             <button key={d.id} type="button"
               onClick={() => { onSelect(d.publicId); onClose(); }}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-emerald-50 text-left transition"
+              className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-left transition hover:bg-amber-50/60"
             >
               <div>
-                <p className="text-sm font-semibold text-emerald-700">{d.publicId}</p>
-                <p className="text-xs text-gray-400">{d.customerName || "-"} - {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}</p>
+                <p className="text-sm font-bold" style={{ color: GC.caramel }}>{d.publicId}</p>
+                <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>
+                  {d.customerName || "-"} · {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}
+                </p>
               </div>
-              <p className="text-sm font-bold text-gray-700">{fmt(d.totalCents)}</p>
+              <p className="text-sm font-black" style={{ color: GC.dark }}>{fmt(d.totalCents)}</p>
             </button>
           ))}
         </div>
@@ -625,81 +653,69 @@ function AddonModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
-        <div>
-          <h2 className="font-bold text-gray-800 text-base">{product.name}</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Escolha os adicionais</p>
-        </div>
-
-        {loading ? (
-          <p className="text-sm text-gray-400 py-4 text-center">Carregando...</p>
-        ) : addons.length === 0 ? (
-          <p className="text-sm text-gray-400 py-2">Nenhum adicional disponivel.</p>
-        ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {addons.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => toggle(a.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left"
-                style={{
-                  borderColor: selected.has(a.id) ? "#7c5cf8" : "#e5e7eb",
-                  backgroundColor: selected.has(a.id) ? "rgba(124,92,248,0.06)" : "transparent",
-                }}
-              >
-                <div
-                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all"
-                  style={{
-                    borderColor: selected.has(a.id) ? "#7c5cf8" : "#d1d5db",
-                    backgroundColor: selected.has(a.id) ? "#7c5cf8" : "transparent",
-                  }}
-                >
-                  {selected.has(a.id) && <span className="text-white text-[10px] font-bold">*</span>}
-                </div>
-                <span className="flex-1 text-sm text-gray-700 font-medium">{a.name}</span>
-                <span className="text-sm font-bold text-[#7c5cf8]">+{brl(a.priceCents)}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {extraCents > 0 && (
-          <div className="flex justify-between text-sm px-1">
-            <span className="text-gray-500">Total com adicionais</span>
-            <span className="font-bold text-gray-800">{brl(product.priceCents + extraCents)}</span>
-          </div>
-        )}
-
-        <div className="flex gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => handleConfirm([])}
-            disabled={adding}
-            className="flex-1 py-2.5 text-sm border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition disabled:opacity-40"
-          >
-            Nao, obrigado
-          </button>
-          <button
-            type="button"
-            disabled={adding || loading}
-            onClick={() => handleConfirm([...selected])}
-            className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl transition hover:opacity-90 disabled:opacity-40"
-            style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
-          >
-            {adding ? "Adicionando..." : selected.size > 0 ? `Adicionar (${selected.size})` : "Adicionar"}
-          </button>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100"
-          style={{ position: "absolute" }}
-        >
-          <X size={16} />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
+      <div className="rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
+        <button type="button" onClick={onClose}
+          className="absolute top-4 right-4 w-7 h-7 rounded-xl flex items-center justify-center z-10"
+          style={{ background: GC.cream }}>
+          <X size={13} style={{ color: GC.brown }} />
         </button>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <h2 className="font-black text-base pr-8" style={{ color: GC.dark }}>{product.name}</h2>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.65 }}>Escolha os adicionais</p>
+          </div>
+
+          {loading ? (
+            <p className="text-sm py-4 text-center" style={{ color: GC.brown }}>Carregando...</p>
+          ) : addons.length === 0 ? (
+            <p className="text-sm py-2" style={{ color: GC.brown, opacity: 0.6 }}>Nenhum adicional disponivel.</p>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {addons.map((a) => (
+                <button key={a.id} type="button" onClick={() => toggle(a.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all text-left"
+                  style={{
+                    border: `1.5px solid ${selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.15)"}`,
+                    background: selected.has(a.id) ? `${GC.caramel}12` : "#fff",
+                  }}>
+                  <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                    style={{
+                      borderColor: selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.3)",
+                      background: selected.has(a.id) ? GC.caramel : "transparent",
+                    }}>
+                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">✓</span>}
+                  </div>
+                  <span className="flex-1 text-sm font-medium" style={{ color: GC.dark }}>{a.name}</span>
+                  <span className="text-sm font-bold" style={{ color: GC.caramel }}>+{brl(a.priceCents)}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {extraCents > 0 && (
+            <div className="flex justify-between text-sm px-1">
+              <span style={{ color: GC.brown }}>Total com adicionais</span>
+              <span className="font-black" style={{ color: GC.dark }}>{brl(product.priceCents + extraCents)}</span>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => handleConfirm([])} disabled={adding}
+              className="flex-1 py-2.5 text-sm rounded-2xl font-medium transition hover:opacity-80 disabled:opacity-40"
+              style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
+              Sem adicionais
+            </button>
+            <button type="button" disabled={adding || loading} onClick={() => handleConfirm([...selected])}
+              className="flex-1 py-2.5 text-sm font-bold text-white rounded-2xl transition hover:opacity-90 disabled:opacity-40"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
+              {adding ? "Adicionando..." : selected.size > 0 ? `Adicionar (${selected.size})` : "Adicionar"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -798,25 +814,26 @@ function QuickProducts({
           onClose={() => setAddonTarget(null)}
         />
       )}
-      <div className="h-full overflow-y-auto p-3 space-y-3">
+      <div className="h-full overflow-y-auto p-3 space-y-3" style={{ background: GC.bg }}>
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: GC.brown, opacity: 0.5 }} />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Buscar por nome, codigo interno ou codigo de barras"
-              className="w-full h-9 rounded-lg border border-gray-200 pl-8 pr-3 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/20"
+              placeholder="Buscar por nome, codigo ou codigo de barras"
+              className="w-full h-9 rounded-xl pl-8 pr-3 text-xs focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
             />
             {loadingInitial && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: GC.brown, opacity: 0.5 }}>
                 carregando...
               </span>
             )}
           </div>
         </div>
         {filteredProducts.length === 0 && !loadingInitial ? (
-          <div className="h-full min-h-[220px] flex items-center justify-center text-gray-300 text-sm">
+          <div className="h-full min-h-[220px] flex items-center justify-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
             Nenhum produto encontrado
           </div>
         ) : (
@@ -827,32 +844,38 @@ function QuickProducts({
               type="button"
               disabled={adding === p.id || !saleId}
               onClick={() => handleAdd(p)}
-              className="flex flex-col items-center gap-1 p-2 rounded-xl border bg-white hover:border-[#7c5cf8] hover:shadow-sm transition active:scale-95 text-left disabled:opacity-50 relative"
-              style={{ borderColor: p.isBestSeller ? "rgba(245,158,11,0.45)" : "#f3f4f6" }}
+              className="flex flex-col items-center gap-1 p-2 rounded-2xl transition active:scale-95 text-left disabled:opacity-50 relative hover:shadow-md"
+              style={{
+                background: "#fff",
+                border: `1.5px solid ${p.isBestSeller ? `${GC.caramel}55` : "rgba(107,79,58,0.1)"}`,
+              }}
             >
               {p.isBestSeller && (
-                <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none" style={{ background: "#f59e0b" }}>
-                  Mais vendido
+                <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none"
+                  style={{ background: GC.caramel }}>
+                  Top
                 </span>
               )}
               {p.hasAddons && (
-                <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none" style={{ background: "#7c5cf8" }}>+</span>
+                <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none"
+                  style={{ background: GC.brown }}>+</span>
               )}
-              <div className="w-full aspect-square rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center">
+              <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center"
+                style={{ background: GC.cream }}>
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-[10px] text-gray-300">SEM IMAGEM</span>
+                  <span className="text-[9px] font-bold" style={{ color: GC.brown, opacity: 0.35 }}>SEM IMAGEM</span>
                 )}
               </div>
-              <span className="text-[11px] text-gray-700 font-medium leading-tight text-center line-clamp-2 w-full">
+              <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: GC.dark }}>
                 {p.name}
               </span>
-              <span className="text-[11px] font-bold text-[#7c5cf8]">
+              <span className="text-[11px] font-black" style={{ color: GC.caramel }}>
                 {brl(p.priceCents)}
               </span>
               {(p.internalCode || p.barcode) && (
-                <span className="text-[10px] text-gray-400 leading-tight text-center">
+                <span className="text-[10px] leading-tight text-center" style={{ color: GC.brown, opacity: 0.5 }}>
                   {p.internalCode || p.barcode}
                 </span>
               )}
@@ -873,48 +896,49 @@ function CartTable({
   onRemove: (itemId: string) => void;
 }) {
   return (
-    <div className="overflow-auto h-full">
-      <table className="w-full text-sm text-gray-900 table-auto">
-        <thead className="border-b sticky top-0 bg-white z-10">
-          <tr className="text-left text-xs text-gray-400">
-            <th className="px-4 py-3">Produto</th>
-            <th className="px-3 py-3 text-right hidden sm:table-cell">Qtd</th>
-            <th className="px-3 py-3 text-right hidden sm:table-cell">Unit</th>
-            <th className="px-3 py-3 text-right">Total</th>
-            <th className="px-3 py-3 w-8" />
+    <div className="overflow-auto h-full" style={{ background: GC.bg }}>
+      <table className="w-full text-sm table-auto">
+        <thead className="sticky top-0 z-10" style={{ background: GC.cream, borderBottom: `1px solid rgba(107,79,58,0.1)` }}>
+          <tr className="text-left">
+            <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Produto</th>
+            <th className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: GC.brown }}>Qtd</th>
+            <th className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-widest hidden sm:table-cell" style={{ color: GC.brown }}>Unit</th>
+            <th className="px-3 py-2.5 text-right text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Total</th>
+            <th className="px-3 py-2.5 w-8" />
           </tr>
         </thead>
         <tbody>
           {!sale || sale.items.length === 0 ? (
             <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400">
+              <td colSpan={5} className="px-4 py-10 text-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
                 Nenhum item no carrinho
               </td>
             </tr>
           ) : sale.items.map((item) => (
-            <tr key={item.id} className="border-b last:border-0 hover:bg-gray-50">
-              <td className="px-4 py-2.5 font-medium text-gray-900 align-top">
+            <tr key={item.id} className="transition hover:bg-amber-50/40" style={{ borderBottom: `1px solid rgba(107,79,58,0.07)` }}>
+              <td className="px-4 py-2.5 font-medium align-top" style={{ color: GC.dark }}>
                 <span className="block break-words leading-tight">{item.productNameSnapshot}</span>
-                <span className="sm:hidden text-xs text-gray-400 mt-0.5">
-                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} - {brl(item.unitPriceCentsSnapshot)}
+                <span className="sm:hidden text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>
+                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
                 </span>
                 {item.addons && item.addons.length > 0 && (
-                  <span className="block mt-1 text-[11px] text-[#7c5cf8]">
+                  <span className="block mt-0.5 text-[11px]" style={{ color: GC.caramel }}>
                     + {item.addons.map((a) => a.nameSnapshot).join(", ")}
                   </span>
                 )}
               </td>
-              <td className="px-3 py-2.5 text-right text-gray-600 hidden sm:table-cell">
+              <td className="px-3 py-2.5 text-right hidden sm:table-cell" style={{ color: GC.brown }}>
                 {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : item.qty}
               </td>
-              <td className="px-3 py-2.5 text-right text-gray-500 hidden sm:table-cell">
-                {brl(item.unitPriceCentsSnapshot)}
-                {item.isSoldByWeight && <span className="text-xs">/kg</span>}
+              <td className="px-3 py-2.5 text-right hidden sm:table-cell" style={{ color: GC.brown, opacity: 0.7 }}>
+                {brl(item.unitPriceCentsSnapshot)}{item.isSoldByWeight && <span className="text-xs">/kg</span>}
               </td>
-              <td className="px-3 py-2.5 text-right font-semibold text-gray-900 whitespace-nowrap">{brl(item.totalCents)}</td>
+              <td className="px-3 py-2.5 text-right font-black whitespace-nowrap" style={{ color: GC.dark }}>{brl(item.totalCents)}</td>
               <td className="px-3 py-2.5">
-                <button onClick={() => onRemove(item.id)} className="text-red-400 hover:text-red-600 text-sm leading-none">
-                  x
+                <button onClick={() => onRemove(item.id)}
+                  className="w-6 h-6 rounded-lg flex items-center justify-center transition hover:opacity-80"
+                  style={{ background: "rgba(220,38,38,0.1)", color: "#dc2626" }}>
+                  <X size={11} />
                 </button>
               </td>
             </tr>
@@ -1056,8 +1080,8 @@ export default function PdvPage() {
 
   if (!initialized || loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <p className="text-gray-400">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: GC.bg }}>
+        <p className="text-sm" style={{ color: GC.brown }}>Carregando...</p>
       </div>
     );
   }
@@ -1069,7 +1093,7 @@ export default function PdvPage() {
   const currentSale = sale as Sale | null;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: GC.bg }}>
       {/* Modals */}
       {showCloseModal && (
         <CloseSessionModal
@@ -1093,29 +1117,29 @@ export default function PdvPage() {
       )}
 
       {/* Top Bar */}
-      <div className="bg-white shadow-sm px-4 py-2 flex items-center gap-2 flex-wrap min-h-[52px]">
-        <span className="font-bold text-base" style={{ color: "#7c5cf8" }}>PDV</span>
-        <span className="text-sm text-gray-500 truncate max-w-[120px] sm:max-w-none">{session.registerName}</span>
-        <span className="hidden sm:block text-xs text-gray-400 ml-1">
-          - {session.openedByUserName}
-        </span>
-        <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end">
-          <button
-            onClick={() => setMovementType("Sangria")}
-            className="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-full hover:bg-red-50 transition whitespace-nowrap"
-          >
+      <div className="px-4 py-3 flex items-center gap-3 flex-wrap min-h-[56px]"
+        style={{ background: GC.dark, boxShadow: "0 2px 12px rgba(28,18,9,0.25)" }}>
+        <div>
+          <span className="font-black text-base tracking-tight" style={{ color: GC.caramel }}>PDV</span>
+          <span className="text-sm ml-2 font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>{session.registerName}</span>
+          <span className="hidden sm:inline text-xs ml-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>
+            · {session.openedByUserName}
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+          <button onClick={() => setMovementType("Sangria")}
+            className="text-xs px-3 py-1.5 rounded-full font-bold transition hover:opacity-80 whitespace-nowrap"
+            style={{ background: "rgba(220,38,38,0.18)", color: "#f87171" }}>
             Sangria
           </button>
-          <button
-            onClick={() => setMovementType("Suprimento")}
-            className="text-xs text-green-600 border border-green-200 px-2.5 py-1 rounded-full hover:bg-green-50 transition whitespace-nowrap"
-          >
+          <button onClick={() => setMovementType("Suprimento")}
+            className="text-xs px-3 py-1.5 rounded-full font-bold transition hover:opacity-80 whitespace-nowrap"
+            style={{ background: "rgba(5,150,105,0.18)", color: "#34d399" }}>
             Suprimento
           </button>
-          <button
-            onClick={() => setShowCloseModal(true)}
-            className="text-xs text-gray-500 border border-gray-200 px-2.5 py-1 rounded-full hover:bg-gray-50 transition whitespace-nowrap"
-          >
+          <button onClick={() => setShowCloseModal(true)}
+            className="text-xs px-3 py-1.5 rounded-full font-bold transition hover:opacity-80 whitespace-nowrap"
+            style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
             Fechar Caixa
           </button>
         </div>
@@ -1123,49 +1147,42 @@ export default function PdvPage() {
 
       {/* Feedback toast */}
       {feedback && (
-        <div
-          className={`fixed top-4 left-1/2 -translate-x-1/2 px-5 py-2 rounded-full text-white text-sm shadow-lg z-40 transition ${
-            feedback.ok ? "bg-green-500" : "bg-red-500"
-          }`}
-        >
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 px-5 py-2.5 rounded-full text-white text-sm font-bold shadow-xl z-40 transition ${
+          feedback.ok ? "bg-green-600" : "bg-red-600"
+        }`}>
           {feedback.msg}
         </div>
       )}
 
-      {/* Mobile: Payment panel overlay when showPay */}
+      {/* Mobile: Payment panel overlay */}
       {showPay && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-black/50 flex items-end" onClick={() => setShowPay(false)}>
-          <div
-            className="w-full bg-white rounded-t-3xl p-5 pb-8 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto" />
+        <div className="lg:hidden fixed inset-0 z-30 flex items-end" onClick={() => setShowPay(false)}
+          style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
+          <div className="w-full rounded-t-3xl p-5 pb-8 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+            style={{ background: GC.bg }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="w-10 h-1 rounded-full mx-auto" style={{ background: GC.cream }} />
             <div className="space-y-1">
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>Subtotal</span>
-                <span>{brl(currentSale?.subtotalCents ?? 0)}</span>
+              <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
+                <span>Subtotal</span><span>{brl(currentSale?.subtotalCents ?? 0)}</span>
               </div>
               {(currentSale?.discountCents ?? 0) > 0 && (
                 <div className="flex justify-between text-sm text-red-500">
                   <span>Desconto</span><span>-{brl(currentSale!.discountCents)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-xl font-bold text-gray-800 border-t pt-2 mt-1">
+              <div className="flex justify-between text-xl font-black pt-2 mt-1"
+                style={{ color: GC.dark, borderTop: `1px solid rgba(107,79,58,0.12)` }}>
                 <span>Total</span><span>{brl(currentSale?.totalCents ?? 0)}</span>
               </div>
             </div>
-            <PayPanel
-              totalCents={currentSale?.totalCents ?? 0}
-              onPay={handlePay}
-              onCancel={handleCancelSale}
-              paying={paying}
-            />
+            <PayPanel totalCents={currentSale?.totalCents ?? 0} onPay={handlePay} onCancel={handleCancelSale} paying={paying} />
           </div>
         </div>
       )}
 
       <div className="flex flex-col lg:flex-row flex-1 gap-3 p-3 sm:p-4 min-h-0">
-        {/* Left: Barcode + Item list */}
+        {/* Left: Barcode + products */}
         <div className="flex-1 flex flex-col gap-3 min-w-0">
           <form onSubmit={handleScan} className="flex gap-2">
             <input
@@ -1174,48 +1191,42 @@ export default function PdvPage() {
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Codigo de barras..."
-              className="flex-1 border rounded-xl px-4 py-2.5 text-sm bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]"
+              className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
             />
-            <button
-              type="submit"
-              disabled={scanning || !barcode.trim()}
-              className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50"
-              style={{ background: "#7c5cf8" }}
-            >
+            <button type="submit" disabled={scanning || !barcode.trim()}
+              className="px-5 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-95 disabled:opacity-50"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
               {scanning ? "..." : "Ler"}
             </button>
           </form>
 
           {/* DAV Import */}
           <form onSubmit={handleImportDav} className="flex gap-2 items-center">
-            <div className="flex-1 flex items-center border border-emerald-300 rounded-xl bg-white focus-within:ring-2 focus-within:ring-emerald-400 overflow-hidden">
-              <span className="pl-3 pr-1 text-xs font-bold text-emerald-600 select-none whitespace-nowrap">DAV-</span>
+            <div className="flex-1 flex items-center rounded-xl overflow-hidden"
+              style={{ border: `1.5px solid rgba(200,149,58,0.35)`, background: "#fff" }}>
+              <span className="pl-3 pr-1 text-xs font-black select-none whitespace-nowrap" style={{ color: GC.caramel }}>DAV-</span>
               <input
                 value={davCode}
                 onChange={(e) => setDavCode(e.target.value.replace(/^DAV-/i, ""))}
                 placeholder="codigo ou escaneie..."
-                className="flex-1 py-2 pr-3 text-sm bg-transparent text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                className="flex-1 py-2.5 pr-3 text-sm bg-transparent focus:outline-none"
+                style={{ color: GC.dark }}
               />
             </div>
-            <button
-              type="submit"
-              disabled={importingDav || !davCode.trim()}
-              className="px-4 py-2 rounded-xl text-white text-sm font-semibold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
-              style={{ background: "#10b981" }}
-            >
+            <button type="submit" disabled={importingDav || !davCode.trim()}
+              className="px-4 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              style={{ background: `linear-gradient(135deg, #059669, #047857)` }}>
               {importingDav ? "..." : "Importar"}
             </button>
-            <button
-              type="button"
-              title="Buscar orcamento"
-              onClick={() => setShowDavSearch(true)}
-              className="p-2 rounded-xl border border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition"
-            >
+            <button type="button" title="Buscar orcamento" onClick={() => setShowDavSearch(true)}
+              className="p-2.5 rounded-xl transition hover:opacity-80"
+              style={{ border: `1.5px solid rgba(200,149,58,0.35)`, color: GC.caramel, background: `${GC.caramel}10` }}>
               <Search size={16} />
             </button>
           </form>
 
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col border border-gray-100" style={{ minHeight: 200, flex: "1 1 0" }}>
+          <div className="rounded-2xl overflow-hidden flex flex-col shadow-sm" style={{ minHeight: 200, flex: "1 1 0", border: `1px solid rgba(107,79,58,0.1)` }}>
             <QuickProducts
               saleId={currentSale?.id ?? ""}
               onAdded={async (name) => {
@@ -1226,26 +1237,27 @@ export default function PdvPage() {
             />
           </div>
 
-          <div className="lg:hidden bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 max-h-[320px]" style={{ minHeight: 180 }}>
+          <div className="lg:hidden rounded-2xl overflow-hidden shadow-sm max-h-[320px]"
+            style={{ minHeight: 180, border: `1px solid rgba(107,79,58,0.1)` }}>
             <CartTable sale={currentSale} onRemove={handleRemoveItem} />
           </div>
 
-
           {/* Mobile: sticky cobrar bar */}
           <div className="lg:hidden">
-            <div className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-4">
+            <div className="rounded-2xl p-4 flex items-center gap-4 shadow-sm"
+              style={{ background: GC.cream, border: `1px solid rgba(107,79,58,0.12)` }}>
               <div className="flex-1 min-w-0">
-                <div className="text-xs text-gray-500">Total</div>
-                <div className="text-2xl font-black text-gray-800">{brl(currentSale?.totalCents ?? 0)}</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GC.brown }}>Total</div>
+                <div className="text-2xl font-black" style={{ color: GC.dark }}>{brl(currentSale?.totalCents ?? 0)}</div>
                 {currentSale?.publicId && (
-                  <div className="text-[10px] text-gray-400 mt-0.5">{currentSale.publicId}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: GC.brown, opacity: 0.5 }}>{currentSale.publicId}</div>
                 )}
               </div>
               <button
                 disabled={!currentSale || currentSale.items.length === 0}
                 onClick={() => setShowPay(true)}
-                className="shrink-0 px-6 py-3 rounded-xl text-white font-semibold transition active:scale-95 disabled:opacity-40 text-base"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                className="shrink-0 px-6 py-3 rounded-2xl text-white font-bold transition active:scale-95 disabled:opacity-40 text-base"
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 14px rgba(28,18,9,0.25)" }}
               >
                 Cobrar
               </button>
@@ -1253,11 +1265,12 @@ export default function PdvPage() {
           </div>
         </div>
 
-        {/* Right: Totals + Payment (desktop only) */}
+        {/* Right: Totals + Payment (desktop) */}
         <div className="hidden lg:flex w-[420px] xl:w-[460px] flex-col gap-3 shrink-0">
-          <div className="bg-white rounded-2xl shadow-sm p-5 space-y-3 border border-gray-100">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Resumo da venda</p>
-            <div className="flex justify-between text-sm text-gray-500">
+          <div className="rounded-2xl p-5 space-y-3 shadow-sm"
+            style={{ background: GC.cream, border: `1px solid rgba(107,79,58,0.1)` }}>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: GC.brown }}>Resumo da venda</p>
+            <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
               <span>Subtotal</span>
               <span>{brl(currentSale?.subtotalCents ?? 0)}</span>
             </div>
@@ -1267,7 +1280,8 @@ export default function PdvPage() {
                 <span>-{brl(currentSale!.discountCents)}</span>
               </div>
             )}
-            <div className="flex justify-between text-2xl font-black text-gray-800 border-t pt-3">
+            <div className="flex justify-between text-2xl font-black pt-2"
+              style={{ color: GC.dark, borderTop: `1px solid rgba(107,79,58,0.12)` }}>
               <span>Total</span>
               <span>{brl(currentSale?.totalCents ?? 0)}</span>
             </div>
@@ -1276,8 +1290,8 @@ export default function PdvPage() {
               <button
                 disabled={!currentSale || currentSale.items.length === 0}
                 onClick={() => setShowPay(true)}
-                className="w-full py-3.5 rounded-xl text-white font-semibold text-base transition active:scale-95 disabled:opacity-40"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                className="w-full py-4 rounded-2xl text-white font-bold text-lg transition active:scale-95 disabled:opacity-40"
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}
               >
                 Cobrar
               </button>
@@ -1289,15 +1303,15 @@ export default function PdvPage() {
                 paying={paying}
               />
             )}
+            {currentSale?.publicId && (
+              <p className="text-center text-[10px]" style={{ color: GC.brown, opacity: 0.5 }}>{currentSale.publicId}</p>
+            )}
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 flex-1 min-h-[340px]">
+          <div className="rounded-2xl overflow-hidden shadow-sm flex-1 min-h-[340px]"
+            style={{ border: `1px solid rgba(107,79,58,0.1)` }}>
             <CartTable sale={currentSale} onRemove={handleRemoveItem} />
           </div>
-
-          {currentSale?.publicId && (
-            <p className="text-center text-xs text-gray-400">{currentSale.publicId}</p>
-          )}
         </div>
       </div>
     </div>
