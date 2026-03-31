@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
-  CheckCircle2, Star, ChevronLeft, UtensilsCrossed,
+  CheckCircle2, Star, UtensilsCrossed,
 } from "lucide-react";
 import type { Category, Product, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder } from "@/features/orders/api";
