@@ -1,15 +1,27 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   QrCode, Plus, Pencil, Trash2, Copy, Check, X,
-  ShoppingBag, BarChart2, Users, ClipboardList, CircleCheck,
+  ShoppingBag, BarChart2, Users, ClipboardList, CircleCheck, ExternalLink,
 } from "lucide-react";
+
+// ── Design tokens (Go Coffee palette) ─────────────────────────────────────────
+const GC = {
+  bg:      "#FAF7F2",
+  cream:   "#F5EDE0",
+  brown:   "#6B4F3A",
+  dark:    "#1C1209",
+  caramel: "#C8953A",
+};
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
   fetchTablesOverview, fetchTableMetrics,
   createTable, updateTable, deleteTable, fetchTableService, finalizeTable, cancelTableOpenOrders,
   type TableOverviewItem,
 } from "@/features/admin/tables/api";
+import { fetchOrderById, type GetOrderResponse } from "@/features/admin/orders/api";
+import { paymentLabel } from "@/features/admin/orders/payment";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +38,117 @@ function orderStatusLabel(status: string) {
   if (s === "ENTREGUE") return "Entregue";
   if (s === "CANCELADO") return "Cancelado";
   return status;
+}
+
+function QuickOrderModal({
+  orderNumber,
+  onClose,
+}: {
+  orderNumber: string;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const orderQ = useQuery<GetOrderResponse>({
+    queryKey: ["table-order-quick", orderNumber],
+    queryFn: () => fetchOrderById(orderNumber),
+    enabled: !!orderNumber,
+  });
+
+  const order = orderQ.data;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}
+      onClick={onClose}
+    >
+      <div
+        className="rounded-3xl shadow-2xl w-full max-w-lg max-h-[88vh] overflow-hidden"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4"
+          style={{ borderBottom: `1px solid rgba(107,79,58,0.1)` }}>
+          <div>
+            <h3 className="text-base font-black" style={{ color: GC.dark }}>{orderNumber}</h3>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.6 }}>Resumo do pedido</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { onClose(); navigate(`/admin/orders?q=${orderNumber}`); }}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-bold transition hover:opacity-80"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, color: "#fff" }}
+            >
+              <ExternalLink size={11} /> Ver pedido
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ background: GC.cream }}>
+              <X size={14} style={{ color: GC.brown }} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 overflow-y-auto max-h-[calc(88vh-72px)] space-y-4">
+          {orderQ.isLoading && (
+            <p className="text-sm font-medium" style={{ color: GC.brown }}>Carregando...</p>
+          )}
+          {!orderQ.isLoading && !order && (
+            <p className="text-sm" style={{ color: GC.brown }}>Pedido não encontrado.</p>
+          )}
+          {order && (
+            <>
+              {/* Cliente */}
+              <div className="rounded-2xl px-4 py-3 flex items-center justify-between"
+                style={{ background: GC.cream }}>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: GC.dark }}>{order.name}</p>
+                  <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.7 }}>
+                    {order.phone || "Sem telefone"}
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: `${GC.caramel}20`, color: GC.caramel }}>
+                  {orderStatusLabel(order.status)}
+                </span>
+              </div>
+
+              {/* Itens */}
+              <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid rgba(107,79,58,0.1)` }}>
+                <div className="px-4 py-2 text-[10px] font-black uppercase tracking-widest"
+                  style={{ background: GC.cream, color: GC.brown, opacity: 1 }}>
+                  Itens do pedido
+                </div>
+                {order.items.map((i) => (
+                  <div key={`${i.productId}-${i.productName}`}
+                    className="px-4 py-3 flex items-center justify-between gap-3"
+                    style={{ borderTop: `1px solid rgba(107,79,58,0.07)` }}>
+                    <p className="text-sm" style={{ color: GC.dark }}>{i.qty}× {i.productName}</p>
+                    <p className="text-sm font-bold" style={{ color: GC.dark }}>{fmtCurrency(i.totalPriceCents)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Totais */}
+              <div className="rounded-2xl px-4 py-3 space-y-2"
+                style={{ background: GC.cream }}>
+                <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
+                  <span>Subtotal</span><span>{fmtCurrency(order.subtotalCents)}</span>
+                </div>
+                <div className="flex justify-between text-[13px] font-black pt-1"
+                  style={{ color: GC.dark, borderTop: `1px solid rgba(107,79,58,0.12)` }}>
+                  <span>Total</span><span>{fmtCurrency(order.totalCents)}</span>
+                </div>
+                <div className="flex justify-between text-xs" style={{ color: GC.brown, opacity: 0.6 }}>
+                  <span>Pagamento</span><span>{paymentLabel(order.paymentMethodStr)}</span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── QR Modal ───────────────────────────────────────────────────────────────────
@@ -240,6 +363,7 @@ function ServiceModal({
   const qc = useQueryClient();
   const [hostName, setHostName] = useState("");
   const [guests, setGuests] = useState("1");
+  const [selectedOrderNumber, setSelectedOrderNumber] = useState<string | null>(null);
 
   const serviceQ = useQuery({
     queryKey: ["table-service", table.id],
@@ -282,136 +406,145 @@ function ServiceModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+      style={{ backgroundColor: "rgba(28,18,9,0.65)" }}
       onClick={onClose}
     >
       <div
-        className="rounded-2xl border shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
-        style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        className="rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden"
+        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: `1px solid rgba(107,79,58,0.1)` }}>
           <div>
-            <h3 className="text-base font-bold" style={{ color: "var(--text)" }}>
-              Mesa {table.number}{table.name ? ` - ${table.name}` : ""}
+            <h3 className="text-lg font-black" style={{ color: GC.dark }}>
+              Mesa {table.number}{table.name ? ` · ${table.name}` : ""}
             </h3>
-            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-              Gerencie a comanda e libere a mesa quando o atendimento terminar.
+            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.6 }}>
+              Gerencie a comanda e libere a mesa ao finalizar.
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--surface-2)" }}>
-            <X size={14} style={{ color: "var(--text-muted)" }} />
+          <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: GC.cream }}>
+            <X size={15} style={{ color: GC.brown }} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4 overflow-y-auto max-h-[calc(90vh-72px)]">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
-              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Capacidade</p>
-              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{table.capacity}</p>
-            </div>
-            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
-              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Pedidos ativos</p>
-              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{service?.totals.orders ?? 0}</p>
-            </div>
-            <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
-              <p className="text-xs font-semibold" style={{ color: "var(--text-muted)" }}>Valor em aberto</p>
-              <p className="text-lg font-black" style={{ color: "var(--text)" }}>{fmtCurrency(service?.totals.amountCents ?? 0)}</p>
-            </div>
+        <div className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-80px)]">
+
+          {/* KPIs */}
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Capacidade", value: String(table.capacity), icon: <Users size={14} /> },
+              { label: "Pedidos ativos", value: String(service?.totals.orders ?? 0), icon: <ShoppingBag size={14} /> },
+              { label: "Valor em aberto", value: fmtCurrency(service?.totals.amountCents ?? 0), icon: <BarChart2 size={14} />, highlight: true },
+            ].map(({ label, value, icon, highlight }) => (
+              <div key={label} className="rounded-2xl p-4 flex flex-col gap-1"
+                style={{ background: highlight ? `linear-gradient(135deg, ${GC.dark}, #3D2314)` : GC.cream }}>
+                <div className="flex items-center gap-1.5" style={{ color: highlight ? "rgba(255,255,255,0.5)" : GC.brown }}>
+                  {icon}
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+                </div>
+                <p className="text-xl font-black" style={{ color: highlight ? "#fff" : GC.dark }}>{value}</p>
+              </div>
+            ))}
           </div>
 
-          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)" }}>
+          {/* Abrir comanda */}
+          <div className="rounded-2xl p-5 space-y-4"
+            style={{ background: GC.cream, border: `1.5px solid rgba(200,149,58,0.18)` }}>
             <div className="flex items-center gap-2">
-              <ClipboardList size={14} style={{ color: "var(--brand)" }} />
-              <p className="text-sm font-bold" style={{ color: "var(--text)" }}>Abrir comanda para atendimento rapido</p>
+              <ClipboardList size={14} style={{ color: GC.caramel }} />
+              <p className="text-sm font-bold" style={{ color: GC.dark }}>Abrir comanda para atendimento rápido</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>Nome do responsavel</label>
-                <input
-                  value={hostName}
-                  onChange={(e) => setHostName(e.target.value)}
-                  placeholder="Ex: Joao"
-                  className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
+                <label className="block text-[11px] font-bold mb-1.5" style={{ color: GC.brown, opacity: 0.7 }}>Nome do responsável</label>
+                <input value={hostName} onChange={(e) => setHostName(e.target.value)}
+                  placeholder="Ex: João"
+                  className="w-full h-10 rounded-xl px-3 text-sm focus:outline-none focus:ring-2 transition"
+                  style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark, ["--tw-ring-color" as string]: GC.caramel + "40" }}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: "var(--text-muted)" }}>
+                <label className="block text-[11px] font-bold mb-1.5" style={{ color: GC.brown, opacity: 0.7 }}>
                   Pessoas (max {maxGuests})
                 </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={maxGuests}
-                  value={guests}
+                <input type="number" min={1} max={maxGuests} value={guests}
                   onChange={(e) => setGuests(e.target.value)}
-                  className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
-                  style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)", color: "var(--text)" }}
+                  className="w-full h-10 rounded-xl px-3 text-sm focus:outline-none focus:ring-2 transition"
+                  style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark, ["--tw-ring-color" as string]: GC.caramel + "40" }}
                 />
               </div>
             </div>
-            <button
-              onClick={handleOpenComanda}
-              className="w-full h-10 rounded-xl text-sm font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-            >
+            <button onClick={handleOpenComanda}
+              className="w-full h-10 rounded-xl text-sm font-bold text-white transition active:scale-[0.98]"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 14px rgba(28,18,9,0.25)" }}>
               Abrir comanda da mesa
             </button>
           </div>
 
-          <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
-            <div className="px-4 py-2 border-b text-xs font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+          {/* Lista de pedidos */}
+          <div className="rounded-2xl overflow-hidden"
+            style={{ border: `1px solid rgba(107,79,58,0.1)` }}>
+            <div className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest"
+              style={{ background: GC.cream, color: GC.brown }}>
               Pedidos da mesa
             </div>
-            <div className="max-h-56 overflow-y-auto">
+            <div className="max-h-56 overflow-y-auto divide-y" style={{ divideColor: "rgba(107,79,58,0.07)" } as React.CSSProperties}>
               {serviceQ.isLoading ? (
-                <div className="p-4 text-sm" style={{ color: "var(--text-muted)" }}>Carregando pedidos...</div>
+                <div className="p-4 text-sm" style={{ color: GC.brown }}>Carregando...</div>
               ) : (service?.activeOrders.length ?? 0) === 0 ? (
-                <div className="p-4 text-sm" style={{ color: "var(--text-muted)" }}>Nenhuma comanda ativa nesta mesa.</div>
+                <div className="p-4 text-sm" style={{ color: GC.brown, opacity: 0.6 }}>Nenhuma comanda ativa nesta mesa.</div>
               ) : (
                 service!.activeOrders.map((o) => (
-                  <div key={o.id} className="px-4 py-3 border-b flex items-center justify-between gap-3" style={{ borderColor: "var(--border)" }}>
+                  <button key={o.id} type="button"
+                    onClick={() => setSelectedOrderNumber(o.publicId)}
+                    className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 transition hover:bg-amber-50/60"
+                  >
                     <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>{o.publicId}</p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        {o.customerName} - {orderStatusLabel(o.status)}
+                      <p className="text-sm font-bold" style={{ color: GC.dark }}>{o.publicId}</p>
+                      <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>
+                        {o.customerName} · {orderStatusLabel(o.status)}
                       </p>
                     </div>
-                    <p className="text-sm font-bold" style={{ color: "var(--text)" }}>{fmtCurrency(o.totalCents)}</p>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-black" style={{ color: GC.dark }}>{fmtCurrency(o.totalCents)}</p>
+                      <ExternalLink size={12} style={{ color: GC.caramel }} />
+                    </div>
+                  </button>
                 ))
               )}
             </div>
           </div>
 
+          {/* Ações */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
-              onClick={() => {
-                if (!confirm("Cancelar todas as comandas abertas desta mesa?")) return;
-                cancelMut.mutate();
-              }}
+              onClick={() => { if (!confirm("Cancelar todas as comandas abertas desta mesa?")) return; cancelMut.mutate(); }}
               disabled={cancelMut.isPending}
-              className="h-11 rounded-xl text-sm font-semibold border transition disabled:opacity-60"
-              style={{ borderColor: "#fca5a5", color: "#dc2626", backgroundColor: "#fff1f2" }}
-            >
+              className="h-11 rounded-2xl text-sm font-bold transition disabled:opacity-60"
+              style={{ border: `1.5px solid rgba(220,38,38,0.3)`, color: "#dc2626", background: "#fff5f5" }}>
               {cancelMut.isPending ? "Cancelando..." : "Cancelar comanda"}
             </button>
             <button
-              onClick={() => {
-                if (!confirm("Finalizar mesa e liberar para reuso? Pedidos PRONTO serao marcados como ENTREGUE.")) return;
-                finalizeMut.mutate();
-              }}
+              onClick={() => { if (!confirm("Finalizar mesa? Pedidos PRONTO serão marcados como ENTREGUE.")) return; finalizeMut.mutate(); }}
               disabled={finalizeMut.isPending}
-              className="h-11 rounded-xl text-sm font-semibold text-white transition disabled:opacity-60 flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
-            >
+              className="h-11 rounded-2xl text-sm font-bold text-white transition disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 14px rgba(5,150,105,0.3)" }}>
               <CircleCheck size={15} />
               {finalizeMut.isPending ? "Finalizando..." : "Finalizar mesa"}
             </button>
           </div>
         </div>
       </div>
+      {selectedOrderNumber && (
+        <QuickOrderModal
+          orderNumber={selectedOrderNumber}
+          onClose={() => setSelectedOrderNumber(null)}
+        />
+      )}
     </div>
   );
 }
@@ -435,72 +568,91 @@ function TableCard({
   const statusColor   = !table.isActive ? "#94a3b8" : hasOpenOrders ? "#f59e0b" : "#10b981";
   const statusLabel   = !table.isActive ? "Inativa" : hasOpenOrders ? "Ocupada" : "Livre";
   const statusBg      = !table.isActive ? "rgba(148,163,184,0.12)" : hasOpenOrders ? "rgba(245,158,11,0.12)" : "rgba(16,185,129,0.12)";
+  const openLabel = `${table.openOrders} aberto${table.openOrders > 1 ? "s" : ""}`;
 
   return (
     <div
-      className="rounded-2xl border p-4 flex flex-col gap-3 transition-all hover:shadow-md cursor-pointer"
-      style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+      className="rounded-2xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+      style={{
+        background: hasOpenOrders
+          ? `linear-gradient(145deg, ${GC.dark} 0%, #3D2314 100%)`
+          : "var(--surface)",
+        border: hasOpenOrders
+          ? "none"
+          : "1px solid var(--border)",
+        boxShadow: hasOpenOrders
+          ? "0 8px 28px rgba(28,18,9,0.28)"
+          : "0 1px 4px rgba(28,18,9,0.06)",
+        minHeight: 200,
+      }}
       onClick={onManage}
     >
       {/* Header row */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-black" style={{ color: "var(--text)" }}>
+            <span className="text-3xl font-black" style={{ color: hasOpenOrders ? "#fff" : "var(--text)" }}>
               {table.number}
             </span>
             {table.name && (
-              <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs font-medium truncate max-w-[130px]"
+                style={{ color: hasOpenOrders ? "rgba(255,255,255,0.5)" : "var(--text-muted)" }}
+                title={table.name}>
                 {table.name}
               </span>
             )}
           </div>
-          <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1"
-            style={{ backgroundColor: statusBg, color: statusColor }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: statusColor }} />
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1"
+            style={{
+              background: hasOpenOrders ? `${GC.caramel}30` : statusBg,
+              color: hasOpenOrders ? GC.caramel : statusColor,
+            }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: hasOpenOrders ? GC.caramel : statusColor }} />
             {statusLabel}
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
-            style={{ backgroundColor: "var(--surface-2)" }}
-          >
-            <Pencil size={12} style={{ color: "var(--text-muted)" }} />
+            style={{ background: hasOpenOrders ? "rgba(255,255,255,0.12)" : "var(--surface-2)" }}>
+            <Pencil size={12} style={{ color: hasOpenOrders ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }} />
           </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
-            style={{ backgroundColor: "var(--surface-2)" }}
-          >
-            <Trash2 size={12} style={{ color: "#ef4444" }} />
+            style={{ background: hasOpenOrders ? "rgba(255,255,255,0.12)" : "var(--surface-2)" }}>
+            <Trash2 size={12} style={{ color: hasOpenOrders ? "rgba(255,100,100,0.7)" : "#ef4444" }} />
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="flex items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
-        <span className="flex items-center gap-1">
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+          style={{
+            background: hasOpenOrders ? "rgba(255,255,255,0.08)" : "var(--surface-2)",
+            color: hasOpenOrders ? "rgba(255,255,255,0.6)" : "var(--text-muted)",
+          }}>
           <Users size={11} />
-          {table.capacity} lugares
-        </span>
-        {hasOpenOrders && (
-          <span className="flex items-center gap-1" style={{ color: "#f59e0b" }}>
-            <ShoppingBag size={11} />
-            {table.openOrders} pedido{table.openOrders > 1 ? "s" : ""} aberto{table.openOrders > 1 ? "s" : ""}
-          </span>
-        )}
+          <span className="font-medium">{table.capacity} lugares</span>
+        </div>
+        <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+          style={{
+            background: hasOpenOrders ? `${GC.caramel}20` : "var(--surface-2)",
+            color: hasOpenOrders ? GC.caramel : "var(--text-muted)",
+          }}>
+          <ShoppingBag size={11} />
+          <span className="font-medium">{hasOpenOrders ? openLabel : "Sem comanda"}</span>
+        </div>
       </div>
 
       {/* QR Button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onQr(); }}
-        className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:brightness-110"
-        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)", color: "#fff" }}
-      >
+      <button onClick={(e) => { e.stopPropagation(); onQr(); }}
+        className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:opacity-80"
+        style={{
+          background: hasOpenOrders ? "rgba(255,255,255,0.12)" : GC.cream,
+          color: hasOpenOrders ? "#fff" : GC.brown,
+          border: hasOpenOrders ? "none" : `1.5px solid rgba(200,149,58,0.2)`,
+        }}>
         <QrCode size={13} />
         Ver QR Code
       </button>
@@ -587,8 +739,8 @@ export default function TablesPage() {
             <button
               type="button"
               onClick={() => { setShowCreate(true); setMutErr(undefined); }}
-              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 14px rgba(28,18,9,0.25)" }}
             >
               <Plus size={15} />
               Nova mesa
@@ -619,7 +771,7 @@ export default function TablesPage() {
 
         {/* Grid */}
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-2xl border h-44 animate-pulse" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }} />
             ))}
@@ -643,7 +795,7 @@ export default function TablesPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
             {tables.map((t) => (
               <TableCard
                 key={t.id}
