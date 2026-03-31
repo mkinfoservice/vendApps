@@ -927,6 +927,42 @@ public class PdvController : ControllerBase
         sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
     }
 
+    // ── DELETE /pdv/sales/all ─────────────────────────────────────────────────
+    /// <summary>
+    /// Apaga TODAS as vendas (SaleOrders), sessões de caixa e documentos fiscais
+    /// da empresa. Use apenas para ambiente de testes.
+    /// Requer role "admin".
+    /// </summary>
+    [HttpDelete("sales/all")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DeleteAllSales(CancellationToken ct)
+    {
+        var companyId = CompanyId;
+
+        // Fiscal documents
+        var fiscalIds = await _db.FiscalDocuments
+            .Where(f => f.CompanyId == companyId)
+            .Select(f => f.Id)
+            .ToListAsync(ct);
+
+        if (fiscalIds.Any())
+            await _db.FiscalDocuments
+                .Where(f => fiscalIds.Contains(f.Id))
+                .ExecuteDeleteAsync(ct);
+
+        // Sale orders (cascades items, payments, addons via FK cascade or EF)
+        var deletedSales = await _db.SaleOrders
+            .Where(s => s.CompanyId == companyId)
+            .ExecuteDeleteAsync(ct);
+
+        // Cash sessions
+        var deletedSessions = await _db.CashSessions
+            .Where(s => s.CompanyId == companyId)
+            .ExecuteDeleteAsync(ct);
+
+        return Ok(new { deletedSales, deletedSessions, deletedFiscalDocs = fiscalIds.Count });
+    }
+
     private async Task<bool> InsertSaleItemAndRecalcAsync(Guid saleId, SaleOrderItem item, CancellationToken ct)
     {
         await using var tx = await _db.Database.BeginTransactionAsync(ct);

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AreaChart, Area, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -12,9 +12,10 @@ import {
   type SalesSummary, type DayRevenue, type TopProduct,
   type StockValuation, type FiscalSummary,
 } from "@/features/reports/reportApi";
+import { adminFetch } from "@/features/admin/auth/adminFetch";
 import {
   ShoppingCart, TrendingUp, Package,
-  FileText, Percent,
+  FileText, Percent, Trash2,
 } from "lucide-react";
 
 // ── Date range presets ────────────────────────────────────────────────────────
@@ -111,9 +112,28 @@ function RevenueTooltip({ active, payload, label }: any) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const qc = useQueryClient();
   const [preset, setPreset] = useState<Preset>("30d");
   const [customFrom, setCustomFrom] = useState(fmtDate(new Date()));
   const [customTo, setCustomTo]     = useState(fmtDate(new Date()));
+  const [resetting, setResetting] = useState(false);
+
+  async function handleResetSales() {
+    if (!confirm("Apagar TODAS as vendas do PDV e sessões de caixa desta empresa?\n\nEsta ação não pode ser desfeita.")) return;
+    setResetting(true);
+    try {
+      await adminFetch("/pdv/sales/all", { method: "DELETE" });
+      qc.invalidateQueries({ queryKey: ["report-summary"] });
+      qc.invalidateQueries({ queryKey: ["report-by-day"] });
+      qc.invalidateQueries({ queryKey: ["report-top"] });
+      qc.invalidateQueries({ queryKey: ["report-fiscal"] });
+      alert("Dados zerados com sucesso.");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erro ao zerar dados.");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   const [from, to] = useMemo<[Date, Date]>(() => {
     if (preset === "custom") {
@@ -213,7 +233,22 @@ export default function ReportsPage() {
         <PageHeader
           title="Relatórios"
           subtitle="Analytics de vendas e estoque"
-          actions={dateRangeActions}
+          actions={
+            <div className="flex items-center gap-3 flex-wrap">
+              {dateRangeActions}
+              <button
+                type="button"
+                onClick={handleResetSales}
+                disabled={resetting}
+                title="Zerar todas as vendas do PDV (apenas para testes)"
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition hover:opacity-80 disabled:opacity-40"
+                style={{ borderColor: "#ef4444", color: "#ef4444", backgroundColor: "transparent" }}
+              >
+                <Trash2 size={13} />
+                {resetting ? "Zerando…" : "Zerar vendas"}
+              </button>
+            </div>
+          }
         />
 
         {/* KPI Cards */}
