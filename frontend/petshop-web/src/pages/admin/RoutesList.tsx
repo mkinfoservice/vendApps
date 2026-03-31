@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Pagination } from "@/components/ui/Pagination";
-import { fetchRoutes } from "@/features/admin/routes/api";
+import { fetchRoutes, deleteRoute } from "@/features/admin/routes/api";
 import { ROUTE_STATUS_LABEL } from "@/features/admin/routes/status";
 import type { RouteStatus } from "@/features/admin/routes/types";
-import { Plus, Eye, Route } from "lucide-react";
+import { Plus, Eye, Route, Trash2 } from "lucide-react";
 
 const STATUS_STYLE: Record<RouteStatus, { badge: string; dot: string }> = {
   Criada:      { badge: "bg-zinc-700/40 text-zinc-300",       dot: "#94a3b8" },
@@ -25,6 +25,7 @@ function fmtDate(iso?: string | null) {
 
 export default function RoutesList() {
   const nav = useNavigate();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
 
   const [page, setPage] = useState(1);
@@ -36,6 +37,17 @@ export default function RoutesList() {
     queryKey: key,
     queryFn: () => fetchRoutes(page, 20, status || undefined),
   });
+
+  async function handleDelete(e: React.MouseEvent, id: string, routeNumber: string) {
+    e.stopPropagation();
+    if (!confirm(`Excluir rota "${routeNumber}"?`)) return;
+    try {
+      await deleteRoute(id);
+      qc.invalidateQueries({ queryKey: ["routes"] });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao excluir rota.");
+    }
+  }
 
   const routes = q.data?.items ?? [];
   const total  = q.data?.total ?? 0;
@@ -185,15 +197,26 @@ export default function RoutesList() {
                       {fmtDate(r.createdAtUtc)}
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => nav(`/app/logistica/rotas/${r.id}`)}
-                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all hover:opacity-80"
-                        style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
-                      >
-                        <Eye size={13} />
-                        Ver
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => nav(`/app/logistica/rotas/${r.id}`)}
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+                          style={{ backgroundColor: "var(--surface-2)", color: "var(--text-muted)" }}
+                        >
+                          <Eye size={13} />
+                          Ver
+                        </button>
+                        <button
+                          type="button"
+                          title="Excluir rota"
+                          onClick={(e) => handleDelete(e, r.id, r.routeNumber)}
+                          className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs transition-all hover:opacity-80"
+                          style={{ backgroundColor: "var(--surface-2)", color: "#ef4444" }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

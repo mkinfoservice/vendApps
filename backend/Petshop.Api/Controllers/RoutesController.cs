@@ -625,6 +625,30 @@ public class RoutesController : ControllerBase
     }
 
     // =========================================
+    // DELETE /routes/{routeId}
+    // =========================================
+    [HttpDelete("{routeId:guid}")]
+    public async Task<IActionResult> Delete([FromRoute] Guid routeId, CancellationToken ct = default)
+    {
+        var gate = RequireAdmin();
+        if (gate != null) return gate;
+
+        var route = await _db.Routes
+            .Include(r => r.Stops)
+            .FirstOrDefaultAsync(r => r.Id == routeId, ct);
+
+        if (route is null) return NotFound("Rota não encontrada.");
+
+        if (route.Status == RouteStatus.EmAndamento)
+            return BadRequest("Não é possível excluir uma rota em andamento. Cancele primeiro.");
+
+        _db.Routes.Remove(route);
+        await _db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    // =========================================
     // PATCH /routes/{routeId}/cancel
     // =========================================
     [HttpPatch("{routeId:guid}/cancel")]

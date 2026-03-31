@@ -106,3 +106,7 @@ export async function previewRoutes(orderIds: string[]): Promise<PreviewRouteRes
 export async function fetchNavigationLinks(routeId: string): Promise<NavigationLinksResponse> {
   return adminFetch<NavigationLinksResponse>(`/routes/${routeId}/navigation`);
 }
+
+export async function deleteRoute(routeId: string): Promise<void> {
+  return adminFetch<void>(`/routes/${routeId}`, { method: "DELETE" });
+}
