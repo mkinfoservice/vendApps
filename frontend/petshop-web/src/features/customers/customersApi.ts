@@ -97,3 +97,56 @@ export async function updateLoyaltyConfig(body: Omit<LoyaltyConfigDto, "updatedA
     body: JSON.stringify(body),
   });
 }
+
+// ── Loyalty ranking + summary ─────────────────────────────────────────────────
+
+export interface LoyaltyRankingItem {
+  id: string;
+  name: string;
+  phone: string;
+  pointsBalance: number;
+  totalSpentCents: number;
+  totalOrders: number;
+  lastOrderUtc: string | null;
+}
+
+export interface LoyaltySummary {
+  totalPointsIssued: number;
+  totalPointsRedeemed: number;
+  totalBalanceOutstanding: number;
+  customersWithBalance: number;
+}
+
+export interface CustomerLoyaltyDetail {
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  pointsBalance: number;
+  totalSpentCents: number;
+  totalOrders: number;
+  lastOrderUtc: string | null;
+  discountValueCents: number;
+  canRedeem: boolean;
+  minRedemptionPoints: number;
+  transactions: LoyaltyTxnDto[];
+}
+
+export async function getLoyaltyRanking(top = 20): Promise<LoyaltyRankingItem[]> {
+  return adminFetch<LoyaltyRankingItem[]>(`/admin/loyalty/ranking?top=${top}`);
+}
+
+export async function getLoyaltySummary(): Promise<LoyaltySummary> {
+  return adminFetch<LoyaltySummary>("/admin/loyalty/summary");
+}
+
+export async function getCustomerLoyaltyDetail(customerId: string): Promise<CustomerLoyaltyDetail> {
+  return adminFetch<CustomerLoyaltyDetail>(`/admin/loyalty/customers/${customerId}`);
+}
+
+export async function adjustLoyaltyPoints(customerId: string, points: number, reason: string): Promise<{ message: string }> {
+  return adminFetch<{ message: string }>(`/admin/loyalty/customers/${customerId}/adjust`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ points, reason }),
+  });
+}
