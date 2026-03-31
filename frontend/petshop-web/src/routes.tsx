@@ -53,6 +53,7 @@ import DavBuilderPage from "./pages/admin/DavBuilderPage";
 import CatalogEnrichmentPage from "./pages/admin/CatalogEnrichmentPage";
 import StoreFrontConfigPage from "./pages/admin/StoreFrontConfigPage";
 import TablesPage from "./pages/admin/TablesPage";
+import MesaPage from "./pages/MesaPage";
 
 // ── PDV ───────────────────────────────────────────────────────────────────────
 import PdvPage from "./pages/pdv/PdvPage";
@@ -93,6 +94,7 @@ export function AppRoutes() {
 
         {/* ── Público ─────────────────────────────────────────────────── */}
         <Route path="/" element={<App />} />
+        <Route path="/mesa/:tableId" element={<MesaPage />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/produto/:id" element={<ProductDetail />} />
 

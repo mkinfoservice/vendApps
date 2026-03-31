@@ -33,6 +33,10 @@ export type CreateOrderRequest = {
   cashGivenCents?: number;
 
   coupon?: string | null;
+
+  // ── Auto-atendimento via mesa ──────────────────────────────────────────────
+  tableId?: string;
+  customerCpf?: string;
 };
 
 export type CreateOrderResponse = {

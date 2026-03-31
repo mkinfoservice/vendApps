@@ -18,6 +18,13 @@ public sealed class CreateOrderRequest
 
     // Cupom — opcional
     public string? Coupon { get; init; }
+
+    // ── Auto-atendimento via mesa ─────────────────────────────────────────────
+    /// <summary>ID da mesa (auto-atendimento via QR). Quando preenchido, endereço é opcional.</summary>
+    public Guid? TableId { get; init; }
+
+    /// <summary>CPF do cliente para cadastro no programa de fidelidade (opcional).</summary>
+    public string? CustomerCpf { get; init; }
 }
 
 public sealed class CreateOrderItemRequest

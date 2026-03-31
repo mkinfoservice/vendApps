@@ -704,16 +704,24 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CreateOrderResponse>> Create([FromBody] CreateOrderRequest req, CancellationToken ct = default)
     {
+        var isTableOrder = req.TableId.HasValue;
+
         if (req.Items is null || req.Items.Count == 0)
             return BadRequest("Carrinho vazio.");
         if (string.IsNullOrWhiteSpace(req.Name))
             return BadRequest("Nome do cliente é obrigatório.");
-        if (string.IsNullOrWhiteSpace(req.Phone))
-            return BadRequest("Telefone do cliente é obrigatório.");
-        if (string.IsNullOrWhiteSpace(req.Cep))
-            return BadRequest("CEP do endereço é obrigatório.");
-        if (string.IsNullOrWhiteSpace(req.Address))
-            return BadRequest("Endereço do cliente incompleto.");
+
+        // Endereço obrigatório apenas para delivery; mesa dispensa
+        if (!isTableOrder)
+        {
+            if (string.IsNullOrWhiteSpace(req.Phone))
+                return BadRequest("Telefone do cliente é obrigatório.");
+            if (string.IsNullOrWhiteSpace(req.Cep))
+                return BadRequest("CEP do endereço é obrigatório.");
+            if (string.IsNullOrWhiteSpace(req.Address))
+                return BadRequest("Endereço do cliente incompleto.");
+        }
+
         if (string.IsNullOrWhiteSpace(req.PaymentMethodStr))
             return BadRequest("Método de pagamento é obrigatório.");
 
@@ -722,14 +730,48 @@ public class OrdersController : ControllerBase
             Id = Guid.NewGuid(),
             PublicId = OrderIdGenerator.NewPublicId(),
             CustomerName = req.Name.Trim(),
-            Phone = req.Phone.Trim(),
-            Cep = req.Cep.Trim(),
-            Address = req.Address.Trim(),
+            Phone = req.Phone?.Trim() ?? "",
+            Cep = req.Cep?.Trim() ?? "",
+            Address = isTableOrder ? $"Mesa {req.TableId}" : req.Address.Trim(),
             Complement = string.IsNullOrWhiteSpace(req.Complement) ? null : req.Complement.Trim(),
             Coupon = string.IsNullOrWhiteSpace(req.Coupon) ? null : req.Coupon.Trim(),
             Status = OrderStatus.RECEBIDO,
             CreatedAtUtc = DateTime.UtcNow,
+            IsTableOrder = isTableOrder,
+            TableId = req.TableId,
         };
+
+        // Se pedido de mesa e cliente forneceu telefone, tenta vincular/criar customer
+        if (isTableOrder && !string.IsNullOrWhiteSpace(req.Phone))
+        {
+            var phone = req.Phone.Trim().Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "");
+            // Resolve CompanyId do primeiro produto para buscar o customer
+            var firstProduct = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == req.Items[0].ProductId, ct);
+            if (firstProduct is not null)
+            {
+                var existing = await _db.Customers.FirstOrDefaultAsync(
+                    c => c.CompanyId == firstProduct.CompanyId && c.Phone == phone, ct);
+                if (existing is not null)
+                {
+                    order.CustomerId = existing.Id;
+                }
+                else if (!string.IsNullOrWhiteSpace(req.Name))
+                {
+                    // Cadastro automático no programa de fidelidade
+                    var newCustomer = new Entities.Customer
+                    {
+                        CompanyId = firstProduct.CompanyId,
+                        Name = req.Name.Trim(),
+                        Phone = phone,
+                        Cpf = string.IsNullOrWhiteSpace(req.CustomerCpf) ? null
+                            : new string(req.CustomerCpf.Where(char.IsDigit).ToArray()),
+                    };
+                    _db.Customers.Add(newCustomer);
+                    await _db.SaveChangesAsync(ct);
+                    order.CustomerId = newCustomer.Id;
+                }
+            }
+        }
 
         foreach (var item in req.Items)
         {
@@ -753,8 +795,8 @@ public class OrdersController : ControllerBase
 
         order.SubtotalCents = order.Items.Sum(it => it.UnitPriceCentsSnapshot * it.Qty);
 
-        // MVP
-        order.DeliveryCents = 500;
+        // Mesa: sem taxa de entrega
+        order.DeliveryCents = isTableOrder ? 0 : 500;
         order.TotalCents = order.SubtotalCents + order.DeliveryCents;
 
         var pm = (req.PaymentMethodStr ?? "PIX").Trim().ToUpperInvariant();
