@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
-  CheckCircle2, Star, UtensilsCrossed,
+  CheckCircle2, Star, ChevronRight,
 } from "lucide-react";
 import type { Category, Product, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder } from "@/features/orders/api";
@@ -32,12 +32,9 @@ function makeCatalogApi(slug: string) {
   };
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
 function fmtBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-
 function maskPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d.length ? `(${d}` : "";
@@ -45,7 +42,6 @@ function maskPhone(v: string) {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
-
 function maskCpf(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 3) return d;
@@ -55,12 +51,10 @@ function maskCpf(v: string) {
 }
 
 // ── Cart ───────────────────────────────────────────────────────────────────────
-
 type CartItem = { product: Product; qty: number };
 
 function useLocalCart() {
   const [items, setItems] = useState<CartItem[]>([]);
-
   function add(product: Product) {
     setItems(prev => {
       const idx = prev.findIndex(i => i.product.id === product.id);
@@ -68,88 +62,93 @@ function useLocalCart() {
       return [...prev, { product, qty: 1 }];
     });
   }
-
-  function inc(id: string) {
-    setItems(prev => prev.map(i => i.product.id === id ? { ...i, qty: i.qty + 1 } : i));
-  }
-
-  function dec(id: string) {
-    setItems(prev => {
-      const next = prev.map(i => i.product.id === id ? { ...i, qty: i.qty - 1 } : i);
-      return next.filter(i => i.qty > 0);
-    });
-  }
-
-  function remove(id: string) {
-    setItems(prev => prev.filter(i => i.product.id !== id));
-  }
-
+  function inc(id: string) { setItems(prev => prev.map(i => i.product.id === id ? { ...i, qty: i.qty + 1 } : i)); }
+  function dec(id: string) { setItems(prev => prev.map(i => i.product.id === id ? { ...i, qty: i.qty - 1 } : i).filter(i => i.qty > 0)); }
+  function remove(id: string) { setItems(prev => prev.filter(i => i.product.id !== id)); }
   function clear() { setItems([]); }
-
-  const totalCents   = items.reduce((s, i) => s + i.product.priceCents * i.qty, 0);
-  const totalItems   = items.reduce((s, i) => s + i.qty, 0);
-
+  const totalCents = items.reduce((s, i) => s + i.product.priceCents * i.qty, 0);
+  const totalItems = items.reduce((s, i) => s + i.qty, 0);
   return { items, add, inc, dec, remove, clear, totalCents, totalItems };
 }
 
 // ── Step 1: Nome ───────────────────────────────────────────────────────────────
-
-function StepName({ brand, tableNum, onNext }: {
-  brand: string;
-  tableNum?: number;
+function StepName({ brand, tableNum, logoUrl, primaryColor, onNext }: {
+  brand: string; tableNum?: number; logoUrl?: string | null; primaryColor?: string;
   onNext: (name: string) => void;
 }) {
   const [name, setName] = useState("");
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}>
-            <UtensilsCrossed className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-black text-gray-900">{brand}</h1>
-          {tableNum && (
-            <p className="text-sm text-gray-500 mt-1">Mesa {tableNum} · Auto-atendimento</p>
-          )}
-        </div>
+  const color = primaryColor || "#7c5cf8";
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Olá! Qual é o seu nome?</h2>
-            <p className="text-sm text-gray-500 mt-1">Para começarmos o pedido</p>
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#fafafa" }}>
+      {/* Hero */}
+      <div className="flex flex-col items-center justify-center flex-1 px-6 py-12">
+        <div className="w-full max-w-sm space-y-8">
+
+          {/* Brand */}
+          <div className="text-center space-y-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt={brand} className="h-16 mx-auto object-contain" />
+            ) : (
+              <div
+                className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto shadow-lg"
+                style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+              >
+                <span className="text-3xl font-black text-white">{brand.charAt(0)}</span>
+              </div>
+            )}
+            <div>
+              <h1 className="text-3xl font-black tracking-tight" style={{ color: "#111" }}>{brand}</h1>
+              {tableNum && (
+                <div className="inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full text-xs font-semibold"
+                  style={{ backgroundColor: `${color}15`, color }}>
+                  Mesa {tableNum} · Auto-atendimento
+                </div>
+              )}
+            </div>
           </div>
-          <input
-            autoFocus
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim()); }}
-            placeholder="Seu nome"
-            className="w-full h-12 rounded-xl border border-gray-200 px-4 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-          />
-          <button
-            onClick={() => name.trim() && onNext(name.trim())}
-            disabled={!name.trim()}
-            className="w-full h-12 rounded-xl font-bold text-sm text-white disabled:opacity-40 transition hover:brightness-110"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-          >
-            Continuar
-          </button>
+
+          {/* Card */}
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-5">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-gray-900">Olá! Qual é o seu nome?</h2>
+              <p className="text-sm text-gray-400">Para personalizarmos seu atendimento</p>
+            </div>
+
+            <input
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && name.trim()) onNext(name.trim()); }}
+              placeholder="Seu nome"
+              className="w-full h-13 rounded-2xl border border-gray-200 px-4 text-base text-gray-900 placeholder-gray-300 focus:outline-none focus:border-transparent focus:ring-2 transition"
+              style={{ height: 52, ["--tw-ring-color" as string]: color + "40" }}
+            />
+
+            <button
+              onClick={() => name.trim() && onNext(name.trim())}
+              disabled={!name.trim()}
+              className="w-full h-13 rounded-2xl font-bold text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
+              style={{ height: 52, background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+            >
+              Continuar
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Step 2: Cadastro (opcional) ────────────────────────────────────────────────
-
-function StepRegister({ name, onSkip, onRegister }: {
-  name: string;
-  onSkip: () => void;
-  onRegister: (phone: string, cpf: string) => void;
+// ── Step 2: Fidelidade ─────────────────────────────────────────────────────────
+function StepRegister({ name, primaryColor, onSkip, onRegister }: {
+  name: string; primaryColor?: string;
+  onSkip: () => void; onRegister: (phone: string, cpf: string) => void;
 }) {
   const [phone, setPhone] = useState("");
   const [cpf,   setCpf]   = useState("");
+  const color = primaryColor || "#7c5cf8";
 
   function handleRegister() {
     const digits = phone.replace(/\D/g, "");
@@ -158,81 +157,89 @@ function StepRegister({ name, onSkip, onRegister }: {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
-      <div className="w-full max-w-sm space-y-5">
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-8" style={{ backgroundColor: "#fafafa" }}>
+      <div className="w-full max-w-sm space-y-4">
+
         {/* Loyalty pitch */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-              <Star className="w-5 h-5 text-amber-500" />
+        <div className="rounded-3xl overflow-hidden shadow-sm"
+          style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}>
+          <div className="px-6 py-6 text-white space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                <Star className="w-5 h-5 fill-white text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-base">Programa de Fidelidade</p>
+                <p className="text-xs text-white/70">Acumule pontos e ganhe descontos</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-gray-900 text-sm">Programa de Fidelidade</p>
-              <p className="text-xs text-gray-500">Acumule pontos e troque por descontos</p>
+            <div className="space-y-2 text-sm text-white/90">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs flex-shrink-0">✦</span>
+                A cada compra você ganha pontos automáticos
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs flex-shrink-0">✦</span>
+                Troque por descontos nas próximas visitas
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs flex-shrink-0">✦</span>
+                Promoções exclusivas para membros
+              </div>
             </div>
           </div>
-          <ul className="space-y-1.5 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-amber-500 mt-0.5">✦</span>
-              A cada compra você ganha pontos
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-amber-500 mt-0.5">✦</span>
-              Troque pontos por descontos ou itens grátis
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-amber-500 mt-0.5">✦</span>
-              Quanto mais você compra, mais benefícios
-            </li>
-          </ul>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        {/* Form */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
           <div>
-            <p className="font-bold text-gray-900">Quer se cadastrar, {name.split(" ")[0]}?</p>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Se cadastre para participar do programa de fidelidade.
+            <p className="font-bold text-gray-900 text-base">
+              Quer participar, {name.split(" ")[0]}?
             </p>
+            <p className="text-sm text-gray-400 mt-0.5">Cadastro rápido, só o telefone</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Telefone *</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => setPhone(maskPhone(e.target.value))}
-              placeholder="(11) 99999-9999"
-              className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">
-              CPF <span className="font-normal text-gray-400">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={cpf}
-              onChange={e => setCpf(maskCpf(e.target.value))}
-              placeholder="000.000.000-00"
-              className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Telefone *</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(maskPhone(e.target.value))}
+                placeholder="(11) 99999-9999"
+                className="w-full h-12 rounded-2xl border border-gray-200 px-4 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 transition"
+                style={{ ["--tw-ring-color" as string]: color + "40" }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                CPF <span className="font-normal text-gray-300">· opcional</span>
+              </label>
+              <input
+                type="text"
+                value={cpf}
+                onChange={e => setCpf(maskCpf(e.target.value))}
+                placeholder="000.000.000-00"
+                className="w-full h-12 rounded-2xl border border-gray-200 px-4 text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 transition"
+                style={{ ["--tw-ring-color" as string]: color + "40" }}
+              />
+            </div>
           </div>
 
           <button
             onClick={handleRegister}
             disabled={phone.replace(/\D/g, "").length < 10}
-            className="w-full h-11 rounded-xl font-bold text-sm text-white disabled:opacity-40 transition hover:brightness-110"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            className="w-full h-12 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition active:scale-[0.98]"
+            style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
           >
             Cadastrar e ganhar pontos
           </button>
 
           <button
             onClick={onSkip}
-            className="w-full text-sm text-gray-500 hover:text-gray-800 transition py-1"
+            className="w-full text-sm text-gray-400 hover:text-gray-700 transition py-1 font-medium"
           >
-            Agora não, só quero pedir
+            Agora não, só quero pedir →
           </button>
         </div>
       </div>
@@ -240,74 +247,69 @@ function StepRegister({ name, onSkip, onRegister }: {
   );
 }
 
-// ── Product Card (mesa version) ────────────────────────────────────────────────
-
-function MesaProductCard({ product, qty, onAdd, onInc, onDec }: {
-  product: Product;
-  qty: number;
-  onAdd: () => void;
-  onInc: () => void;
-  onDec: () => void;
+// ── Product Card ───────────────────────────────────────────────────────────────
+function MesaProductCard({ product, qty, primaryColor, onAdd, onInc, onDec }: {
+  product: Product; qty: number; primaryColor?: string;
+  onAdd: () => void; onInc: () => void; onDec: () => void;
 }) {
-  const originalPrice = product.discountPercent
-    ? Math.round(product.priceCents / (1 - product.discountPercent / 100))
-    : null;
+  const color = primaryColor || "#7c5cf8";
+  const discount = product.discountPercent;
+  const original = discount ? Math.round(product.priceCents / (1 - discount / 100)) : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-      {product.imageUrl ? (
-        <div className="relative aspect-square overflow-hidden bg-gray-100">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col group">
+      {/* Image */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-gray-50">
+        {product.imageUrl ? (
           <img
             src={product.imageUrl}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
-          {product.discountPercent ? (
-            <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-              -{product.discountPercent}%
-            </span>
-          ) : null}
-        </div>
-      ) : (
-        <div className="aspect-square bg-gray-100 flex items-center justify-center">
-          <span className="text-3xl">🛒</span>
-        </div>
-      )}
-      <div className="p-3 flex flex-col flex-1">
-        <p className="text-xs font-medium text-gray-900 leading-tight flex-1">{product.name}</p>
-        <div className="mt-2 flex items-center justify-between gap-2">
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-gray-50 to-gray-100">
+            🛒
+          </div>
+        )}
+        {discount ? (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+            -{discount}%
+          </div>
+        ) : product.isBestSeller ? (
+          <div className="absolute top-2 left-2 bg-amber-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+            ★ Favorito
+          </div>
+        ) : null}
+      </div>
+
+      {/* Info */}
+      <div className="p-3 flex flex-col flex-1 gap-2">
+        <p className="text-xs font-semibold text-gray-800 leading-snug flex-1 line-clamp-2">{product.name}</p>
+        <div className="flex items-center justify-between gap-1">
           <div>
-            <p className="font-bold text-sm" style={{ color: "#7c5cf8" }}>
-              {fmtBRL(product.priceCents)}
-            </p>
-            {originalPrice && (
-              <p className="text-[10px] text-gray-400 line-through">{fmtBRL(originalPrice)}</p>
-            )}
+            <p className="text-sm font-black" style={{ color }}>{fmtBRL(product.priceCents)}</p>
+            {original && <p className="text-[10px] text-gray-300 line-through">{fmtBRL(original)}</p>}
           </div>
           {qty === 0 ? (
             <button
               onClick={onAdd}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white transition active:scale-95"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-sm transition active:scale-90"
+              style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
             >
-              <Plus size={16} />
+              <Plus size={15} />
             </button>
           ) : (
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={onDec}
-                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center transition hover:bg-gray-50"
-              >
-                <Minus size={12} className="text-gray-600" />
+            <div className="flex items-center gap-1">
+              <button onClick={onDec}
+                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 transition active:scale-90 hover:bg-gray-50">
+                <Minus size={11} />
               </button>
-              <span className="w-5 text-center text-sm font-bold text-gray-900">{qty}</span>
-              <button
-                onClick={onInc}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-95"
-                style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-              >
-                <Plus size={12} />
+              <span className="w-5 text-center text-sm font-black text-gray-900">{qty}</span>
+              <button onClick={onInc}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
+                <Plus size={11} />
               </button>
             </div>
           )}
@@ -318,87 +320,79 @@ function MesaProductCard({ product, qty, onAdd, onInc, onDec }: {
 }
 
 // ── Cart Sheet ─────────────────────────────────────────────────────────────────
-
-function CartSheet({
-  items, totalCents, tableId, name, phone, cpf,
-  onInc, onDec, onRemove, onClose, onSuccess,
-}: {
-  items: CartItem[];
-  totalCents: number;
-  tableId: string;
-  name: string;
-  phone: string;
-  cpf: string;
-  onInc: (id: string) => void;
-  onDec: (id: string) => void;
-  onRemove: (id: string) => void;
-  onClose: () => void;
+function CartSheet({ items, totalCents, tableId, name, phone, cpf, primaryColor,
+  onInc, onDec, onRemove, onClose, onSuccess }: {
+  items: CartItem[]; totalCents: number; tableId: string;
+  name: string; phone: string; cpf: string; primaryColor?: string;
+  onInc: (id: string) => void; onDec: (id: string) => void;
+  onRemove: (id: string) => void; onClose: () => void;
   onSuccess: (orderNum: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const color = primaryColor || "#7c5cf8";
 
   async function handleOrder() {
-    setLoading(true);
-    setErr(null);
+    setLoading(true); setErr(null);
     try {
       const res = await CreateOrder({
-        name,
-        phone: phone || "00000000000",
-        cep: "",
-        address: "",
+        name, phone: phone || "00000000000", cep: "", address: "",
         items: items.map(i => ({ productId: i.product.id, qty: i.qty })),
-        paymentMethodStr: "PIX",
-        tableId,
+        paymentMethodStr: "PIX", tableId,
         customerPhone: phone || undefined,
         customerCpf: cpf || undefined,
       } as any);
       onSuccess(res.orderNumber);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Erro ao enviar pedido.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl max-h-[85vh] flex flex-col">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl">
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-12 h-1 rounded-full bg-gray-200" />
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pb-3 border-b border-gray-100">
-          <h2 className="font-bold text-gray-900">Seu pedido</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <X size={14} className="text-gray-500" />
+        <div className="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-black text-gray-900 text-lg">Seu pedido</h2>
+            <p className="text-xs text-gray-400">{items.length} iten{items.length !== 1 ? "s" : ""}</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center transition hover:bg-gray-200">
+            <X size={15} className="text-gray-500" />
           </button>
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {items.map(({ product, qty }) => (
             <div key={product.id} className="flex items-center gap-3">
               {product.imageUrl && (
-                <img src={product.imageUrl} alt={product.name} className="w-12 h-12 rounded-xl object-cover bg-gray-100 shrink-0" />
+                <img src={product.imageUrl} alt={product.name}
+                  className="w-14 h-14 rounded-2xl object-cover bg-gray-50 shrink-0 shadow-sm" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                <p className="text-xs text-gray-500">{fmtBRL(product.priceCents)} un.</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{product.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{fmtBRL(product.priceCents)} · un.</p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => onDec(product.id)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center">
+                <button onClick={() => onDec(product.id)}
+                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center transition hover:bg-gray-50 active:scale-90">
                   <Minus size={11} className="text-gray-600" />
                 </button>
-                <span className="w-5 text-center text-sm font-bold">{qty}</span>
-                <button onClick={() => onInc(product.id)} className="w-7 h-7 rounded-full flex items-center justify-center text-white"
-                  style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}>
+                <span className="w-6 text-center text-sm font-black text-gray-900">{qty}</span>
+                <button onClick={() => onInc(product.id)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-white transition active:scale-90"
+                  style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}>
                   <Plus size={11} />
                 </button>
-                <button onClick={() => onRemove(product.id)} className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center ml-1">
+                <button onClick={() => onRemove(product.id)}
+                  className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center ml-1 transition hover:bg-red-100 active:scale-90">
                   <Trash2 size={11} className="text-red-400" />
                 </button>
               </div>
@@ -407,22 +401,23 @@ function CartSheet({
         </div>
 
         {/* Footer */}
-        <div className="px-5 pb-8 pt-3 border-t border-gray-100 space-y-3">
+        <div className="px-5 pb-10 pt-4 border-t border-gray-100 space-y-4">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Total</span>
-            <span className="text-lg font-black text-gray-900">{fmtBRL(totalCents)}</span>
+            <span className="text-sm font-medium text-gray-500">Total</span>
+            <span className="text-2xl font-black text-gray-900">{fmtBRL(totalCents)}</span>
           </div>
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-xs text-gray-400 text-center -mt-2">
             Pagamento na saída · Sem taxa de entrega
           </p>
-          {err && <p className="text-sm text-red-500 text-center">{err}</p>}
+          {err && <p className="text-sm text-red-500 text-center font-medium">{err}</p>}
           <button
             onClick={handleOrder}
             disabled={loading}
-            className="w-full h-12 rounded-2xl font-bold text-white disabled:opacity-50 transition hover:brightness-110"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            className="w-full h-14 rounded-2xl font-black text-base text-white disabled:opacity-50 transition active:scale-[0.98] shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)`,
+              boxShadow: `0 8px 24px ${color}40` }}
           >
-            {loading ? "Enviando…" : "Enviar pedido"}
+            {loading ? "Enviando…" : "Confirmar pedido"}
           </button>
         </div>
       </div>
@@ -431,52 +426,66 @@ function CartSheet({
 }
 
 // ── Confirmation ───────────────────────────────────────────────────────────────
-
-function Confirmation({ orderNum, name, onNewOrder }: {
-  orderNum: string;
-  name: string;
-  onNewOrder: () => void;
+function Confirmation({ orderNum, name, primaryColor, onNewOrder }: {
+  orderNum: string; name: string; primaryColor?: string; onNewOrder: () => void;
 }) {
+  const color = primaryColor || "#7c5cf8";
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 text-center">
-      <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-      <h2 className="text-2xl font-black text-gray-900">Pedido enviado!</h2>
-      <p className="text-gray-600 mt-2">
-        Obrigado, <strong>{name.split(" ")[0]}</strong>! Seu pedido <strong>#{orderNum}</strong> foi recebido.
-      </p>
-      <p className="text-sm text-gray-500 mt-3">
-        Em breve ele estará pronto. Fique à vontade!
-      </p>
-      <button
-        onClick={onNewOrder}
-        className="mt-8 h-11 px-8 rounded-2xl font-bold text-sm text-white transition hover:brightness-110"
-        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-      >
-        Fazer mais um pedido
-      </button>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ backgroundColor: "#fafafa" }}>
+      <div className="w-full max-w-xs space-y-6">
+        <div
+          className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto shadow-lg"
+          style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+        >
+          <CheckCircle2 className="w-12 h-12 text-white" />
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-3xl font-black text-gray-900">Pedido enviado!</h2>
+          <p className="text-gray-500">
+            Obrigado, <strong className="text-gray-800">{name.split(" ")[0]}</strong>!
+          </p>
+          <div className="inline-block px-4 py-2 rounded-2xl mt-2"
+            style={{ backgroundColor: `${color}10`, color }}>
+            <span className="text-xs font-semibold">Pedido</span>
+            <span className="text-lg font-black ml-2">#{orderNum}</span>
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-400 leading-relaxed">
+          Seu pedido foi recebido e está sendo preparado. Aguarde, fique à vontade! 🙂
+        </p>
+
+        <button
+          onClick={onNewOrder}
+          className="w-full h-12 rounded-2xl font-bold text-sm text-white transition active:scale-[0.98]"
+          style={{ background: `linear-gradient(135deg, ${color}, ${color}cc)` }}
+        >
+          Fazer mais um pedido
+        </button>
+      </div>
     </div>
   );
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
-
 type Step = "name" | "register" | "catalog" | "done";
 
 export default function MesaPage() {
   const { tableId } = useParams<{ tableId: string }>();
 
-  const [step,  setStep]  = useState<Step>("name");
-  const [name,  setName]  = useState("");
-  const [phone, setPhone] = useState("");
-  const [cpf,   setCpf]   = useState("");
-  const [catSlug, setCatSlug] = useState("");
-  const [search,  setSearch]  = useState("");
+  const [step,     setStep]     = useState<Step>("name");
+  const [name,     setName]     = useState("");
+  const [phone,    setPhone]    = useState("");
+  const [cpf,      setCpf]      = useState("");
+  const [catSlug,  setCatSlug]  = useState("");
+  const [search,   setSearch]   = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [orderNum, setOrderNum] = useState("");
 
   const cart = useLocalCart();
 
-  // Resolve slug da empresa a partir do tableId (endpoint público, sem auth)
+  // 1. Resolve slug pelo tableId (público, sem auth)
   const { data: tableInfo } = useQuery({
     queryKey: ["mesa-info", tableId],
     queryFn: () => fetchTableInfo(tableId!),
@@ -484,70 +493,81 @@ export default function MesaPage() {
     staleTime: Infinity,
   });
 
-  const api = tableInfo ? makeCatalogApi(tableInfo.slug) : null;
+  const slug = tableInfo?.slug;
 
-  const { data: sf }               = useQuery({ queryKey: ["storefront", tableInfo?.slug], queryFn: api!.storefront,  enabled: !!api });
-  const { data: categories = [] }  = useQuery<Category[]>({ queryKey: ["categories", tableInfo?.slug], queryFn: api!.categories,  enabled: !!api });
+  // 2. Catalog queries — só rodam quando slug está disponível
+  const { data: sf } = useQuery({
+    queryKey: ["mesa-storefront", slug],
+    queryFn: () => makeCatalogApi(slug!).storefront(),
+    enabled: !!slug,
+  });
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["mesa-categories", slug],
+    queryFn: () => makeCatalogApi(slug!).categories(),
+    enabled: !!slug,
+  });
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
-    queryKey: ["products", tableInfo?.slug, catSlug, search],
-    queryFn: () => api!.products(catSlug || undefined, search || undefined),
-    enabled: !!api,
+    queryKey: ["mesa-products", slug, catSlug, search],
+    queryFn: () => makeCatalogApi(slug!).products(catSlug || undefined, search || undefined),
+    enabled: !!slug,
   });
 
-  const brand    = sf?.storeName || "Cardápio";
-  const tableNum = tableInfo?.number;
+  const primaryColor = sf?.primaryColor || "#7c5cf8";
+  const brand        = sf?.storeName || "Cardápio";
+  const logoUrl      = sf?.logoUrl;
+  const tableNum     = tableInfo?.number;
 
-  // Debounce search
-  const searchRef = useRef(search);
-  searchRef.current = search;
-
-  function handleNameNext(n: string) {
-    setName(n);
-    setStep("register");
-  }
-
-  function handleRegister(p: string, c: string) {
-    setPhone(p);
-    setCpf(c);
-    setStep("catalog");
-  }
-
-  function handleSkipRegister() {
-    setStep("catalog");
-  }
-
-  function handleSuccess(num: string) {
-    setOrderNum(num);
-    setCartOpen(false);
-    cart.clear();
-    setStep("done");
-  }
-
-  function handleNewOrder() {
-    setStep("register");
-    setName(name); // keep name
-  }
+  function handleNameNext(n: string) { setName(n); setStep("register"); }
+  function handleRegister(p: string, c: string) { setPhone(p); setCpf(c); setStep("catalog"); }
+  function handleSkipRegister() { setStep("catalog"); }
+  function handleSuccess(num: string) { setOrderNum(num); setCartOpen(false); cart.clear(); setStep("done"); }
+  function handleNewOrder() { setStep("register"); }
 
   if (step === "name") {
-    return <StepName brand={brand} tableNum={tableNum} onNext={handleNameNext} />;
+    return <StepName brand={brand} tableNum={tableNum} logoUrl={logoUrl} primaryColor={primaryColor} onNext={handleNameNext} />;
   }
-
   if (step === "register") {
-    return <StepRegister name={name} onSkip={handleSkipRegister} onRegister={handleRegister} />;
+    return <StepRegister name={name} primaryColor={primaryColor} onSkip={handleSkipRegister} onRegister={handleRegister} />;
   }
-
   if (step === "done") {
-    return <Confirmation orderNum={orderNum} name={name} onNewOrder={handleNewOrder} />;
+    return <Confirmation orderNum={orderNum} name={name} primaryColor={primaryColor} onNewOrder={handleNewOrder} />;
   }
 
-  // ── Catalog ────────────────────────────────────────────────────────────────
-
+  // ── Catalog ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
-          <div className="flex-1 flex items-center gap-2 rounded-xl bg-gray-100 px-3 h-9">
+    <div className="min-h-screen" style={{ backgroundColor: "#fafafa" }}>
+
+      {/* Sticky header */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-100" style={{ boxShadow: "0 1px 12px rgba(0,0,0,0.06)" }}>
+        {/* Brand + cart */}
+        <div className="max-w-2xl mx-auto px-4 pt-3 pb-2 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-400 font-medium">
+              {tableNum ? `Mesa ${tableNum}` : "Auto-atendimento"} · Olá, <span className="font-semibold text-gray-700">{name.split(" ")[0]}</span>
+            </p>
+            <p className="text-sm font-bold text-gray-900 truncate">{brand}</p>
+          </div>
+          <button
+            onClick={() => setCartOpen(true)}
+            className="relative h-10 rounded-2xl flex items-center gap-2 px-4 text-white text-sm font-bold shrink-0 shadow-sm transition active:scale-95"
+            style={{ background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)` }}
+          >
+            <ShoppingCart size={16} />
+            {cart.totalItems > 0 ? (
+              <>
+                <span>{cart.totalItems}</span>
+                <span className="text-white/70">·</span>
+                <span>{fmtBRL(cart.totalCents)}</span>
+              </>
+            ) : (
+              <span>Carrinho</span>
+            )}
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="max-w-2xl mx-auto px-4 pb-2">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-2xl px-3 h-10">
             <Search size={14} className="text-gray-400 shrink-0" />
             <input
               value={search}
@@ -556,44 +576,32 @@ export default function MesaPage() {
               className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
             />
             {search && (
-              <button onClick={() => setSearch("")}>
+              <button onClick={() => setSearch("")} className="transition hover:opacity-70">
                 <X size={13} className="text-gray-400" />
               </button>
             )}
           </div>
-          <button
-            onClick={() => setCartOpen(true)}
-            className="relative w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
-          >
-            <ShoppingCart size={17} />
-            {cart.totalItems > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                {cart.totalItems}
-              </span>
-            )}
-          </button>
         </div>
 
         {/* Categories */}
         {categories.length > 0 && (
-          <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-none">
+          <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             <button
               onClick={() => setCatSlug("")}
-              className="shrink-0 px-3 h-7 rounded-full text-xs font-semibold transition"
+              className="shrink-0 px-4 h-8 rounded-full text-xs font-bold transition"
               style={!catSlug
-                ? { backgroundColor: "#7c5cf8", color: "#fff" }
+                ? { backgroundColor: primaryColor, color: "#fff" }
                 : { backgroundColor: "#f3f4f6", color: "#6b7280" }}
             >
               Todos
             </button>
-            {categories.map(c => (
+            {(categories as Category[]).map(c => (
               <button
                 key={c.id}
                 onClick={() => setCatSlug(c.slug)}
-                className="shrink-0 px-3 h-7 rounded-full text-xs font-semibold transition"
+                className="shrink-0 px-4 h-8 rounded-full text-xs font-bold transition"
                 style={catSlug === c.slug
-                  ? { backgroundColor: "#7c5cf8", color: "#fff" }
+                  ? { backgroundColor: primaryColor, color: "#fff" }
                   : { backgroundColor: "#f3f4f6", color: "#6b7280" }}
               >
                 {c.name}
@@ -603,34 +611,29 @@ export default function MesaPage() {
         )}
       </div>
 
-      {/* Banner / greeting */}
-      <div className="max-w-2xl mx-auto px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-500">
-          Olá, <strong>{name.split(" ")[0]}</strong>! Escolha o que deseja pedir 👇
-        </p>
-      </div>
-
-      {/* Products */}
-      <div className="max-w-2xl mx-auto px-4 pb-32">
-        {productsLoading ? (
+      {/* Product grid */}
+      <div className="max-w-2xl mx-auto px-4 py-4 pb-32">
+        {productsLoading || !slug ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-2xl bg-gray-100 animate-pulse aspect-square" />
+              <div key={i} className="rounded-2xl bg-gray-100 animate-pulse" style={{ aspectRatio: "4/3" }} />
             ))}
           </div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">Nenhum produto encontrado</p>
+        ) : (products as Product[]).length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center text-3xl">🔍</div>
+            <p className="text-sm font-medium text-gray-400">Nenhum produto encontrado</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {products.map(p => {
+            {(products as Product[]).map(p => {
               const qty = cart.items.find(i => i.product.id === p.id)?.qty ?? 0;
               return (
                 <MesaProductCard
                   key={p.id}
                   product={p}
                   qty={qty}
+                  primaryColor={primaryColor}
                   onAdd={() => cart.add(p)}
                   onInc={() => cart.inc(p.id)}
                   onDec={() => cart.dec(p.id)}
@@ -641,21 +644,23 @@ export default function MesaPage() {
         )}
       </div>
 
-      {/* Floating cart button */}
+      {/* Floating cart */}
       {cart.totalItems > 0 && !cartOpen && (
-        <div className="fixed bottom-6 left-0 right-0 flex justify-center z-40 px-4">
+        <div className="fixed bottom-6 left-0 right-0 flex justify-center z-40 px-6">
           <button
             onClick={() => setCartOpen(true)}
-            className="flex items-center gap-3 h-14 px-6 rounded-2xl text-white shadow-lg transition hover:brightness-110 active:scale-95"
-            style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+            className="flex items-center gap-3 h-14 px-6 rounded-2xl text-white font-bold text-sm shadow-xl transition active:scale-95"
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor}, ${primaryColor}cc)`,
+              boxShadow: `0 8px 32px ${primaryColor}50`,
+            }}
           >
-            <ShoppingCart size={18} />
-            <span className="font-bold text-sm">
-              Ver pedido · {fmtBRL(cart.totalCents)}
-            </span>
-            <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
+            <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">
               {cart.totalItems}
-            </span>
+            </div>
+            Ver pedido
+            <span className="text-white/80">·</span>
+            <span>{fmtBRL(cart.totalCents)}</span>
           </button>
         </div>
       )}
@@ -669,6 +674,7 @@ export default function MesaPage() {
           name={name}
           phone={phone}
           cpf={cpf}
+          primaryColor={primaryColor}
           onInc={cart.inc}
           onDec={cart.dec}
           onRemove={cart.remove}
