@@ -8,5 +8,8 @@ public enum SalesQuoteOrigin
     /// <summary>Gerado automaticamente de um pedido de delivery (Order.Status → ENTREGUE).</summary>
     DeliveryOrder = 1,
 
-    TableOrder = 2
+    TableOrder = 2,
+
+    /// <summary>Gerado automaticamente de um pedido telefônico (atendimento).</summary>
+    PhoneOrder = 3
 }

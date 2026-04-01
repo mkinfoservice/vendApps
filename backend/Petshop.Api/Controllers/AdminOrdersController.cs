@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Contracts.Orders;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
+using Petshop.Api.Entities.Dav;
 using Petshop.Api.Services;
+using Petshop.Api.Services.Dav;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
 using Hangfire;
@@ -168,11 +170,36 @@ public class AdminOrdersController : ControllerBase
         }
 
         _db.Orders.Add(order);
+
+        // ── Gera DAV para o caixa importar ────────────────────────────────────
+        var dav = new SalesQuote
+        {
+            CompanyId     = CompanyId,
+            PublicId      = DavPublicIdGenerator.NewPublicId(),
+            Origin        = SalesQuoteOrigin.PhoneOrder,
+            OriginOrderId = order.Id,
+            CustomerName  = order.CustomerName,
+            CustomerPhone = order.Phone,
+            PaymentMethod = order.PaymentMethod,
+            SubtotalCents = order.SubtotalCents,
+            TotalCents    = order.TotalCents,
+            Notes         = $"Pedido telefônico {order.PublicId}",
+            Items         = order.Items.Select(i => new SalesQuoteItem
+            {
+                ProductId              = i.ProductId,
+                ProductNameSnapshot    = i.ProductNameSnapshot,
+                Qty                    = i.Qty,
+                UnitPriceCentsSnapshot = i.UnitPriceCentsSnapshot,
+                TotalCents             = i.UnitPriceCentsSnapshot * i.Qty,
+            }).ToList(),
+        };
+        _db.SalesQuotes.Add(dav);
+
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "📞 Pedido telefônico {PublicId} criado pelo atendente {Attendant} | Cliente: {Customer} | Total: {Total}",
-            order.PublicId, attendantId, order.CustomerName, order.TotalCents);
+            "📞 Pedido telefônico {PublicId} criado pelo atendente {Attendant} | Cliente: {Customer} | Total: {Total} | DAV: {DavId}",
+            order.PublicId, attendantId, order.CustomerName, order.TotalCents, dav.PublicId);
 
         // Fila de impressão
         await _print.EnqueueAsync(order, ct);
@@ -185,6 +212,7 @@ public class AdminOrdersController : ControllerBase
         {
             Id             = order.Id,
             OrderNumber    = order.PublicId,
+            DavPublicId    = dav.PublicId,
             Status         = order.Status.ToString(),
             SubtotalCents  = order.SubtotalCents,
             DeliveryCents  = order.DeliveryCents,

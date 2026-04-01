@@ -79,6 +79,7 @@ export default function PhoneOrderBuilder() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string | null>(null);
+  const [confirmedDavId, setConfirmedDavId] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const { data: foundCustomer, isFetching: searchingCustomer, error: lookupError } = useQuery({
@@ -114,7 +115,7 @@ export default function PhoneOrderBuilder() {
         paymentMethod, deliveryCents: deliveryCents || 0, cashGivenCents,
       });
     },
-    onSuccess: (data) => { setConfirmedOrderId(data.id); setConfirmedOrderNumber(data.orderNumber); setStep("summary"); },
+    onSuccess: (data) => { setConfirmedOrderId(data.id); setConfirmedOrderNumber(data.orderNumber); setConfirmedDavId(data.davPublicId ?? null); setStep("summary"); },
     onError: async (e: unknown) => {
       const res = e as Response;
       const body = await res.json?.().catch(() => ({}));
@@ -153,7 +154,7 @@ export default function PhoneOrderBuilder() {
     setStep("search"); setSearchMode("lookup"); setLookupInput(""); setLookupValue(""); setCustomer(null);
     setGuestName(""); setGuestPhone(""); setGuestCpf(""); setGuestCep(""); setGuestAddress(""); setGuestComplement("");
     setCart([]); setPaymentMethod("PIX"); setCashGiven(""); setDeliveryCents(0);
-    setConfirmedOrderId(null); setConfirmedOrderNumber(null); closeConfig();
+    setConfirmedOrderId(null); setConfirmedOrderNumber(null); setConfirmedDavId(null); closeConfig();
   }
   function continueFromSearch() { if (foundCustomer && !lookupError) setCustomer(foundCustomer); else { setCustomer(null); const isCpf = lookupValue.length === 11; setGuestPhone(isCpf ? "" : lookupValue); setGuestCpf(isCpf ? lookupValue : ""); } setStep("cart"); }
   async function handleRegisterAndContinue() {
@@ -166,7 +167,7 @@ export default function PhoneOrderBuilder() {
 
   const canProceed: Record<Step, boolean> = {
     search: !!lookupValue, customer: true, cart: cart.length > 0,
-    payment: paymentMethod !== "CASH" || (cashGivenCents >= total && total > 0), summary: false,
+    payment: paymentMethod !== "CASH" || (cashGivenCents >= subtotal && subtotal > 0), summary: false,
   };
 
   const stepTitles: Record<Step, string> = {
@@ -194,6 +195,13 @@ export default function PhoneOrderBuilder() {
               <span className="text-xs font-semibold block">Número do pedido</span>
               <span className="text-xl font-black">{confirmedOrderNumber}</span>
             </div>
+            {confirmedDavId && (
+              <div className="px-5 py-3 rounded-2xl mt-2"
+                style={{ background: "linear-gradient(135deg, #059669, #047857)", color: "#fff" }}>
+                <span className="text-xs font-semibold block opacity-80">Código DAV para o caixa</span>
+                <span className="text-2xl font-black tracking-widest">{confirmedDavId}</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={() => navigate(`/app/pedidos/${confirmedOrderId}`)}
@@ -601,24 +609,9 @@ export default function PhoneOrderBuilder() {
                 </div>
               )}
 
-              <div>
-                <label className="text-xs font-black uppercase tracking-widest block mb-2" style={{ color: GC.brown, opacity: 0.6 }}>Taxa de entrega (R$)</label>
-                <input type="number" step="0.01" min="0"
-                  value={deliveryCents > 0 ? (deliveryCents / 100).toFixed(2) : ""}
-                  onChange={(e) => setDeliveryCents(Math.round(parseFloat(e.target.value || "0") * 100))}
-                  placeholder="0,00"
-                  className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
-                  style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
-              </div>
-
-              <div className="rounded-2xl p-4 space-y-2" style={{ background: GC.bg }}>
-                {[["Subtotal", formatCents(subtotal)], ["Entrega", formatCents(deliveryCents)]].map(([l, v]) => (
-                  <div key={l} className="flex justify-between text-sm" style={{ color: GC.brown }}>
-                    <span>{l}</span><span>{v}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between pt-2 font-black" style={{ borderTop: `1px solid rgba(107,79,58,0.12)`, color: GC.dark }}>
-                  <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(total)}</span>
+              <div className="rounded-2xl p-4" style={{ background: GC.bg }}>
+                <div className="flex justify-between font-black" style={{ color: GC.dark }}>
+                  <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(subtotal)}</span>
                 </div>
               </div>
             </div>
@@ -670,13 +663,11 @@ export default function PhoneOrderBuilder() {
             {/* Payment summary */}
             <div className="rounded-3xl p-5 space-y-2" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
               <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: GC.brown, opacity: 0.55 }}>Pagamento</p>
-              {[["Forma", paymentMethodLabel(paymentMethod)], ["Subtotal", formatCents(subtotal)], ["Entrega", formatCents(deliveryCents)]].map(([l, v]) => (
-                <div key={l} className="flex justify-between text-sm" style={{ color: GC.brown }}>
-                  <span>{l}</span><span>{v}</span>
-                </div>
-              ))}
+              <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
+                <span>Forma</span><span>{paymentMethodLabel(paymentMethod)}</span>
+              </div>
               <div className="flex justify-between pt-2 font-black" style={{ borderTop: `1px solid rgba(107,79,58,0.12)`, color: GC.dark }}>
-                <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(total)}</span>
+                <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(subtotal)}</span>
               </div>
             </div>
 
@@ -687,7 +678,7 @@ export default function PhoneOrderBuilder() {
                 Cancelar
               </button>
               <button
-                disabled={(paymentMethod === "CASH" && cashGivenCents < total) || confirmMut.isPending}
+                disabled={(paymentMethod === "CASH" && cashGivenCents < subtotal) || confirmMut.isPending}
                 onClick={() => { setSubmitError(null); confirmMut.mutate(); }}
                 className="flex-1 py-3.5 rounded-2xl text-sm font-black text-white disabled:opacity-50 transition active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}>

@@ -22,6 +22,7 @@ export type CreatePhoneOrderRequest = {
 export type PhoneOrderResponse = {
   id: string;
   orderNumber: string;
+  davPublicId: string | null;
   status: string;
   subtotalCents: number;
   deliveryCents: number;

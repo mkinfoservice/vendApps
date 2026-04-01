@@ -41,7 +41,7 @@ public class AdminProductsController : ControllerBase
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
-        if (pageSize is < 1 or > 200) pageSize = 20;
+        if (pageSize is < 1 or > 500) pageSize = 20;
 
         var q = _db.Products
             .AsNoTracking()

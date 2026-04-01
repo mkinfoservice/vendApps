@@ -531,7 +531,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
   useEffect(() => {
     const from = new Date(); from.setHours(0, 0, 0, 0);
     setLoading(true);
-    adminFetch<{ items: DavSummary[] }>(`/admin/dav?origin=Manual&pageSize=100&from=${from.toISOString()}`)
+    adminFetch<{ items: DavSummary[] }>(`/admin/dav?pageSize=200&from=${from.toISOString()}`)
       .then((r) => setResults(r.items.filter((d) => d.status !== "Converted" && d.status !== "Cancelled")))
       .catch(() => {})
       .finally(() => setLoading(false));
