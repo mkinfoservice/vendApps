@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
+using Petshop.Api.Entities;
 using Petshop.Api.Services.Print;
 
 namespace Petshop.Api.Controllers;
@@ -90,8 +91,8 @@ public class PrintController : ControllerBase
         job.PrintedAtUtc = DateTime.UtcNow;
 
         // Ao imprimir, avança automaticamente de RECEBIDO → EM_PREPARO
-        if (job.Order is not null && job.Order.Status == "RECEBIDO")
-            job.Order.Status = "EM_PREPARO";
+        if (job.Order is not null && job.Order.Status == OrderStatus.RECEBIDO)
+            job.Order.Status = OrderStatus.EM_PREPARO;
 
         await _db.SaveChangesAsync(ct);
 
