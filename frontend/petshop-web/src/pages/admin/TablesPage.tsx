@@ -310,7 +310,7 @@ function TableFormModal({
               min={1}
               value={form.number}
               onChange={(e) => setForm(f => ({ ...f, number: e.target.value }))}
-              className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8953A]/40"
               style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
             />
           </div>
@@ -321,7 +321,7 @@ function TableFormModal({
               min={1}
               value={form.capacity}
               onChange={(e) => setForm(f => ({ ...f, capacity: e.target.value }))}
-              className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8953A]/40"
               style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
             />
           </div>
@@ -333,7 +333,7 @@ function TableFormModal({
             value={form.name}
             onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="Ex: Varanda, Vip 1..."
-            className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            className="w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C8953A]/40"
             style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
           />
         </div>
@@ -594,97 +594,165 @@ function TableCard({
   onDelete: () => void;
 }) {
   const hasOpenOrders = table.openOrders > 0;
-  const statusColor   = !table.isActive ? "#94a3b8" : hasOpenOrders ? "#f59e0b" : "#10b981";
-  const statusLabel   = !table.isActive ? "Inativa" : hasOpenOrders ? "Ocupada" : "Livre";
-  const statusBg      = !table.isActive ? "rgba(148,163,184,0.12)" : hasOpenOrders ? "rgba(245,158,11,0.12)" : "rgba(16,185,129,0.12)";
   const openLabel = `${table.openOrders} aberto${table.openOrders > 1 ? "s" : ""}`;
 
+  if (hasOpenOrders) {
+    // ── Estado OCUPADA: escuro premium ────────────────────────────────────────
+    return (
+      <div
+        className="rounded-2xl flex flex-col cursor-pointer transition-all duration-200 hover:scale-[1.01] overflow-hidden"
+        style={{
+          background: `linear-gradient(145deg, ${GC.dark} 0%, #3D2314 100%)`,
+          boxShadow: "0 8px 28px rgba(28,18,9,0.3)",
+          minHeight: 210,
+        }}
+        onClick={onManage}
+      >
+        {/* Status strip */}
+        <div className="h-1 w-full" style={{ background: GC.caramel }} />
+
+        <div className="flex flex-col gap-3 p-4 flex-1">
+          {/* Header */}
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-black leading-none" style={{ color: "#fff" }}>
+                  {table.number}
+                </span>
+                {table.name && (
+                  <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {table.name}
+                  </span>
+                )}
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold mt-1.5"
+                style={{ background: `${GC.caramel}28`, color: GC.caramel }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: GC.caramel }} />
+                Ocupada · {openLabel}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
+                style={{ background: "rgba(255,255,255,0.1)" }}>
+                <Pencil size={11} style={{ color: "rgba(255,255,255,0.55)" }} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
+                style={{ background: "rgba(255,255,255,0.1)" }}>
+                <Trash2 size={11} style={{ color: "rgba(255,100,100,0.65)" }} />
+              </button>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+              style={{ background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.5)" }}>
+              <Users size={11} />
+              <span className="font-medium">{table.capacity} lugares</span>
+            </div>
+            <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+              style={{ background: `${GC.caramel}20`, color: GC.caramel }}>
+              <ShoppingBag size={11} />
+              <span className="font-bold">{openLabel}</span>
+            </div>
+          </div>
+
+          {/* QR */}
+          <button onClick={(e) => { e.stopPropagation(); onQr(); }}
+            className="mt-auto w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:opacity-80"
+            style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)" }}>
+            <QrCode size={13} /> QR Code
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Estado LIVRE / INATIVA: claro e elegante ────────────────────────────────
+  const isInactive = !table.isActive;
   return (
     <div
-      className="rounded-2xl p-4 flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.01]"
+      className="rounded-2xl flex flex-col cursor-pointer transition-all duration-200 hover:scale-[1.01] overflow-hidden"
       style={{
-        background: hasOpenOrders
-          ? `linear-gradient(145deg, ${GC.dark} 0%, #3D2314 100%)`
-          : "var(--surface)",
-        border: hasOpenOrders
-          ? "none"
-          : "1px solid var(--border)",
-        boxShadow: hasOpenOrders
-          ? "0 8px 28px rgba(28,18,9,0.28)"
-          : "0 1px 4px rgba(28,18,9,0.06)",
-        minHeight: 200,
+        background: "var(--surface)",
+        border: `1.5px solid ${isInactive ? "var(--border)" : "rgba(200,149,58,0.22)"}`,
+        boxShadow: "0 2px 10px rgba(28,18,9,0.07)",
+        minHeight: 210,
+        opacity: isInactive ? 0.65 : 1,
       }}
       onClick={onManage}
     >
-      {/* Header row */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-3xl font-black" style={{ color: hasOpenOrders ? "#fff" : "var(--text)" }}>
-              {table.number}
-            </span>
-            {table.name && (
-              <span className="text-xs font-medium truncate max-w-[130px]"
-                style={{ color: hasOpenOrders ? "rgba(255,255,255,0.5)" : "var(--text-muted)" }}
-                title={table.name}>
-                {table.name}
+      {/* Status strip */}
+      <div className="h-1 w-full rounded-t-2xl"
+        style={{ background: isInactive ? "var(--border)" : "rgba(16,185,129,0.55)" }} />
+
+      <div className="flex flex-col gap-3 p-4 flex-1">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-black leading-none" style={{ color: "var(--text)" }}>
+                {table.number}
               </span>
-            )}
+              {table.name && (
+                <span className="text-xs font-medium truncate max-w-[100px]"
+                  style={{ color: "var(--text-muted)" }} title={table.name}>
+                  {table.name}
+                </span>
+              )}
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold mt-1.5"
+              style={{
+                background: isInactive ? "rgba(148,163,184,0.12)" : "rgba(16,185,129,0.12)",
+                color: isInactive ? "#94a3b8" : "#10b981",
+              }}>
+              <span className="w-1.5 h-1.5 rounded-full"
+                style={{ background: isInactive ? "#94a3b8" : "#10b981" }} />
+              {isInactive ? "Inativa" : "Livre"}
+            </span>
           </div>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold mt-1"
-            style={{
-              background: hasOpenOrders ? `${GC.caramel}30` : statusBg,
-              color: hasOpenOrders ? GC.caramel : statusColor,
-            }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: hasOpenOrders ? GC.caramel : statusColor }} />
-            {statusLabel}
-          </span>
+          <div className="flex items-center gap-1">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
+              style={{ background: "var(--surface-2)" }}>
+              <Pencil size={11} style={{ color: "var(--text-muted)" }} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
+              style={{ background: "var(--surface-2)" }}>
+              <Trash2 size={11} style={{ color: "#ef4444" }} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
-            style={{ background: hasOpenOrders ? "rgba(255,255,255,0.12)" : "var(--surface-2)" }}>
-            <Pencil size={12} style={{ color: hasOpenOrders ? "rgba(255,255,255,0.6)" : "var(--text-muted)" }} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="w-7 h-7 rounded-lg flex items-center justify-center transition hover:opacity-70"
-            style={{ background: hasOpenOrders ? "rgba(255,255,255,0.12)" : "var(--surface-2)" }}>
-            <Trash2 size={12} style={{ color: hasOpenOrders ? "rgba(255,100,100,0.7)" : "#ef4444" }} />
-          </button>
-        </div>
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
-          style={{
-            background: hasOpenOrders ? "rgba(255,255,255,0.08)" : "var(--surface-2)",
-            color: hasOpenOrders ? "rgba(255,255,255,0.6)" : "var(--text-muted)",
-          }}>
-          <Users size={11} />
-          <span className="font-medium">{table.capacity} lugares</span>
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+            style={{ background: GC.cream, color: GC.brown }}>
+            <Users size={11} style={{ color: GC.caramel }} />
+            <span className="font-semibold">{table.capacity} lugares</span>
+          </div>
+          <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
+            style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}>
+            <ShoppingBag size={11} />
+            <span className="font-medium">Sem comanda</span>
+          </div>
         </div>
-        <div className="h-9 rounded-xl px-2.5 flex items-center gap-1.5"
-          style={{
-            background: hasOpenOrders ? `${GC.caramel}20` : "var(--surface-2)",
-            color: hasOpenOrders ? GC.caramel : "var(--text-muted)",
-          }}>
-          <ShoppingBag size={11} />
-          <span className="font-medium">{hasOpenOrders ? openLabel : "Sem comanda"}</span>
-        </div>
-      </div>
 
-      {/* QR Button */}
-      <button onClick={(e) => { e.stopPropagation(); onQr(); }}
-        className="w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:opacity-80"
-        style={{
-          background: hasOpenOrders ? "rgba(255,255,255,0.12)" : GC.cream,
-          color: hasOpenOrders ? "#fff" : GC.brown,
-          border: hasOpenOrders ? "none" : `1.5px solid rgba(200,149,58,0.2)`,
-        }}>
-        <QrCode size={13} />
-        Ver QR Code
-      </button>
+        {/* QR */}
+        <button onClick={(e) => { e.stopPropagation(); onQr(); }}
+          className="mt-auto w-full flex items-center justify-center gap-2 h-9 rounded-xl text-xs font-semibold transition hover:opacity-80"
+          style={{
+            background: GC.cream,
+            color: GC.brown,
+            border: `1.5px solid rgba(200,149,58,0.25)`,
+          }}>
+          <QrCode size={13} style={{ color: GC.caramel }} />
+          Ver QR Code
+        </button>
+      </div>
     </div>
   );
 }
@@ -779,21 +847,42 @@ export default function TablesPage() {
 
         {/* Summary bar */}
         {!isLoading && tables.length > 0 && (
-          <div
-            className="rounded-2xl border p-4 mb-6 grid grid-cols-3 gap-4"
-            style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-          >
-            <div className="text-center">
-              <p className="text-2xl font-black" style={{ color: "#10b981" }}>{free}</p>
-              <p className="text-xs font-medium mt-0.5" style={{ color: "var(--text-muted)" }}>Livres</p>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {/* Livres */}
+            <div className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: "rgba(16,185,129,0.10)", border: "1.5px solid rgba(16,185,129,0.22)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "rgba(16,185,129,0.15)" }}>
+                <span className="text-lg">✓</span>
+              </div>
+              <div>
+                <p className="text-2xl font-black leading-none" style={{ color: "#10b981" }}>{free}</p>
+                <p className="text-[11px] font-semibold mt-1 uppercase tracking-wider" style={{ color: "rgba(16,185,129,0.7)" }}>Livres</p>
+              </div>
             </div>
-            <div className="text-center border-x" style={{ borderColor: "var(--border)" }}>
-              <p className="text-2xl font-black" style={{ color: "#f59e0b" }}>{occupied}</p>
-              <p className="text-xs font-medium mt-0.5" style={{ color: "var(--text-muted)" }}>Ocupadas</p>
+            {/* Ocupadas */}
+            <div className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: "rgba(245,158,11,0.10)", border: "1.5px solid rgba(245,158,11,0.22)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: "rgba(245,158,11,0.15)" }}>
+                <ShoppingBag size={18} style={{ color: "#f59e0b" }} />
+              </div>
+              <div>
+                <p className="text-2xl font-black leading-none" style={{ color: "#f59e0b" }}>{occupied}</p>
+                <p className="text-[11px] font-semibold mt-1 uppercase tracking-wider" style={{ color: "rgba(245,158,11,0.7)" }}>Ocupadas</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-black" style={{ color: "var(--text)" }}>{active.length}</p>
-              <p className="text-xs font-medium mt-0.5" style={{ color: "var(--text-muted)" }}>Total ativas</p>
+            {/* Total */}
+            <div className="rounded-2xl p-4 flex items-center gap-3"
+              style={{ background: "var(--surface)", border: "1.5px solid var(--border)" }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: GC.cream }}>
+                <Users size={18} style={{ color: GC.caramel }} />
+              </div>
+              <div>
+                <p className="text-2xl font-black leading-none" style={{ color: "var(--text)" }}>{active.length}</p>
+                <p className="text-[11px] font-semibold mt-1 uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Total ativas</p>
+              </div>
             </div>
           </div>
         )}
@@ -818,7 +907,7 @@ export default function TablesPage() {
             <button
               onClick={() => setShowCreate(true)}
               className="mt-4 inline-flex items-center gap-2 h-9 px-5 rounded-xl text-sm font-semibold text-white"
-              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
             >
               <Plus size={14} /> Criar primeira mesa
             </button>
