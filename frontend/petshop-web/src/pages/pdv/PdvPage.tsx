@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
@@ -990,6 +991,7 @@ function CartTable({
 
 export default function PdvPage() {
   const { session, sale, loading, refreshSession, refreshSale, setSale } = usePdv();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [initialized, setInitialized]       = useState(false);
   const [barcode, setBarcode]               = useState("");
@@ -1002,8 +1004,10 @@ export default function PdvPage() {
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
+  const autoDavHandledRef = useRef(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
+  const autoDavCodeParam = searchParams.get("dav") ?? searchParams.get("davCode");
 
   useEffect(() => {
     refreshSession().then(() => setInitialized(true));
@@ -1020,6 +1024,16 @@ export default function PdvPage() {
     setFeedback({ msg, ok });
     setTimeout(() => setFeedback(null), 2500);
   }, []);
+  const normalizeDavCode = useCallback((rawCode: string) => {
+    const normalized = rawCode.trim().toUpperCase();
+    return normalized.startsWith("DAV-") ? normalized : `DAV-${normalized}`;
+  }, []);
+
+  useEffect(() => {
+    if (!autoDavCodeParam) return;
+    const displayCode = autoDavCodeParam.trim().toUpperCase().replace(/^DAV-/, "");
+    if (displayCode) setDavCode(displayCode);
+  }, [autoDavCodeParam]);
 
   async function handleNewSale() {
     if (!session) return;
@@ -1052,10 +1066,7 @@ export default function PdvPage() {
     e.preventDefault();
     if (!sale || !davCode.trim()) return;
     setImportingDav(true);
-    // Accept "DAV-XXXX" or just "XXXX" - backend stores with DAV- prefix
-    const code = davCode.trim().toUpperCase().startsWith("DAV-")
-      ? davCode.trim().toUpperCase()
-      : `DAV-${davCode.trim().toUpperCase()}`;
+    const code = normalizeDavCode(davCode);
     try {
       const res = await importDav(sale.id, code);
       await refreshSale(sale.id);
@@ -1067,6 +1078,43 @@ export default function PdvPage() {
       setImportingDav(false);
     }
   }
+
+  useEffect(() => {
+    if (!session || !sale || !autoDavCodeParam || autoDavHandledRef.current) return;
+    autoDavHandledRef.current = true;
+
+    const code = normalizeDavCode(autoDavCodeParam);
+
+    const run = async () => {
+      setImportingDav(true);
+      try {
+        const res = await importDav(sale.id, code);
+        await refreshSale(sale.id);
+        flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
+        setDavCode("");
+      } catch (e: unknown) {
+        flash(e instanceof Error ? e.message : "DAV nao encontrado", false);
+      } finally {
+        setImportingDav(false);
+        const next = new URLSearchParams(searchParams);
+        next.delete("dav");
+        next.delete("davCode");
+        next.delete("autoImport");
+        setSearchParams(next, { replace: true });
+      }
+    };
+
+    void run();
+  }, [
+    session,
+    sale,
+    autoDavCodeParam,
+    normalizeDavCode,
+    refreshSale,
+    flash,
+    searchParams,
+    setSearchParams,
+  ]);
 
   async function handleRemoveItem(itemId: string) {
     if (!sale) return;

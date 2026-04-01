@@ -181,7 +181,7 @@ export default function OperationCenter() {
   const kpis = dash ? buildKpis(dash) : null;
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null;
 
-  // Module data â€” filtrado por isActive e permissÃµes do role
+  // Module data — filtrado por isActive e permissões do role
   const modulesByGroup = getModulesByGroup();
   const groupOrder = getGroupOrder();
   const activeModules = APP_MODULES.filter(
@@ -230,8 +230,8 @@ export default function OperationCenter() {
         </h1>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           {companyName
-            ? `${companyName} â€” Central de OperaÃ§Ãµes`
-            : "Central de OperaÃ§Ãµes"}
+            ? `${companyName} — Central de Operações`
+            : "Central de Operações"}
         </p>
       </div>
 
@@ -244,7 +244,7 @@ export default function OperationCenter() {
         />
         <input
           type="text"
-          placeholder="Buscar mÃ³dulo..."
+          placeholder="Buscar módulo..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full h-10 rounded-xl border pl-9 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-[#C8953A]/30"
@@ -263,7 +263,7 @@ export default function OperationCenter() {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: "var(--text-muted)" }}
           >
-            Acesso rÃ¡pido
+            Acesso rápido
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Mesas */}
@@ -295,7 +295,7 @@ export default function OperationCenter() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm leading-tight" style={{ color: "var(--text)" }}>Atendimento</p>
-                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Pedidos por telefone e balcÃ£o</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Pedidos por telefone e balcão</p>
               </div>
               <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#C8953A" }} />
             </button>
@@ -317,7 +317,7 @@ export default function OperationCenter() {
               <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#C8953A" }} />
             </button>
 
-            {/* OrÃ§amento / DAV */}
+            {/* Orçamento / DAV */}
             {(tenantFeatures?.dav_menu ?? true) && (
               <button
                 type="button"
@@ -347,12 +347,12 @@ export default function OperationCenter() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "var(--text-muted)" }}
             >
-              VisÃ£o geral de hoje
+              Visão geral de hoje
             </h2>
             <div className="flex items-center gap-2">
               {updatedAt && (
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Atualizado Ã s {updatedAt}
+                  Atualizado às {updatedAt}
                 </span>
               )}
               <button
@@ -383,7 +383,7 @@ export default function OperationCenter() {
           >
             {searchResults.length > 0
               ? `${searchResults.length} resultado${searchResults.length > 1 ? "s" : ""}`
-              : "Nenhum mÃ³dulo encontrado"}
+              : "Nenhum módulo encontrado"}
           </p>
           {searchResults.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

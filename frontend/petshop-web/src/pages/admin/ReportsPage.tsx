@@ -117,21 +117,21 @@ function KpiCard({
 }) {
   return (
     <div
-      className="rounded-2xl border p-5 flex items-start gap-4"
+      className="rounded-2xl border p-4 sm:p-5 flex items-start gap-3 sm:gap-4 min-h-[104px]"
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
     >
       <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center shrink-0">
         <Icon className="w-5 h-5 text-brand" />
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs uppercase tracking-wide font-medium" style={{ color: "var(--text-muted)" }}>
           {label}
         </p>
-        <p className="text-xl font-bold mt-0.5 truncate" style={{ color: "var(--text)" }}>
+        <p className="text-lg sm:text-xl font-bold mt-0.5 leading-tight break-words" style={{ color: "var(--text)" }}>
           {value}
         </p>
         {sub && (
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+          <p className="text-xs mt-0.5 leading-snug break-words" style={{ color: "var(--text-muted)" }}>
             {sub}
           </p>
         )}
@@ -262,9 +262,9 @@ export default function ReportsPage() {
   const paymentCount = filteredPayments.reduce((acc, item) => acc + item.count, 0);
 
   const dateRangeActions = (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
       <div
-        className="flex gap-1 rounded-xl border p-1"
+        className="flex gap-1 rounded-xl border p-1 overflow-x-auto"
         style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
       >
         {PRESETS.map((p) => (
@@ -272,7 +272,7 @@ export default function ReportsPage() {
             key={p.value}
             type="button"
             onClick={() => setPreset(p.value)}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium transition"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap shrink-0"
             style={
               preset === p.value
                 ? { backgroundColor: "var(--brand)", color: "#fff" }
@@ -285,7 +285,7 @@ export default function ReportsPage() {
       </div>
 
       {preset === "custom" && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             type="date"
             value={customFrom}
@@ -307,27 +307,29 @@ export default function ReportsPage() {
   );
 
   const sectionActions = (
-    <div className="flex flex-wrap items-center gap-2">
-      {SECTIONS.map((s) => (
-        <button
-          key={s.value}
-          type="button"
-          onClick={() => setSection(s.value)}
-          className="h-9 px-3 rounded-xl text-xs font-semibold border transition"
-          style={
-            section === s.value
-              ? { backgroundColor: "var(--brand)", borderColor: "var(--brand)", color: "#fff" }
-              : { backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }
-          }
-        >
-          {s.label}
-        </button>
-      ))}
+    <div className="overflow-x-auto">
+      <div className="flex items-center gap-2 min-w-max pr-1">
+        {SECTIONS.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onClick={() => setSection(s.value)}
+            className="h-9 px-3 rounded-xl text-xs font-semibold border transition whitespace-nowrap"
+            style={
+              section === s.value
+                ? { backgroundColor: "var(--brand)", borderColor: "var(--brand)", color: "#fff" }
+                : { backgroundColor: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }
+            }
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
   const sharedKpis = (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       <KpiCard
         icon={TrendingUp}
         label="Receita total"
@@ -352,14 +354,14 @@ export default function ReportsPage() {
           title="Relatorios"
           subtitle="Hub analitico com visao financeira, vendas, estoque, comissoes e fiscal"
           actions={
-            <div className="flex items-center gap-3 flex-wrap justify-end">
+            <div className="flex w-full md:w-auto items-stretch md:items-center gap-2 md:gap-3 flex-col sm:flex-row flex-wrap md:justify-end">
               {dateRangeActions}
               <button
                 type="button"
                 onClick={handleResetSales}
                 disabled={resetting}
                 title="Zerar todas as vendas do PDV (apenas para testes)"
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition hover:opacity-80 disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition hover:opacity-80 disabled:opacity-40 whitespace-nowrap"
                 style={{ borderColor: "#ef4444", color: "#ef4444", backgroundColor: "transparent" }}
               >
                 <Trash2 size={13} />
@@ -418,7 +420,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
                 <h3 className="font-semibold mb-3" style={{ color: "var(--text)" }}>Produtividade de vendas</h3>
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <KpiCard icon={ShoppingCart} label="Itens vendidos" value={`${Number(summary?.totalItems ?? 0).toLocaleString("pt-BR")}`} />
                   <KpiCard icon={Percent} label="% pedidos c/ desconto" value={summary && summary.totalOrders > 0 ? `${Math.round(((summary.ordersWithDiscount ?? 0) / summary.totalOrders) * 100)}%` : "0%"} />
                   <KpiCard icon={Users} label="Clientes identificados" value={`${Number(summary?.identifiedCustomers ?? 0).toLocaleString("pt-BR")}`} />
@@ -439,10 +441,10 @@ export default function ReportsPage() {
                     .sort((a, b) => b.revenueCents - a.revenueCents)
                     .slice(0, 6)
                     .map((h) => (
-                      <div key={h.hour} className="flex items-center justify-between text-sm border-b pb-1" style={{ borderColor: "var(--border)" }}>
-                        <span style={{ color: "var(--text)" }}>{h.hour.toString().padStart(2, "0")}:00</span>
-                        <span style={{ color: "var(--text-muted)" }}>{h.orderCount} pedidos</span>
-                        <strong style={{ color: "var(--text)" }}>{fmtCurrency(h.revenueCents)}</strong>
+                      <div key={h.hour} className="flex items-center justify-between gap-2 text-sm border-b pb-1" style={{ borderColor: "var(--border)" }}>
+                        <span className="shrink-0" style={{ color: "var(--text)" }}>{h.hour.toString().padStart(2, "0")}:00</span>
+                        <span className="text-right" style={{ color: "var(--text-muted)" }}>{h.orderCount} pedidos</span>
+                        <strong className="shrink-0" style={{ color: "var(--text)" }}>{fmtCurrency(h.revenueCents)}</strong>
                       </div>
                     ))}
                   {byHour.every((h) => h.orderCount === 0) && (
@@ -454,8 +456,8 @@ export default function ReportsPage() {
 
             <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
               <h3 className="font-semibold mb-3" style={{ color: "var(--text)" }}>Receita por categoria</h3>
-              <div className="overflow-auto">
-                <table className="min-w-full text-sm">
+              <div className="overflow-x-auto -mx-5 px-5">
+                <table className="min-w-[640px] w-full text-sm">
                   <thead style={{ backgroundColor: "var(--surface-2)" }}>
                     <tr>
                       {["Categoria", "Receita", "Quantidade", "Transacoes"].map((h) => (
@@ -495,7 +497,7 @@ export default function ReportsPage() {
                 <select
                   value={paymentFilter}
                   onChange={(e) => setPaymentFilter(e.target.value)}
-                  className="h-9 px-3 rounded-xl border text-xs"
+                  className="h-9 px-3 rounded-xl border text-xs w-full sm:w-auto min-w-[170px]"
                   style={{ borderColor: "var(--border)", backgroundColor: "var(--surface-2)", color: "var(--text)" }}
                 >
                   <option value="ALL">Todos os metodos</option>
@@ -517,8 +519,8 @@ export default function ReportsPage() {
                 />
               </div>
 
-              <div className="overflow-auto">
-                <table className="min-w-full text-sm">
+              <div className="overflow-x-auto -mx-5 px-5">
+                <table className="min-w-[560px] w-full text-sm">
                   <thead style={{ backgroundColor: "var(--surface-2)" }}>
                     <tr>
                       {[
@@ -558,10 +560,10 @@ export default function ReportsPage() {
             <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
               <h2 className="font-semibold mb-4" style={{ color: "var(--text)" }}>Indicadores</h2>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between"><span style={{ color: "var(--text-muted)" }}>Periodo</span><strong style={{ color: "var(--text)" }}>{fmtDate(from)} a {fmtDate(to)}</strong></div>
-                <div className="flex items-center justify-between"><span style={{ color: "var(--text-muted)" }}>Receita bruta</span><strong style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.totalRevenueCents) : "-"}</strong></div>
-                <div className="flex items-center justify-between"><span style={{ color: "var(--text-muted)" }}>Descontos</span><strong style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.totalDiscountCents) : "-"}</strong></div>
-                <div className="flex items-center justify-between"><span style={{ color: "var(--text-muted)" }}>Ticket medio</span><strong style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.avgTicketCents) : "-"}</strong></div>
+                <div className="flex items-center justify-between gap-2"><span style={{ color: "var(--text-muted)" }}>Periodo</span><strong className="text-right" style={{ color: "var(--text)" }}>{fmtDate(from)} a {fmtDate(to)}</strong></div>
+                <div className="flex items-center justify-between gap-2"><span style={{ color: "var(--text-muted)" }}>Receita bruta</span><strong className="text-right" style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.totalRevenueCents) : "-"}</strong></div>
+                <div className="flex items-center justify-between gap-2"><span style={{ color: "var(--text-muted)" }}>Descontos</span><strong className="text-right" style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.totalDiscountCents) : "-"}</strong></div>
+                <div className="flex items-center justify-between gap-2"><span style={{ color: "var(--text-muted)" }}>Ticket medio</span><strong className="text-right" style={{ color: "var(--text)" }}>{summary ? fmtCurrency(summary.avgTicketCents) : "-"}</strong></div>
               </div>
             </div>
           </div>
@@ -598,7 +600,7 @@ export default function ReportsPage() {
               </a>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <KpiCard icon={Wallet} label="Vendas base" value={commissionSummary ? fmtCurrency(commissionSummary.totals.salesCents) : "-"} />
               <KpiCard icon={Users} label="Comissao" value={commissionSummary ? fmtCurrency(commissionSummary.totals.commissionCents) : "-"} />
               <KpiCard icon={Users} label="Gorjetas" value={commissionSummary ? fmtCurrency(commissionSummary.totals.tipsCents) : "-"} />
@@ -642,8 +644,8 @@ export default function ReportsPage() {
 
             <div className="mt-5">
               <h3 className="font-semibold mb-2" style={{ color: "var(--text)" }}>Top rejeicoes fiscais</h3>
-              <div className="overflow-auto">
-                <table className="min-w-full text-sm">
+              <div className="overflow-x-auto -mx-5 px-5">
+                <table className="min-w-[760px] w-full text-sm">
                   <thead style={{ backgroundColor: "var(--surface-2)" }}>
                     <tr>
                       {["Codigo", "Mensagem", "Ocorrencias", "Ultima vez"].map((h) => (
@@ -702,13 +704,13 @@ export default function ReportsPage() {
                 {topProducts.map((p, i) => {
                   const pct = summary && summary.totalRevenueCents > 0 ? Math.round((p.totalCents / summary.totalRevenueCents) * 100) : 0;
                   return (
-                    <div key={p.productId} className="flex items-center gap-3">
+                    <div key={p.productId} className="flex items-start gap-3">
                       <span className="w-6 text-xs font-semibold shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-sm font-medium truncate pr-2" style={{ color: "var(--text)" }}>
+                        <div className="flex items-baseline justify-between gap-2 mb-1">
+                          <span className="text-sm font-medium pr-1 break-words min-w-0 flex-1" style={{ color: "var(--text)" }}>
                             {p.name}
                           </span>
                           <span className="text-sm font-semibold shrink-0" style={{ color: "var(--text)" }}>
