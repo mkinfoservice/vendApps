@@ -11,15 +11,13 @@ import { adminFetch } from "@/features/admin/auth/adminFetch";
 import { hasRole } from "@/features/admin/auth/auth";
 import { Printer } from "lucide-react";
 
-const ORDERED_STATUSES = [
-  "RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA",
-] as const;
+const ORDERED_STATUSES = ["RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA"] as const;
 
 const STATUS_LABELS: Record<string, string> = {
   RECEBIDO: "Recebido",
   EM_PREPARO: "Em preparo",
   PRONTO_PARA_ENTREGA: "Pronto para servir",
-  SAIU_PARA_ENTREGA: "Saiu p/ entrega",
+  SAIU_PARA_ENTREGA: "Saiu para entrega",
   ENTREGUE: "Entregue",
 };
 
@@ -56,11 +54,20 @@ export default function OrderDetail() {
   const canManage = hasRole("admin", "gerente");
 
   const canEdit = useMemo(() => !!order, [order]);
+  const isDeliveryOrder = useMemo(() => {
+    if (!order || order.isTableOrder) return false;
+    const hasAddress = Boolean(order.address && order.address.trim() && order.address.trim() !== "-");
+    return hasAddress || (order.deliveryCents ?? 0) > 0;
+  }, [order]);
 
   async function handleReprint() {
     if (!order) return;
     setReprinting(true);
-    try { await reprintOrder(order.id as string); } finally { setReprinting(false); }
+    try {
+      await reprintOrder(order.id as string);
+    } finally {
+      setReprinting(false);
+    }
   }
 
   async function handleRetrograde(newStatus: string) {
@@ -76,22 +83,18 @@ export default function OrderDetail() {
 
   return (
     <div className="min-h-dvh bg-[var(--bg)] text-[var(--text)]">
-      <div className="mx-auto max-w-2xl px-4 pb-10 pt-6 space-y-4">
-
-        {/* Header */}
+      <div className="mx-auto max-w-3xl space-y-4 px-4 pb-10 pt-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-lg font-extrabold">Pedido</div>
-            <div className="text-sm text-[var(--text-muted)]">
-              {order ? order.orderNumber : "Carregando..."}
-            </div>
+            <div className="text-sm text-[var(--text-muted)]">{order ? order.orderNumber : "Carregando..."}</div>
           </div>
           <div className="flex gap-2">
             {order && (
               <button
                 onClick={handleReprint}
                 disabled={reprinting}
-                className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition flex items-center gap-1.5 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] transition hover:bg-[var(--surface)] disabled:opacity-50"
                 title="Reimprimir pedido"
               >
                 <Printer size={14} />
@@ -99,7 +102,7 @@ export default function OrderDetail() {
               </button>
             )}
             <button
-              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] transition"
+              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] transition hover:bg-[var(--surface)]"
               onClick={() => navigate("/app/pedidos")}
             >
               Voltar
@@ -107,9 +110,7 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {orderQuery.isLoading && (
-          <div className="text-sm text-[var(--text-muted)]">Carregando pedido...</div>
-        )}
+        {orderQuery.isLoading && <div className="text-sm text-[var(--text-muted)]">Carregando pedido...</div>}
 
         {!orderQuery.isLoading && !order && (
           <div className="text-sm text-[var(--text-muted)]">Pedido não encontrado.</div>
@@ -117,75 +118,75 @@ export default function OrderDetail() {
 
         {order && (
           <>
-            {/* Status */}
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-              <div className="text-sm font-extrabold">Status</div>
-              <div className="text-xs text-[var(--text-muted)] flex items-center gap-2">
-                Atual: <OrderStatusBadge status={status} />
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-sm font-extrabold">Status do pedido</div>
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
+                    {isDeliveryOrder
+                      ? "Fluxo entrega: Recebido -> Em preparo -> Pronto -> Saiu para entrega -> Entregue"
+                      : "Fluxo Go Coffee: Recebido -> Em preparo -> Pronto para servir -> Entregue"}
+                  </div>
+                </div>
+                <div className="text-xs text-[var(--text-muted)]">
+                  Atual: <OrderStatusBadge status={status} />
+                </div>
               </div>
 
-              <OrderStatusSelect
-                value={status}
-                isTableOrder={order.isTableOrder}
-                disabled={!canEdit || isUpdating}
-                onChange={(next) => {
-                  if (next === status) return;
-                  updateStatus.mutate({ idOrNumber, status: next });
-                }}
-              />
+              <div className="mt-3">
+                <OrderStatusSelect
+                  value={status}
+                  isDeliveryOrder={isDeliveryOrder}
+                  disabled={!canEdit || isUpdating}
+                  onChange={(next) => {
+                    if (next === status) return;
+                    updateStatus.mutate({ idOrNumber, status: next });
+                  }}
+                />
+              </div>
 
-              {isUpdating && (
-                <div className="text-xs text-[var(--text-muted)]">Atualizando status...</div>
-              )}
-
+              {isUpdating && <div className="mt-2 text-xs text-[var(--text-muted)]">Atualizando status...</div>}
               {updateStatus.isError && (
-                <div className="text-xs text-red-400">
-                  Erro ao atualizar status. Tente novamente.
-                </div>
+                <div className="mt-2 text-xs text-red-400">Erro ao atualizar status. Tente novamente.</div>
               )}
 
-              {/* Retrocesso — admin/gerente apenas */}
               {canManage && status !== "CANCELADO" && (
-                <div className="border-t border-[var(--border)] pt-3 mt-2">
-                  <div className="text-xs font-semibold text-[var(--text-muted)] mb-2">
-                    Retroceder status (gerente)
-                  </div>
+                <div className="mt-3 border-t border-[var(--border)] pt-3">
+                  <div className="mb-2 text-xs font-semibold text-[var(--text-muted)]">Retroceder status (gerente)</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {ORDERED_STATUSES
-                      .filter(s => s !== status && ORDERED_STATUSES.indexOf(s) < ORDERED_STATUSES.indexOf(status as typeof ORDERED_STATUSES[number]))
-                      .map(s => (
-                        <button
-                          key={s}
-                          onClick={() => handleRetrograde(s)}
-                          disabled={retrograding}
-                          className="px-2.5 py-1 rounded-lg border text-xs hover:bg-[var(--surface-2)] transition disabled:opacity-50"
-                          style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
-                        >
-                          ↩ {STATUS_LABELS[s] ?? s}
-                        </button>
-                      ))}
+                    {ORDERED_STATUSES.filter(
+                      (s) => s !== status && ORDERED_STATUSES.indexOf(s) < ORDERED_STATUSES.indexOf(status as (typeof ORDERED_STATUSES)[number]),
+                    ).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => handleRetrograde(s)}
+                        disabled={retrograding}
+                        className="rounded-lg border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--surface-2)] disabled:opacity-50"
+                      >
+                        Voltar para {STATUS_LABELS[s] ?? s}
+                      </button>
+                    ))}
                   </div>
-                  {retrograding && <div className="text-xs text-[var(--text-muted)] mt-1">Atualizando...</div>}
+                  {retrograding && <div className="mt-1 text-xs text-[var(--text-muted)]">Atualizando...</div>}
                 </div>
               )}
             </div>
 
-            {/* Cliente */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-1">
-              <div className="text-sm font-extrabold mb-2">Cliente</div>
+              <div className="mb-2 text-sm font-extrabold">Cliente</div>
               <div className="text-sm text-[var(--text)]">{order.name}</div>
               <div className="text-sm text-[var(--text-muted)]">{order.phone}</div>
             </div>
 
-            {/* Endereço / Mesa */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-1">
-              <div className="text-sm font-extrabold mb-2">{order.isTableOrder ? "Mesa" : "Entrega"}</div>
+              <div className="mb-2 text-sm font-extrabold">{order.isTableOrder ? "Mesa" : "Entrega"}</div>
               {order.isTableOrder ? (
                 <>
                   <div className="text-sm text-[var(--text)]">
-                    Mesa {order.tableNumber ?? "-"}{order.tableName ? ` - ${order.tableName}` : ""}
+                    Mesa {order.tableNumber ?? "-"}
+                    {order.tableName ? ` - ${order.tableName}` : ""}
                   </div>
-                  <div className="text-xs text-[var(--text-muted)]">Pedido de auto-atendimento via QR</div>
+                  <div className="text-xs text-[var(--text-muted)]">Pedido de autoatendimento via QR</div>
                 </>
               ) : (
                 <>
@@ -195,15 +196,13 @@ export default function OrderDetail() {
               )}
             </div>
 
-            {/* Itens */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
               <div className="text-sm font-extrabold">Itens</div>
               <OrderItemsList items={order.items} />
             </div>
 
-            {/* Totais */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
-              <div className="text-sm font-extrabold mb-1">Resumo</div>
+              <div className="mb-1 text-sm font-extrabold">Resumo</div>
               <div className="flex justify-between text-sm text-[var(--text-muted)]">
                 <span>Subtotal</span>
                 <span className="font-bold text-[var(--text)]">{formatBRL(order.subtotalCents)}</span>
@@ -212,27 +211,29 @@ export default function OrderDetail() {
                 <span>{order.isTableOrder ? "Serviço de mesa" : "Entrega"}</span>
                 <span className="font-bold text-[var(--text)]">{formatBRL(order.deliveryCents)}</span>
               </div>
-              <div className="h-px bg-[var(--border)] my-1" />
+              <div className="my-1 h-px bg-[var(--border)]" />
               <div className="flex justify-between text-base font-extrabold">
                 <span>Total</span>
                 <span style={{ color: "#7c5cf8" }}>{formatBRL(order.totalCents)}</span>
               </div>
             </div>
 
-            {/* Pagamento */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-2">
               <div className="text-sm font-extrabold">Pagamento</div>
               <div className="text-sm text-[var(--text)]">{paymentLabel(order.paymentMethodStr)}</div>
 
               {order.paymentMethodStr === "CASH" && (
-                <div className="text-xs text-[var(--text-muted)] space-y-1">
-                  <div>Troco para: <span className="text-[var(--text)]">{formatBRL(order.cashGivenCents ?? 0)}</span></div>
-                  <div>Troco: <span className="text-[var(--text)]">{formatBRL(order.changeCents ?? 0)}</span></div>
+                <div className="space-y-1 text-xs text-[var(--text-muted)]">
+                  <div>
+                    Troco para: <span className="text-[var(--text)]">{formatBRL(order.cashGivenCents ?? 0)}</span>
+                  </div>
+                  <div>
+                    Troco: <span className="text-[var(--text)]">{formatBRL(order.changeCents ?? 0)}</span>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Meta */}
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 text-xs text-[var(--text-muted)]">
               Pedido criado em: {formatDate(order.createdAtUtc)}
             </div>
