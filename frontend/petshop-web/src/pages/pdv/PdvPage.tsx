@@ -599,6 +599,7 @@ interface QuickProduct {
   isBestSeller?: boolean;
   barcode?: string | null;
   internalCode?: string | null;
+  categoryName?: string | null;
 }
 
 interface AddonOption {
@@ -733,6 +734,8 @@ function QuickProducts({
   const [adding, setAdding]       = useState<string | null>(null);
   const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
   const [searchInput, setSearchInput] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const categoryBarRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     let cancelled = false;
@@ -778,15 +781,27 @@ function QuickProducts({
     return () => { cancelled = true; };
   }, []);
 
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const p of products) {
+      const cat = p.categoryName;
+      if (cat && !seen.has(cat)) { seen.add(cat); list.push(cat); }
+    }
+    return list.sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [products]);
+
   const filteredProducts = useMemo(() => {
     const q = searchInput.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) =>
+    let base = products;
+    if (activeCategory) base = base.filter((p) => p.categoryName === activeCategory);
+    if (!q) return base;
+    return base.filter((p) =>
       p.name.toLowerCase().includes(q) ||
       (p.internalCode ?? "").toLowerCase().includes(q) ||
       (p.barcode ?? "").toLowerCase().includes(q)
     );
-  }, [products, searchInput]);
+  }, [products, searchInput, activeCategory]);
 
 
   async function handleAdd(p: QuickProduct) {
@@ -814,24 +829,46 @@ function QuickProducts({
           onClose={() => setAddonTarget(null)}
         />
       )}
-      <div className="h-full overflow-y-auto p-3 space-y-3" style={{ background: GC.bg }}>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: GC.brown, opacity: 0.5 }} />
-            <input
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Buscar por nome, codigo ou codigo de barras"
-              className="w-full h-9 rounded-xl pl-8 pr-3 text-xs focus:outline-none"
-              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
-            />
-            {loadingInitial && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: GC.brown, opacity: 0.5 }}>
-                carregando...
-              </span>
-            )}
-          </div>
+      <div className="h-full overflow-y-auto p-3 space-y-2" style={{ background: GC.bg }}>
+        {/* Search bar */}
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: GC.brown, opacity: 0.5 }} />
+          <input
+            value={searchInput}
+            onChange={(e) => { setSearchInput(e.target.value); }}
+            placeholder="Buscar por nome, codigo ou codigo de barras"
+            className="w-full h-9 rounded-xl pl-8 pr-3 text-xs focus:outline-none"
+            style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
+          />
+          {loadingInitial && (
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px]" style={{ color: GC.brown, opacity: 0.5 }}>
+              carregando...
+            </span>
+          )}
         </div>
+
+        {/* Category pill tabs */}
+        {categories.length > 0 && (
+          <div ref={categoryBarRef} className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none"
+            style={{ scrollbarWidth: "none" }}>
+            {[null, ...categories].map((cat) => {
+              const active = cat === activeCategory;
+              return (
+                <button
+                  key={cat ?? "__all__"}
+                  type="button"
+                  onClick={() => setActiveCategory(cat)}
+                  className="shrink-0 px-3 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap"
+                  style={active
+                    ? { background: GC.caramel, color: "#fff", boxShadow: `0 2px 8px ${GC.caramel}55` }
+                    : { background: GC.cream, color: GC.brown, border: `1px solid rgba(107,79,58,0.15)` }}
+                >
+                  {cat ?? "Todos"}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {filteredProducts.length === 0 && !loadingInitial ? (
           <div className="h-full min-h-[220px] flex items-center justify-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
             Nenhum produto encontrado
