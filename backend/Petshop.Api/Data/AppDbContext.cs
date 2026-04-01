@@ -16,6 +16,7 @@ using Petshop.Api.Entities.Enrichment;
 using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
+using Petshop.Api.Entities.Marketplace;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Entities.Commissions;
 using Petshop.Api.Models;
@@ -101,6 +102,8 @@ public class AppDbContext : DbContext
     public DbSet<SalesQuoteItem> SalesQuoteItems => Set<SalesQuoteItem>();
 
     // ── Marketplace (iFood, etc.) ─────────────────────────────
+    public DbSet<MarketplaceIntegration> MarketplaceIntegrations => Set<MarketplaceIntegration>();
+    public DbSet<MarketplaceOrder>       MarketplaceOrders       => Set<MarketplaceOrder>();
 
     // ── PDV ───────────────────────────────────────────────────
     public DbSet<CashRegister>            CashRegisters            => Set<CashRegister>();
@@ -273,6 +276,33 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(i => i.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // ── Marketplace ───────────────────────────────────────
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .HasOne(i => i.Company)
+            .WithMany()
+            .HasForeignKey(i => i.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .HasIndex(i => new { i.Type, i.MerchantId })
+            .IsUnique();
+
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasOne<MarketplaceIntegration>()
+            .WithMany(i => i.Orders)
+            .HasForeignKey(o => o.MarketplaceIntegrationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasOne<Order>()
+            .WithMany()
+            .HasForeignKey(o => o.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasIndex(o => new { o.MarketplaceIntegrationId, o.ExternalOrderId })
+            .IsUnique();
 
         // ── ExternalSource ────────────────────────────────────
         modelBuilder.Entity<ExternalSource>()

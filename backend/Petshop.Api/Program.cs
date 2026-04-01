@@ -304,6 +304,23 @@ builder.Services.AddScoped<FiscalQueueProcessorJob>();
 builder.Services.AddScoped<ContingencyReprocessJob>();
 
 // ===============================
+// Services — Marketplace (iFood, ...)
+// ===============================
+builder.Services.AddHttpClient("ifood", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(20);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("vendApps-marketplace/1.0");
+});
+builder.Services.AddSingleton<Petshop.Api.Services.Marketplace.IFood.iFoodAuthService>();
+builder.Services.AddScoped<Petshop.Api.Services.Marketplace.IFood.iFoodOrderIngester>();
+builder.Services.AddScoped<Petshop.Api.Services.Marketplace.IFood.iFoodStatusCallbackService>();
+builder.Services.AddScoped<Petshop.Api.Services.Marketplace.IFood.iFoodCatalogSyncService>();
+builder.Services.AddScoped<Petshop.Api.Services.Marketplace.IMarketplaceOrderIngester>(
+    sp => sp.GetRequiredService<Petshop.Api.Services.Marketplace.IFood.iFoodOrderIngester>());
+builder.Services.AddScoped<Petshop.Api.Services.Marketplace.IMarketplaceStatusCallback>(
+    sp => sp.GetRequiredService<Petshop.Api.Services.Marketplace.IFood.iFoodStatusCallbackService>());
+
+// ===============================
 // Services — WhatsApp
 // ===============================
 builder.Services.AddHttpClient<Petshop.Api.Services.WhatsApp.WhatsAppClient>(client =>
