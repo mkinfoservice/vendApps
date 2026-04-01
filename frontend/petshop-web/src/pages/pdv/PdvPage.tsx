@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight, ClipboardList } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
 // ── Design tokens (Go Coffee palette) ─────────────────────────────────────────
@@ -987,6 +987,106 @@ function CartTable({
   );
 }
 
+// ── Nav Drawer ─────────────────────────────────────────────────────────────────
+
+const NAV_ITEMS = [
+  { icon: LayoutGrid,   label: "Central",      desc: "Visão geral da operação",    route: "/app"             },
+  { icon: ShoppingBag,  label: "Pedidos",       desc: "Todos os pedidos em aberto", route: "/app/pedidos"     },
+  { icon: Coffee,       label: "Mesas",         desc: "QR Code e comandas",         route: "/app/mesas"       },
+  { icon: Headphones,   label: "Atendimento",   desc: "Pedidos por telefone",       route: "/app/atendimento" },
+  { icon: ClipboardList,label: "DAV / Orçamento",desc: "Montar orçamento",          route: "/app/dav"         },
+];
+
+function NavDrawer({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+
+  function go(route: string) {
+    onClose();
+    navigate(route);
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-[90]"
+        style={{ background: "rgba(28,18,9,0.55)" }}
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <div
+        className="fixed left-0 top-0 bottom-0 z-[91] flex flex-col w-72 shadow-2xl"
+        style={{ background: GC.bg }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-5 py-4 shrink-0"
+          style={{ background: GC.dark }}
+        >
+          <div>
+            <span className="font-black text-base tracking-tight" style={{ color: GC.caramel }}>
+              PDV
+            </span>
+            <span className="text-xs ml-2" style={{ color: "rgba(255,255,255,0.45)" }}>
+              Navegação
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition hover:opacity-70"
+            style={{ background: "rgba(255,255,255,0.1)" }}
+          >
+            <X size={14} style={{ color: "rgba(255,255,255,0.7)" }} />
+          </button>
+        </div>
+
+        {/* Section label */}
+        <p
+          className="px-5 pt-5 pb-2 text-[10px] font-black uppercase tracking-widest"
+          style={{ color: GC.brown, opacity: 0.5 }}
+        >
+          Ir para
+        </p>
+
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto px-3 pb-6 flex flex-col gap-1">
+          {NAV_ITEMS.map(({ icon: Icon, label, desc, route }) => (
+            <button
+              key={route}
+              onClick={() => go(route)}
+              className="flex items-center gap-3 px-3 py-3 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+              style={{ background: GC.cream, border: `1.5px solid rgba(200,149,58,0.15)` }}
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: `rgba(200,149,58,0.12)` }}
+              >
+                <Icon size={18} style={{ color: GC.caramel }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold" style={{ color: GC.dark }}>{label}</p>
+                <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>{desc}</p>
+              </div>
+              <ChevronRight size={14} style={{ color: GC.caramel, opacity: 0.5 }} />
+            </button>
+          ))}
+        </nav>
+
+        {/* Footer hint */}
+        <div
+          className="px-5 py-4 shrink-0 border-t text-center"
+          style={{ borderColor: `rgba(107,79,58,0.12)` }}
+        >
+          <p className="text-[11px]" style={{ color: GC.brown, opacity: 0.4 }}>
+            O caixa permanece aberto ao navegar.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 //
 
 export default function PdvPage() {
@@ -1004,6 +1104,7 @@ export default function PdvPage() {
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
+  const [navOpen, setNavOpen]               = useState(false);
   const autoDavHandledRef = useRef(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
@@ -1201,9 +1302,21 @@ export default function PdvPage() {
         />
       )}
 
+      {/* Nav Drawer */}
+      {navOpen && <NavDrawer onClose={() => setNavOpen(false)} />}
+
       {/* Top Bar */}
       <div className="px-4 py-3 flex items-center gap-3 flex-wrap min-h-[56px]"
         style={{ background: GC.dark, boxShadow: "0 2px 12px rgba(28,18,9,0.25)" }}>
+        {/* Menu button */}
+        <button
+          onClick={() => setNavOpen(true)}
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:opacity-80 shrink-0"
+          style={{ background: "rgba(255,255,255,0.09)" }}
+          title="Navegar"
+        >
+          <Menu size={17} style={{ color: "rgba(255,255,255,0.75)" }} />
+        </button>
         <div>
           <span className="font-black text-base tracking-tight" style={{ color: GC.caramel }}>PDV</span>
           <span className="text-sm ml-2 font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>{session.registerName}</span>
