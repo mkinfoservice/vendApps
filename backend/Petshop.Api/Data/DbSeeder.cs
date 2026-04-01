@@ -39,7 +39,7 @@ public static class DbSeeder
             db,
             id:      NovaEmpresaId,
             name:    "Go Coffee",
-            slug:    "gocoffee",
+            slug:    "novaempresa",
             segment: "cafeteria",
             seeder:  SeedNovaEmpresaAsync);
     }
