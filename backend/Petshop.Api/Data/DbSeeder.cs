@@ -12,7 +12,7 @@ public static class DbSeeder
     /// <summary>GUID fixo da empresa demo "suaempresa" (apresentação para clientes).</summary>
     public static readonly Guid DemoCompanyId = new("22222222-0000-0000-0000-000000000002");
 
-    /// <summary>GUID fixo da empresa demo "novaempresa" (testes de onboarding).</summary>
+    /// <summary>GUID fixo da empresa Go Coffee.</summary>
     public static readonly Guid NovaEmpresaId = new("33333333-0000-0000-0000-000000000003");
 
     public static async Task SeedAsync(AppDbContext db)
@@ -38,9 +38,9 @@ public static class DbSeeder
         await SeedCompanyAsync(
             db,
             id:      NovaEmpresaId,
-            name:    "Empresa Teste",
-            slug:    "novaempresa",
-            segment: "petshop",
+            name:    "Go Coffee",
+            slug:    "gocoffee",
+            segment: "cafeteria",
             seeder:  SeedNovaEmpresaAsync);
     }
 
@@ -54,7 +54,8 @@ public static class DbSeeder
         string segment,
         Func<AppDbContext, Guid, Task> seeder)
     {
-        if (!await db.Companies.AnyAsync(c => c.Slug == slug))
+        var existing = await db.Companies.FirstOrDefaultAsync(c => c.Id == id);
+        if (existing is null)
         {
             db.Companies.Add(new Company
             {
@@ -65,8 +66,14 @@ public static class DbSeeder
                 IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow
             });
-            await db.SaveChangesAsync();
         }
+        else if (existing.Name != name || existing.Slug != slug || existing.Segment != segment)
+        {
+            existing.Name    = name;
+            existing.Slug    = slug;
+            existing.Segment = segment;
+        }
+        await db.SaveChangesAsync();
 
         if (!await db.Categories.AnyAsync(c => c.CompanyId == id))
             await seeder(db, id);
