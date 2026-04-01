@@ -7,6 +7,14 @@ export interface SalesSummary {
   totalOrders: number;
   avgTicketCents: number;
   totalDiscountCents: number;
+  subtotalCents?: number;
+  discountRatePercent?: number;
+  ordersWithDiscount?: number;
+  identifiedCustomers?: number;
+  totalItems?: number;
+  avgItemsPerOrder?: number;
+  peakHour?: { hour: number; revenueCents: number; orderCount: number } | null;
+  peakDay?: { date: string; revenueCents: number; orderCount: number } | null;
   byPaymentMethod: PaymentBreakdown[];
 }
 
@@ -18,6 +26,12 @@ export interface PaymentBreakdown {
 
 export interface DayRevenue {
   date: string;          // "YYYY-MM-DD"
+  revenueCents: number;
+  orderCount: number;
+}
+
+export interface HourRevenue {
+  hour: number;
   revenueCents: number;
   orderCount: number;
 }
@@ -35,6 +49,8 @@ export interface StockValuation {
   totalValueCents: number;
   outOfStockCount: number;
   lowStockCount: number;
+  healthyStockCount?: number;
+  lowStockValueCents?: number;
 }
 
 export interface FiscalSummary {
@@ -42,6 +58,21 @@ export interface FiscalSummary {
   rejected: number;
   contingency: number;
   pending: number;
+  avgTransmissionAttempts?: number;
+}
+
+export interface CategoryPerformance {
+  category: string;
+  revenueCents: number;
+  totalQty: number;
+  transactions: number;
+}
+
+export interface FiscalRejection {
+  code: string;
+  message: string;
+  count: number;
+  lastSeenAtUtc: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,9 +99,19 @@ export async function getSalesByDay(from: Date, to: Date): Promise<DayRevenue[]>
   return adminFetch<DayRevenue[]>(`/admin/reports/sales/by-day?${dateRange(from, to)}`);
 }
 
+export async function getSalesByHour(from: Date, to: Date): Promise<HourRevenue[]> {
+  return adminFetch<HourRevenue[]>(`/admin/reports/sales/by-hour?${dateRange(from, to)}`);
+}
+
 export async function getTopProducts(from: Date, to: Date, limit = 10): Promise<TopProduct[]> {
   return adminFetch<TopProduct[]>(
     `/admin/reports/products/top?${dateRange(from, to)}&limit=${limit}`
+  );
+}
+
+export async function getProductsByCategory(from: Date, to: Date): Promise<CategoryPerformance[]> {
+  return adminFetch<CategoryPerformance[]>(
+    `/admin/reports/products/by-category?${dateRange(from, to)}`
   );
 }
 
@@ -80,4 +121,8 @@ export async function getStockValuation(): Promise<StockValuation> {
 
 export async function getFiscalSummary(from: Date, to: Date): Promise<FiscalSummary> {
   return adminFetch<FiscalSummary>(`/admin/reports/fiscal?${dateRange(from, to)}`);
+}
+
+export async function getFiscalRejections(from: Date, to: Date): Promise<FiscalRejection[]> {
+  return adminFetch<FiscalRejection[]>(`/admin/reports/fiscal/rejections?${dateRange(from, to)}`);
 }

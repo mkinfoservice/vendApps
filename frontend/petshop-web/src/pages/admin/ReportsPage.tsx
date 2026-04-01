@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AreaChart,
@@ -13,16 +13,22 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import {
   getSalesSummary,
   getSalesByDay,
+  getSalesByHour,
   getTopProducts,
+  getProductsByCategory,
   getStockValuation,
   getFiscalSummary,
+  getFiscalRejections,
   fmtCurrency,
   fmtDate,
   type SalesSummary,
   type DayRevenue,
+  type HourRevenue,
   type TopProduct,
+  type CategoryPerformance,
   type StockValuation,
   type FiscalSummary,
+  type FiscalRejection,
 } from "@/features/reports/reportApi";
 import { fetchCommissionSummary, type CommissionSummary } from "@/features/commissions/commissionsApi";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
@@ -168,6 +174,9 @@ export default function ReportsPage() {
       qc.invalidateQueries({ queryKey: ["report-by-day"] });
       qc.invalidateQueries({ queryKey: ["report-top"] });
       qc.invalidateQueries({ queryKey: ["report-fiscal"] });
+      qc.invalidateQueries({ queryKey: ["report-by-hour"] });
+      qc.invalidateQueries({ queryKey: ["report-by-category"] });
+      qc.invalidateQueries({ queryKey: ["report-fiscal-rejections"] });
       qc.invalidateQueries({ queryKey: ["commissions-summary"] });
       alert("Dados zerados com sucesso.");
     } catch (e) {
@@ -197,9 +206,19 @@ export default function ReportsPage() {
     queryFn: () => getSalesByDay(from, to),
   });
 
+  const { data: byHour = [] } = useQuery<HourRevenue[]>({
+    queryKey: ["report-by-hour", ...qKey],
+    queryFn: () => getSalesByHour(from, to),
+  });
+
   const { data: topProducts = [] } = useQuery<TopProduct[]>({
     queryKey: ["report-top", ...qKey, rankingLimit],
     queryFn: () => getTopProducts(from, to, rankingLimit),
+  });
+
+  const { data: byCategory = [] } = useQuery<CategoryPerformance[]>({
+    queryKey: ["report-by-category", ...qKey],
+    queryFn: () => getProductsByCategory(from, to),
   });
 
   const { data: stock } = useQuery<StockValuation>({
@@ -211,6 +230,11 @@ export default function ReportsPage() {
   const { data: fiscal } = useQuery<FiscalSummary>({
     queryKey: ["report-fiscal", ...qKey],
     queryFn: () => getFiscalSummary(from, to),
+  });
+
+  const { data: fiscalRejections = [] } = useQuery<FiscalRejection[]>({
+    queryKey: ["report-fiscal-rejections", ...qKey],
+    queryFn: () => getFiscalRejections(from, to),
   });
 
   const { data: commissionSummary } = useQuery<CommissionSummary>({
@@ -316,7 +340,7 @@ export default function ReportsPage() {
         icon={Package}
         label="Estoque (custo)"
         value={stock ? fmtCurrency(stock.totalValueCents) : "-"}
-        sub={stock ? `${stock.outOfStockCount} zerados � ${stock.lowStockCount} baixos` : undefined}
+        sub={stock ? `${stock.outOfStockCount} zerados · ${stock.lowStockCount} baixos` : undefined}
       />
     </div>
   );
@@ -350,44 +374,111 @@ export default function ReportsPage() {
         {(section === "overview" || section === "sales" || section === "financial" || section === "stock") && sharedKpis}
 
         {(section === "overview" || section === "sales") && (
-          <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
-            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-              <h2 className="font-semibold" style={{ color: "var(--text)" }}>
-                Receita por dia
-              </h2>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Media diaria: {summary && byDay.length > 0 ? fmtCurrency(Math.round(summary.totalRevenueCents / byDay.length)) : "-"}
-              </p>
+          <div className="space-y-5">
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <h2 className="font-semibold" style={{ color: "var(--text)" }}>
+                  Receita por dia
+                </h2>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  Media diaria: {summary && byDay.length > 0 ? fmtCurrency(Math.round(summary.totalRevenueCents / byDay.length)) : "-"}
+                </p>
+              </div>
+
+              {chartData.length === 0 ? (
+                <div className="h-48 flex items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
+                  Sem dados no periodo.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#7c5cf8" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#7c5cf8" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `R$${(v / 100).toFixed(0)}`}
+                      width={56}
+                    />
+                    <Tooltip content={<RevenueTooltip />} />
+                    <Area type="monotone" dataKey="receita" stroke="#7c5cf8" strokeWidth={2} fill="url(#colorReceita)" dot={false} activeDot={{ r: 4, fill: "#7c5cf8" }} />
+                    <Area type="monotone" dataKey="pedidos" stroke="transparent" fill="transparent" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
-            {chartData.length === 0 ? (
-              <div className="h-48 flex items-center justify-center text-sm" style={{ color: "var(--text-muted)" }}>
-                Sem dados no periodo.
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+                <h3 className="font-semibold mb-3" style={{ color: "var(--text)" }}>Produtividade de vendas</h3>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <KpiCard icon={ShoppingCart} label="Itens vendidos" value={`${Number(summary?.totalItems ?? 0).toLocaleString("pt-BR")}`} />
+                  <KpiCard icon={Percent} label="% pedidos c/ desconto" value={summary && summary.totalOrders > 0 ? `${Math.round(((summary.ordersWithDiscount ?? 0) / summary.totalOrders) * 100)}%` : "0%"} />
+                  <KpiCard icon={Users} label="Clientes identificados" value={`${Number(summary?.identifiedCustomers ?? 0).toLocaleString("pt-BR")}`} />
+                  <KpiCard icon={TrendingUp} label="Itens por pedido" value={Number(summary?.avgItemsPerOrder ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} />
+                </div>
+                <div className="text-xs space-y-1" style={{ color: "var(--text-muted)" }}>
+                  <p>Pico por hora: {summary?.peakHour ? `${summary.peakHour.hour.toString().padStart(2, "0")}:00` : "-"} · {summary?.peakHour ? fmtCurrency(summary.peakHour.revenueCents) : "-"}</p>
+                  <p>Melhor dia: {summary?.peakDay ? summary.peakDay.date : "-"} · {summary?.peakDay ? fmtCurrency(summary.peakDay.revenueCents) : "-"}</p>
+                  <p>Taxa media de desconto: {Number(summary?.discountRatePercent ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</p>
+                </div>
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#7c5cf8" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#7c5cf8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "#9ca3af" }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v) => `R$${(v / 100).toFixed(0)}`}
-                    width={56}
-                  />
-                  <Tooltip content={<RevenueTooltip />} />
-                  <Area type="monotone" dataKey="receita" stroke="#7c5cf8" strokeWidth={2} fill="url(#colorReceita)" dot={false} activeDot={{ r: 4, fill: "#7c5cf8" }} />
-                  <Area type="monotone" dataKey="pedidos" stroke="transparent" fill="transparent" />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
+
+              <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+                <h3 className="font-semibold mb-3" style={{ color: "var(--text)" }}>Faixa horaria de maior movimento</h3>
+                <div className="space-y-2">
+                  {byHour
+                    .filter((h) => h.orderCount > 0)
+                    .sort((a, b) => b.revenueCents - a.revenueCents)
+                    .slice(0, 6)
+                    .map((h) => (
+                      <div key={h.hour} className="flex items-center justify-between text-sm border-b pb-1" style={{ borderColor: "var(--border)" }}>
+                        <span style={{ color: "var(--text)" }}>{h.hour.toString().padStart(2, "0")}:00</span>
+                        <span style={{ color: "var(--text-muted)" }}>{h.orderCount} pedidos</span>
+                        <strong style={{ color: "var(--text)" }}>{fmtCurrency(h.revenueCents)}</strong>
+                      </div>
+                    ))}
+                  {byHour.every((h) => h.orderCount === 0) && (
+                    <p className="text-sm py-4" style={{ color: "var(--text-muted)" }}>Sem movimento no periodo.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border p-5" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
+              <h3 className="font-semibold mb-3" style={{ color: "var(--text)" }}>Receita por categoria</h3>
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead style={{ backgroundColor: "var(--surface-2)" }}>
+                    <tr>
+                      {["Categoria", "Receita", "Quantidade", "Transacoes"].map((h) => (
+                        <th key={h} className="text-left px-3 py-2 font-semibold" style={{ color: "var(--text-muted)" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byCategory.slice(0, 8).map((c) => (
+                      <tr key={c.category} className="border-t" style={{ borderColor: "var(--border)" }}>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{c.category}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{fmtCurrency(c.revenueCents)}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{Number(c.totalQty).toLocaleString("pt-BR", { maximumFractionDigits: 3 })}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{c.transactions}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {byCategory.length === 0 && (
+                  <p className="text-sm py-4 text-center" style={{ color: "var(--text-muted)" }}>Sem dados de categoria no periodo.</p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -484,6 +575,10 @@ export default function ReportsPage() {
               <KpiCard icon={Package} label="Sem estoque" value={stock ? stock.outOfStockCount.toString() : "-"} />
               <KpiCard icon={Package} label="Estoque baixo" value={stock ? stock.lowStockCount.toString() : "-"} />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <KpiCard icon={Package} label="Estoque saudavel" value={stock ? String(stock.healthyStockCount ?? 0) : "-"} />
+              <KpiCard icon={Wallet} label="Valor em estoque baixo" value={stock ? fmtCurrency(stock.lowStockValueCents ?? 0) : "-"} />
+            </div>
           </div>
         )}
 
@@ -535,10 +630,45 @@ export default function ReportsPage() {
             </div>
 
             {totalFiscal > 0 && (
-              <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
-                Taxa de autorizacao: {fiscal ? Math.round((fiscal.authorized / totalFiscal) * 100) : 0}% ({totalFiscal} documentos)
-              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  Taxa de autorizacao: {fiscal ? Math.round((fiscal.authorized / totalFiscal) * 100) : 0}% ({totalFiscal} documentos)
+                </p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  Tentativas medias de transmissao: {Number(fiscal?.avgTransmissionAttempts ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
             )}
+
+            <div className="mt-5">
+              <h3 className="font-semibold mb-2" style={{ color: "var(--text)" }}>Top rejeicoes fiscais</h3>
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead style={{ backgroundColor: "var(--surface-2)" }}>
+                    <tr>
+                      {["Codigo", "Mensagem", "Ocorrencias", "Ultima vez"].map((h) => (
+                        <th key={h} className="text-left px-3 py-2 font-semibold" style={{ color: "var(--text-muted)" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fiscalRejections.map((r) => (
+                      <tr key={`${r.code}-${r.message}`} className="border-t" style={{ borderColor: "var(--border)" }}>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{r.code}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{r.message}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{r.count}</td>
+                        <td className="px-3 py-2" style={{ color: "var(--text)" }}>{new Date(r.lastSeenAtUtc).toLocaleString("pt-BR")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {fiscalRejections.length === 0 && (
+                  <p className="text-sm py-4 text-center" style={{ color: "var(--text-muted)" }}>
+                    Nenhuma rejeicao fiscal encontrada no periodo.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -589,7 +719,7 @@ export default function ReportsPage() {
                           <div className="h-full bg-brand/70 rounded-full" style={{ width: `${(p.totalCents / maxRevenue) * 100}%` }} />
                         </div>
                         <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                          {p.totalQty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} un � {p.transactionCount} transacoes � {pct}% da receita
+                          {p.totalQty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} un · {p.transactionCount} transacoes · {pct}% da receita
                         </p>
                       </div>
                     </div>
@@ -603,3 +733,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
