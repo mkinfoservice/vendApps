@@ -17,7 +17,6 @@ using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Entities.StoreFront;
-using Petshop.Api.Entities.Marketplace;
 using Petshop.Api.Entities.Commissions;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
@@ -102,8 +101,6 @@ public class AppDbContext : DbContext
     public DbSet<SalesQuoteItem> SalesQuoteItems => Set<SalesQuoteItem>();
 
     // ── Marketplace (iFood, etc.) ─────────────────────────────
-    public DbSet<MarketplaceIntegration> MarketplaceIntegrations => Set<MarketplaceIntegration>();
-    public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
 
     // ── PDV ───────────────────────────────────────────────────
     public DbSet<CashRegister>            CashRegisters            => Set<CashRegister>();
@@ -760,42 +757,6 @@ public class AppDbContext : DbContext
         // ══════════════════════════════════════════════════════
         // MARKETPLACE (iFood, etc.)
         // ══════════════════════════════════════════════════════
-
-        modelBuilder.Entity<MarketplaceIntegration>()
-            .HasOne(m => m.Company)
-            .WithMany()
-            .HasForeignKey(m => m.CompanyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<MarketplaceIntegration>()
-            .Property(m => m.Type)
-            .HasConversion<string>()
-            .HasMaxLength(30);
-
-        // Uma empresa pode ter múltiplas integrações; MerchantId é único por tipo
-        modelBuilder.Entity<MarketplaceIntegration>()
-            .HasIndex(m => new { m.Type, m.MerchantId })
-            .IsUnique();
-
-        modelBuilder.Entity<MarketplaceIntegration>()
-            .HasIndex(m => m.CompanyId);
-
-        modelBuilder.Entity<MarketplaceOrder>()
-            .HasOne(mo => mo.Integration)
-            .WithMany(i => i.Orders)
-            .HasForeignKey(mo => mo.MarketplaceIntegrationId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<MarketplaceOrder>()
-            .HasOne(mo => mo.Order)
-            .WithMany()
-            .HasForeignKey(mo => mo.OrderId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Deduplicação: um externalOrderId único por integração
-        modelBuilder.Entity<MarketplaceOrder>()
-            .HasIndex(mo => new { mo.MarketplaceIntegrationId, mo.ExternalOrderId })
-            .IsUnique();
 
         // ══════════════════════════════════════════════════════
         // PDV (Fase 3)
