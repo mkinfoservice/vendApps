@@ -54,6 +54,7 @@ import DavBuilderPage from "./pages/admin/DavBuilderPage";
 import CatalogEnrichmentPage from "./pages/admin/CatalogEnrichmentPage";
 import StoreFrontConfigPage from "./pages/admin/StoreFrontConfigPage";
 import TablesPage from "./pages/admin/TablesPage";
+import MarketplacePage from "./pages/admin/MarketplacePage";
 import MesaPage from "./pages/MesaPage";
 
 // ── PDV ───────────────────────────────────────────────────────────────────────
@@ -164,6 +165,7 @@ export function AppRoutes() {
         <Route path="/app/balanca" element={<AppPage roles={["admin"]}><ScaleAgentsPage /></AppPage>} />
         <Route path="/app/enriquecimento" element={<AppPage roles={["admin","gerente"]}><CatalogEnrichmentPage /></AppPage>} />
         <Route path="/app/configuracao-loja" element={<AppPage roles={["admin","gerente"]}><StoreFrontConfigPage /></AppPage>} />
+        <Route path="/app/marketplace" element={<AppPage roles={["admin"]}><MarketplacePage /></AppPage>} />
         <Route path="/app/dashboard" element={<AppPage><Dashboard /></AppPage>} />
 
         {/* ── Redirects legados /admin/* → /app/* ─────────────────────── */}

@@ -25,6 +25,7 @@ import {
   Store,
   Coffee,
   HandCoins,
+  Plug,
   type LucideIcon,
 } from "lucide-react";
 
@@ -423,6 +424,18 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/configuracao-loja",
     group: "PLATAFORMA",
     roles: ["admin", "gerente"],
+    isActive: true,
+  },
+  {
+    id: "marketplace",
+    label: "Marketplaces",
+    description: "Integrações com iFood e outros canais de venda",
+    icon: Plug,
+    iconColor: "#ea4c00",
+    iconBg: "rgba(234,76,0,0.12)",
+    route: "/app/marketplace",
+    group: "PLATAFORMA",
+    roles: ["admin"],
     isActive: true,
   },
   {
