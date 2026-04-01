@@ -32,7 +32,7 @@ function buildCartKey(productId: string, addonIds: string[]) {
   return `${productId}::${[...addonIds].sort().join(",")}`;
 }
 function paymentMethodLabel(method: string) {
-  if (method === "PIX") return "Pix"; if (method === "CARD") return "CartÃ£o"; if (method === "CASH") return "Dinheiro"; return method;
+  if (method === "PIX") return "Pix"; if (method === "CARD") return "Cartão"; if (method === "CASH") return "Dinheiro"; return method;
 }
 function normalizeDavCode(code: string) {
   const normalized = code.trim().toUpperCase();
@@ -176,7 +176,7 @@ export default function PhoneOrderBuilder() {
 
   const stepTitles: Record<Step, string> = {
     search: "Identificar cliente", customer: "Dados do cliente", cart: "Montar carrinho",
-    payment: "Pagamento", summary: confirmedOrderId ? "Pedido confirmado" : "Resumo do orÃ§amento",
+    payment: "Pagamento", summary: confirmedOrderId ? "Pedido confirmado" : "Resumo do orçamento",
   };
   const isSuccessScreen = step === "summary" && !!confirmedOrderId;
 
@@ -197,13 +197,13 @@ export default function PhoneOrderBuilder() {
             </p>
             <div className="inline-block px-5 py-2.5 rounded-2xl mt-2"
               style={{ background: `${GC.caramel}18`, color: GC.caramel }}>
-              <span className="text-xs font-semibold block">NÃºmero do pedido</span>
+              <span className="text-xs font-semibold block">Número do pedido</span>
               <span className="text-xl font-black">{confirmedOrderNumber}</span>
             </div>
             {confirmedDavId && (
               <div className="px-5 py-3 rounded-2xl mt-2"
                 style={{ background: "linear-gradient(135deg, #059669, #047857)", color: "#fff" }}>
-                <span className="text-xs font-semibold block opacity-80">CÃ³digo DAV para o caixa</span>
+                <span className="text-xs font-semibold block opacity-80">Código DAV para o caixa</span>
                 <span className="text-2xl font-black tracking-widest">{confirmedDavId}</span>
               </div>
             )}
@@ -246,7 +246,7 @@ export default function PhoneOrderBuilder() {
         <div className="flex-1 min-w-0">
           <p className="font-black text-base leading-tight" style={{ color: GC.dark }}>{stepTitles[step]}</p>
           <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>
-            Etapa {stepIndex(step) + 1} de {STEPS.length} Â· {STEP_LABELS[stepIndex(step)]}
+            Etapa {stepIndex(step) + 1} de {STEPS.length} · {STEP_LABELS[stepIndex(step)]}
           </p>
         </div>
         {cart.length > 0 && step !== "cart" && step !== "summary" && (
@@ -333,7 +333,7 @@ export default function PhoneOrderBuilder() {
                           </div>
                           <div>
                             <p className="font-bold" style={{ color: GC.dark }}>{foundCustomer.name}</p>
-                            <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>{foundCustomer.phone || foundCustomer.cpf || "â€”"}</p>
+                            <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>{foundCustomer.phone || foundCustomer.cpf || "—"}</p>
                             {foundCustomer.address && (
                               <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: GC.brown, opacity: 0.5 }}>
                                 <MapPin size={11} />{foundCustomer.address}
@@ -344,14 +344,14 @@ export default function PhoneOrderBuilder() {
                         <button onClick={continueFromSearch}
                           className="w-full py-3 rounded-2xl font-black text-sm text-white transition active:scale-[0.98]"
                           style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
-                          Confirmar e montar pedido â†’
+                          Confirmar e montar pedido →
                         </button>
                       </>
                     ) : (
                       <>
                         <div className="flex items-center gap-2" style={{ color: GC.brown, opacity: 0.65 }}>
                           <User size={16} />
-                          <span className="text-sm">Cliente nÃ£o encontrado. Cadastre abaixo:</span>
+                          <span className="text-sm">Cliente não encontrado. Cadastre abaixo:</span>
                         </div>
                         <div className="space-y-2">
                           <input value={guestName} onChange={(e) => setGuestName(e.target.value)} placeholder="Nome *"
@@ -371,12 +371,12 @@ export default function PhoneOrderBuilder() {
                           <button disabled={!guestName.trim() || registerLoading} onClick={handleRegisterAndContinue}
                             className="py-3 rounded-2xl text-sm font-black text-white disabled:opacity-50 transition active:scale-95"
                             style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
-                            {registerLoading ? "Cadastrandoâ€¦" : "Cadastrar e continuar"}
+                            {registerLoading ? "Cadastrando..." : "Cadastrar e continuar"}
                           </button>
                           <button disabled={!guestName.trim()} onClick={continueFromSearch}
                             className="py-3 rounded-2xl text-sm font-semibold disabled:opacity-50 transition active:scale-95"
                             style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
-                            SÃ³ desta vez
+                            Só desta vez
                           </button>
                         </div>
                       </>
@@ -400,7 +400,7 @@ export default function PhoneOrderBuilder() {
                 <button disabled={!guestName.trim()} onClick={continueQuickGuest}
                   className="w-full py-3 rounded-2xl font-black text-sm text-white disabled:opacity-50 transition active:scale-[0.98]"
                   style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
-                  Ir para produtos â†’
+                  Ir para produtos →
                 </button>
               </div>
             )}
@@ -466,7 +466,7 @@ export default function PhoneOrderBuilder() {
             <div className="relative">
               <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: GC.brown, opacity: 0.45 }} />
               <input value={productSearch} onChange={(e) => setProductSearch(e.target.value)}
-                placeholder="Buscar produto, cÃ³digo ou barrasâ€¦"
+                placeholder="Buscar produto, código ou barras..."
                 className="w-full pl-11 pr-4 py-3 rounded-2xl text-sm focus:outline-none"
                 style={{ background: "#fff", border: `1.5px solid rgba(107,79,58,0.12)`, color: GC.dark, boxShadow: "0 2px 8px rgba(28,18,9,0.05)" }} />
             </div>
@@ -475,7 +475,7 @@ export default function PhoneOrderBuilder() {
               {/* Product grid */}
               <div className="rounded-3xl p-4" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.07)" }}>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-black uppercase tracking-widest" style={{ color: GC.brown, opacity: 0.6 }}>CatÃ¡logo</p>
+                  <p className="text-xs font-black uppercase tracking-widest" style={{ color: GC.brown, opacity: 0.6 }}>Catálogo</p>
                   <span className="text-xs" style={{ color: GC.brown, opacity: 0.45 }}>{filteredProducts.length} itens</span>
                 </div>
                 {loadingProducts ? (
@@ -594,7 +594,7 @@ export default function PhoneOrderBuilder() {
               <div>
                 <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: GC.brown, opacity: 0.6 }}>Forma de pagamento</p>
                 <div className="grid grid-cols-3 gap-2">
-                  {[{ key: "PIX", label: "Pix" }, { key: "CARD", label: "CartÃ£o" }, { key: "CASH", label: "Dinheiro" }].map((m) => (
+                  {[{ key: "PIX", label: "Pix" }, { key: "CARD", label: "Cartão" }, { key: "CASH", label: "Dinheiro" }].map((m) => (
                     <button key={m.key} onClick={() => setPaymentMethod(m.key)}
                       className="py-3 rounded-2xl text-sm font-bold transition active:scale-95"
                       style={paymentMethod === m.key
@@ -610,7 +610,7 @@ export default function PhoneOrderBuilder() {
                 <div>
                   <label className="text-xs font-black uppercase tracking-widest block mb-2" style={{ color: GC.brown, opacity: 0.6 }}>Valor em dinheiro (R$)</label>
                   <input type="number" step="0.01" value={cashGiven} onChange={(e) => setCashGiven(e.target.value)}
-                    placeholder={`MÃ­n. ${formatCents(total)}`}
+                    placeholder={`Mín. ${formatCents(total)}`}
                     className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
                     style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
                   {cashGivenCents > 0 && cashGivenCents >= total && (
@@ -661,7 +661,7 @@ export default function PhoneOrderBuilder() {
               {cart.map((item) => (
                 <div key={item.key} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="font-semibold" style={{ color: GC.dark }}>{item.qty}Ã— {item.product.name}</span>
+                    <span className="font-semibold" style={{ color: GC.dark }}>{item.qty}× {item.product.name}</span>
                     <span className="font-bold" style={{ color: GC.dark }}>{formatCents(itemUnitPriceCents(item) * item.qty)}</span>
                   </div>
                   {item.addons.map((a) => (
@@ -710,7 +710,7 @@ export default function PhoneOrderBuilder() {
               <button onClick={goNext} disabled={!canProceed[step]}
                 className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}>
-                {step === "payment" ? "Ver resumo" : "PrÃ³ximo"} <ArrowRight size={18} />
+                {step === "payment" ? "Ver resumo" : "Próximo"} <ArrowRight size={18} />
               </button>
             </div>
           </div>
@@ -776,7 +776,7 @@ function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setS
                   : { border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.dark, background: GC.bg }}>
                 <div className="w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all"
                   style={{ borderColor: sel ? GC.caramel : "rgba(107,79,58,0.3)", background: sel ? GC.caramel : "transparent" }}>
-                  {sel && <span className="text-white text-[10px] font-black leading-none">âœ“</span>}
+                  {sel && <span className="text-white text-[10px] font-black leading-none">✓</span>}
                 </div>
                 <span className="flex-1 font-medium text-left">{addon.name}</span>
                 <span className="font-black text-sm shrink-0" style={{ color: GC.caramel }}>+{formatCents(addon.priceCents)}</span>
@@ -815,7 +815,7 @@ function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setS
             </div>
           ))}
           <div className="flex justify-between font-black pt-1" style={{ borderTop: `1px solid rgba(107,79,58,0.1)`, color: GC.dark }}>
-            <span>Total unitÃ¡rio</span><span style={{ color: GC.caramel }}>{formatCents(totalUnit)}</span>
+            <span>Total unitário</span><span style={{ color: GC.caramel }}>{formatCents(totalUnit)}</span>
           </div>
         </div>
 
