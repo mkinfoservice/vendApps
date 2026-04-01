@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { Coffee } from "lucide-react";
 import { login } from "@/features/admin/auth/api";
 import { isAuthenticated, saveToken } from "@/features/admin/auth/auth";
 import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
+
+const GC = { bg: "#FAF7F2", cream: "#F5EDE0", brown: "#6B4F3A", dark: "#1C1209", caramel: "#C8953A" };
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -22,21 +25,15 @@ export default function LoginPage() {
   });
   const companyName = tenantQuery.data?.name;
 
-  // Já autenticado → direto para a Central
   useEffect(() => {
-    if (isAuthenticated()) {
-      navigate("/app", { replace: true });
-    }
+    if (isAuthenticated()) navigate("/app", { replace: true });
   }, [navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const u = username.trim();
     const p = password;
-    if (!u || !p) {
-      setError("Informe usuário e senha.");
-      return;
-    }
+    if (!u || !p) { setError("Informe usuário e senha."); return; }
     try {
       setLoading(true);
       setError("");
@@ -51,99 +48,72 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-dvh flex items-center justify-center px-4"
-      style={{ backgroundColor: "var(--bg)" }}
-    >
-      <div
-        className="w-full max-w-sm rounded-2xl border shadow-2xl"
-        style={{
-          backgroundColor: "var(--surface)",
-          borderColor: "var(--border)",
-        }}
-      >
+    <div className="min-h-dvh flex items-center justify-center px-4" style={{ background: GC.bg }}>
+      <div className="w-full max-w-sm rounded-3xl shadow-xl overflow-hidden"
+        style={{ background: "#fff", boxShadow: "0 8px 40px rgba(28,18,9,0.12)" }}>
+
         {/* Header */}
-        <div className="px-8 pt-8 pb-6 flex flex-col items-center gap-3">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-[0_0_28px_rgba(124,92,248,0.5)]"
-            style={{ backgroundColor: "var(--brand)" }}
-          >
-            <span className="text-white text-2xl select-none" aria-hidden>
-              🐾
-            </span>
+        <div className="px-8 pt-10 pb-7 flex flex-col items-center gap-4"
+          style={{ background: `linear-gradient(160deg, ${GC.dark} 0%, #3D2314 100%)` }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: `rgba(200,149,58,0.2)`, boxShadow: `0 0 0 1px rgba(200,149,58,0.25)` }}>
+            <Coffee size={30} style={{ color: GC.caramel }} />
           </div>
           <div className="text-center">
-            <h1
-              className="text-xl font-bold tracking-tight"
-              style={{ color: "var(--text)" }}
-            >
-              {companyName ? `Entrar em ${companyName}` : "vendApps"}
+            <h1 className="text-xl font-black text-white">
+              {companyName ?? "vendApps"}
             </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="text-sm mt-0.5" style={{ color: "rgba(245,237,224,0.55)" }}>
               Central de Operações
             </p>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px mx-6" style={{ backgroundColor: "var(--border)" }} />
-
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 pt-6 pb-8 space-y-4">
+        <form onSubmit={handleSubmit} className="px-8 pt-7 pb-8 space-y-4" style={{ background: GC.bg }}>
           <div className="space-y-1.5">
-            <label
-              htmlFor="username"
-              className="block text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <label htmlFor="username"
+              className="block text-[11px] font-bold uppercase tracking-widest"
+              style={{ color: GC.brown, opacity: 0.7 }}>
               Usuário
             </label>
             <input
-              id="username"
-              type="text"
-              autoComplete="username"
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="admin"
-              disabled={loading}
-              className="w-full h-11 rounded-xl border px-3.5 text-sm outline-none transition-all placeholder:opacity-40 focus:ring-2 focus:ring-[#7c5cf8]/40 disabled:opacity-60"
+              id="username" type="text" autoComplete="username" required
+              value={username} onChange={(e) => setUsername(e.target.value)}
+              placeholder="admin" disabled={loading}
+              className="w-full h-11 rounded-xl px-3.5 text-sm outline-none transition-all placeholder:opacity-40 focus:ring-2 disabled:opacity-60"
               style={{
-                backgroundColor: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
+                border: `1.5px solid rgba(107,79,58,0.15)`,
+                backgroundColor: GC.cream,
+                color: GC.dark,
+                ["--tw-ring-color" as string]: `${GC.caramel}50`,
               }}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="password"
-              className="block text-xs font-semibold uppercase tracking-widest"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <label htmlFor="password"
+              className="block text-[11px] font-bold uppercase tracking-widest"
+              style={{ color: GC.brown, opacity: 0.7 }}>
               Senha
             </label>
             <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              disabled={loading}
-              className="w-full h-11 rounded-xl border px-3.5 text-sm outline-none transition-all placeholder:opacity-40 focus:ring-2 focus:ring-[#7c5cf8]/40 disabled:opacity-60"
+              id="password" type="password" autoComplete="current-password" required
+              value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••" disabled={loading}
+              className="w-full h-11 rounded-xl px-3.5 text-sm outline-none transition-all placeholder:opacity-40 focus:ring-2 disabled:opacity-60"
               style={{
-                backgroundColor: "var(--surface-2)",
-                borderColor: "var(--border)",
-                color: "var(--text)",
+                border: `1.5px solid rgba(107,79,58,0.15)`,
+                backgroundColor: GC.cream,
+                color: GC.dark,
+                ["--tw-ring-color" as string]: `${GC.caramel}50`,
               }}
             />
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-800 bg-red-950/40 px-3.5 py-2.5 text-sm text-red-300">
+            <div className="rounded-xl px-3.5 py-2.5 text-sm"
+              style={{ background: "rgba(239,68,68,0.1)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.2)" }}>
               {error}
             </div>
           )}
@@ -151,10 +121,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !username.trim() || !password}
-            className="w-full h-11 rounded-xl text-sm font-bold text-white transition-all outline-none focus:ring-2 focus:ring-[#7c5cf8]/50 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)",
-            }}
+            className="w-full h-12 rounded-2xl text-sm font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`,
+              boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}
           >
             {loading ? "Entrando…" : "Entrar"}
           </button>
