@@ -9,7 +9,7 @@ export type OrderStatus =
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   RECEBIDO: "Recebido",
   EM_PREPARO: "Em preparo",
-  PRONTO_PARA_ENTREGA: "Pronto para entregar",
+  PRONTO_PARA_ENTREGA: "Pronto para servir",
   SAIU_PARA_ENTREGA: "Saiu para entrega",
   ENTREGUE: "Entregue",
   CANCELADO: "Cancelado",

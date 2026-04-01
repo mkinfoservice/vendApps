@@ -81,12 +81,18 @@ public class PrintController : ControllerBase
     public async Task<IActionResult> MarkPrinted(Guid jobId, CancellationToken ct = default)
     {
         var job = await _db.PrintJobs
+            .Include(j => j.Order)
             .FirstOrDefaultAsync(j => j.Id == jobId && j.CompanyId == CompanyId, ct);
 
         if (job is null) return NotFound();
 
         job.IsPrinted = true;
         job.PrintedAtUtc = DateTime.UtcNow;
+
+        // Ao imprimir, avança automaticamente de RECEBIDO → EM_PREPARO
+        if (job.Order is not null && job.Order.Status == "RECEBIDO")
+            job.Order.Status = "EM_PREPARO";
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new { marked = true });

@@ -753,16 +753,23 @@ function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setS
           </div>
         ) : (
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-            {addons.length > 0 ? addons.map((addon) => (
+            {addons.length > 0 ? addons.map((addon) => {
+              const sel = selectedIds.includes(addon.id);
+              return (
               <button key={addon.id} onClick={() => toggle(addon.id)}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl text-sm transition active:scale-[0.98]"
-                style={selectedIds.includes(addon.id)
-                  ? { background: `${GC.caramel}15`, border: `1.5px solid ${GC.caramel}50`, color: GC.dark }
+                className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm transition active:scale-[0.98]"
+                style={sel
+                  ? { background: `rgba(200,149,58,0.18)`, border: `2px solid ${GC.caramel}`, color: GC.dark }
                   : { border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.dark, background: GC.bg }}>
-                <span className="font-medium">{addon.name}</span>
-                <span className="font-black text-sm" style={{ color: GC.caramel }}>+{formatCents(addon.priceCents)}</span>
+                <div className="w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all"
+                  style={{ borderColor: sel ? GC.caramel : "rgba(107,79,58,0.3)", background: sel ? GC.caramel : "transparent" }}>
+                  {sel && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+                </div>
+                <span className="flex-1 font-medium text-left">{addon.name}</span>
+                <span className="font-black text-sm shrink-0" style={{ color: GC.caramel }}>+{formatCents(addon.priceCents)}</span>
               </button>
-            )) : (
+              );
+            }) : (
               <div className="rounded-2xl border-2 border-dashed p-4 text-sm text-center"
                 style={{ borderColor: "rgba(107,79,58,0.15)", color: GC.brown, opacity: 0.5 }}>
                 Sem adicionais

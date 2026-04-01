@@ -8,7 +8,8 @@ type Props = {
   isTableOrder?: boolean;
 };
 
-const ALL_STATUSES: OrderStatus[] = [
+/** Delivery/balcão: fluxo completo */
+const DELIVERY_STATUSES: OrderStatus[] = [
   "RECEBIDO",
   "EM_PREPARO",
   "PRONTO_PARA_ENTREGA",
@@ -17,10 +18,16 @@ const ALL_STATUSES: OrderStatus[] = [
   "CANCELADO",
 ];
 
+/** Mesa / Atendimento telefônico: fluxo simplificado (balcão) */
+const SERVICE_STATUSES: OrderStatus[] = [
+  "RECEBIDO",
+  "EM_PREPARO",
+  "PRONTO_PARA_ENTREGA",
+  "CANCELADO",
+];
+
 export function OrderStatusSelect({ value, onChange, disabled = false, isTableOrder = false }: Props) {
-  const statuses = isTableOrder
-    ? (["RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA", "CANCELADO"] as OrderStatus[])
-    : ALL_STATUSES;
+  const statuses = isTableOrder ? SERVICE_STATUSES : DELIVERY_STATUSES;
 
   return (
     <select

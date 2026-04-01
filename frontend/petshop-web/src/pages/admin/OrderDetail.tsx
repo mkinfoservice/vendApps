@@ -12,13 +12,13 @@ import { hasRole } from "@/features/admin/auth/auth";
 import { Printer } from "lucide-react";
 
 const ORDERED_STATUSES = [
-  "RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA", "SAIU_PARA_ENTREGA", "ENTREGUE",
+  "RECEBIDO", "EM_PREPARO", "PRONTO_PARA_ENTREGA",
 ] as const;
 
 const STATUS_LABELS: Record<string, string> = {
   RECEBIDO: "Recebido",
   EM_PREPARO: "Em preparo",
-  PRONTO_PARA_ENTREGA: "Pronto p/ entrega",
+  PRONTO_PARA_ENTREGA: "Pronto para servir",
   SAIU_PARA_ENTREGA: "Saiu p/ entrega",
   ENTREGUE: "Entregue",
 };
