@@ -111,7 +111,7 @@ public class RealFiscalEngine : IFiscalEngine
         return FiscalEngineResult.Rejected(result.RejectCode!, result.RejectMessage!);
     }
 
-    public async Task<FiscalEngineResult> CancelAsync(
+    public Task<FiscalEngineResult> CancelAsync(
         string accessKey,
         string reason,
         CancellationToken ct = default)
@@ -119,7 +119,7 @@ public class RealFiscalEngine : IFiscalEngine
         // Cancelamento NFC-e requer evento fiscal (NFeEventoCancNFe4)
         // Implementação completa na próxima iteração
         _logger.LogWarning("[RealFiscalEngine] Cancelamento ainda não implementado para NFC-e.");
-        return FiscalEngineResult.Rejected("999", "Cancelamento não implementado.");
+        return Task.FromResult(FiscalEngineResult.Rejected("999", "Cancelamento não implementado."));
     }
 
     public async Task<bool> IsSefazOnlineAsync(string uf, CancellationToken ct = default)

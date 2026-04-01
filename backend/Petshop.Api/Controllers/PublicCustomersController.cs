@@ -66,7 +66,7 @@ public class PublicCustomersController : ControllerBase
 
         return Ok(new
         {
-            customerId   = customer.Id,
+            customerId   = customer!.Id,
             name         = customer.Name,
             pointsBalance = customer.PointsBalance,
             isNew,
