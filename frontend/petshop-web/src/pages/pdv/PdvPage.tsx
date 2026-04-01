@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight, ClipboardList } from "lucide-react";
+import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
 // ── Design tokens (Go Coffee palette) ─────────────────────────────────────────
@@ -990,11 +990,10 @@ function CartTable({
 // ── Nav Drawer ─────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { icon: LayoutGrid,   label: "Central",      desc: "Visão geral da operação",    route: "/app"             },
-  { icon: ShoppingBag,  label: "Pedidos",       desc: "Todos os pedidos em aberto", route: "/app/pedidos"     },
-  { icon: Coffee,       label: "Mesas",         desc: "QR Code e comandas",         route: "/app/mesas"       },
-  { icon: Headphones,   label: "Atendimento",   desc: "Pedidos por telefone",       route: "/app/atendimento" },
-  { icon: ClipboardList,label: "DAV / Orçamento",desc: "Montar orçamento",          route: "/app/dav"         },
+  { icon: LayoutGrid,  label: "Central",    desc: "Visão geral da operação",    route: "/app"             },
+  { icon: ShoppingBag, label: "Pedidos",    desc: "Todos os pedidos em aberto", route: "/app/pedidos"     },
+  { icon: Coffee,      label: "Mesas",      desc: "QR Code e comandas",         route: "/app/mesas"       },
+  { icon: Headphones,  label: "Atendimento",desc: "Pedidos por telefone",       route: "/app/atendimento" },
 ];
 
 function NavDrawer({ onClose }: { onClose: () => void }) {
