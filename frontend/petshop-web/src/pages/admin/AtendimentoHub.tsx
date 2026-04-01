@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Coffee, Phone, Users, UserPlus, ClipboardList, ArrowRight } from "lucide-react";
+import { Phone, Users, UserPlus, ClipboardList, ArrowRight } from "lucide-react";
 
 const GC = { bg: "#FAF7F2", cream: "#F5EDE0", brown: "#6B4F3A", dark: "#1C1209", caramel: "#C8953A" };
 
