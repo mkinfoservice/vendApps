@@ -312,6 +312,7 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/financeiro",
     group: "GESTAO",
     roles: ["admin", "gerente"],
+    featureKey: "financial_menu",
     isActive: true,
   },
   {

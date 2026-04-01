@@ -149,8 +149,8 @@ export function AppRoutes() {
         <Route path="/app/insumos" element={<AppPage roles={["admin","gerente"]}><SuppliesPage /></AppPage>} />
 
         {/* ── /app — Gestão ───────────────────────────────────────────── */}
-        <Route path="/app/financeiro" element={<AppPage roles={["admin","gerente"]}><Financeiro /></AppPage>} />
-        <Route path="/app/financeiro/lancamentos" element={<AppPage roles={["admin","gerente"]}><FinancialEntriesPage /></AppPage>} />
+        <Route path="/app/financeiro" element={<AppPage roles={["admin","gerente"]} featureKey="financial_menu"><Financeiro /></AppPage>} />
+        <Route path="/app/financeiro/lancamentos" element={<AppPage roles={["admin","gerente"]} featureKey="financial_menu"><FinancialEntriesPage /></AppPage>} />
 
         <Route path="/app/caixa" element={<AppPage><CashRegistersPage /></AppPage>} />
         <Route path="/app/caixa/sessoes" element={<AppPage><CashSessionsPage /></AppPage>} />
