@@ -19,6 +19,7 @@ public sealed class GetOrderResponse
     public int TotalCents { get; init; }
 
     public string PaymentMethodStr { get; init; } = "";
+    public string? DavPublicId { get; init; }
     public int? CashGivenCents { get; init; }
     public int? ChangeCents { get; init; }
     public string? Coupon { get; init; }

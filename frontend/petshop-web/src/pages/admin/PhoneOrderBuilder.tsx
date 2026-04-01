@@ -171,7 +171,7 @@ export default function PhoneOrderBuilder() {
 
   const canProceed: Record<Step, boolean> = {
     search: !!lookupValue, customer: true, cart: cart.length > 0,
-    payment: paymentMethod !== "CASH" || (cashGivenCents >= subtotal && subtotal > 0), summary: false,
+    payment: paymentMethod !== "CASH" || (cashGivenCents >= total && total > 0), summary: false,
   };
 
   const stepTitles: Record<Step, string> = {
@@ -589,44 +589,107 @@ export default function PhoneOrderBuilder() {
 
         {/* â”€â”€ STEP: payment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === "payment" && (
-          <div className="max-w-lg mx-auto space-y-4">
-            <div className="rounded-3xl p-5 space-y-5" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: GC.brown, opacity: 0.6 }}>Forma de pagamento</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[{ key: "PIX", label: "Pix" }, { key: "CARD", label: "Cartão" }, { key: "CASH", label: "Dinheiro" }].map((m) => (
-                    <button key={m.key} onClick={() => setPaymentMethod(m.key)}
-                      className="py-3 rounded-2xl text-sm font-bold transition active:scale-95"
-                      style={paymentMethod === m.key
-                        ? { background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, color: "#fff" }
-                        : { border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.brown, background: GC.bg }}>
-                      {m.label}
-                    </button>
-                  ))}
+          <div className="mx-auto max-w-5xl">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+              <div className="space-y-4 lg:col-span-3">
+                <div className="rounded-3xl p-5 space-y-5" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: GC.brown, opacity: 0.6 }}>
+                      Forma de pagamento
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      {[{ key: "PIX", label: "Pix" }, { key: "CARD", label: "Cartão" }, { key: "CASH", label: "Dinheiro" }].map((m) => (
+                        <button
+                          key={m.key}
+                          onClick={() => setPaymentMethod(m.key)}
+                          className="py-3 rounded-2xl text-sm font-bold transition active:scale-95"
+                          style={paymentMethod === m.key
+                            ? { background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, color: "#fff" }
+                            : { border: `1.5px solid rgba(107,79,58,0.15)`, color: GC.brown, background: GC.bg }}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {paymentMethod === "CASH" && (
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-widest block mb-2" style={{ color: GC.brown, opacity: 0.6 }}>
+                        Valor em dinheiro (R$)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={cashGiven}
+                        onChange={(e) => setCashGiven(e.target.value)}
+                        placeholder={`Mín. ${formatCents(total)}`}
+                        className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
+                        style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }}
+                      />
+                      {cashGivenCents > 0 && cashGivenCents >= total && (
+                        <p className="text-sm font-bold mt-2" style={{ color: "#059669" }}>Troco: {formatCents(change)}</p>
+                      )}
+                      {cashGivenCents > 0 && cashGivenCents < total && (
+                        <p className="text-sm mt-2" style={{ color: "#dc2626" }}>Faltam {formatCents(total - cashGivenCents)}</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl p-4 space-y-2" style={{ background: GC.bg }}>
+                    <div className="flex items-center justify-between text-sm" style={{ color: GC.brown }}>
+                      <span>Subtotal</span>
+                      <span className="font-bold">{formatCents(subtotal)}</span>
+                    </div>
+                    {deliveryCents > 0 && (
+                      <div className="flex items-center justify-between text-sm" style={{ color: GC.brown }}>
+                        <span>Entrega</span>
+                        <span className="font-bold">{formatCents(deliveryCents)}</span>
+                      </div>
+                    )}
+                    <div className="h-px" style={{ background: "rgba(107,79,58,0.12)" }} />
+                    <div className="flex justify-between font-black" style={{ color: GC.dark }}>
+                      <span>Total</span>
+                      <span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(total)}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={goNext}
+                    disabled={!canProceed.payment}
+                    className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 transition active:scale-[0.98]"
+                    style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}
+                  >
+                    Ver resumo →
+                  </button>
                 </div>
               </div>
 
-              {paymentMethod === "CASH" && (
-                <div>
-                  <label className="text-xs font-black uppercase tracking-widest block mb-2" style={{ color: GC.brown, opacity: 0.6 }}>Valor em dinheiro (R$)</label>
-                  <input type="number" step="0.01" value={cashGiven} onChange={(e) => setCashGiven(e.target.value)}
-                    placeholder={`Mín. ${formatCents(total)}`}
-                    className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
-                    style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
-                  {cashGivenCents > 0 && cashGivenCents >= total && (
-                    <p className="text-sm font-bold mt-2" style={{ color: "#059669" }}>Troco: {formatCents(change)}</p>
-                  )}
-                  {cashGivenCents > 0 && cashGivenCents < total && (
-                    <p className="text-sm mt-2" style={{ color: "#dc2626" }}>Faltam {formatCents(total - cashGivenCents)}</p>
-                  )}
-                </div>
-              )}
+              <aside className="lg:col-span-2">
+                <div className="rounded-3xl p-5 space-y-4 lg:sticky lg:top-24" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-widest" style={{ color: GC.brown, opacity: 0.55 }}>
+                      Resumo rápido
+                    </p>
+                    <p className="mt-2 text-sm font-bold" style={{ color: GC.dark }}>{effectiveName || "Sem nome"}</p>
+                    {effectivePhone && <p className="text-xs" style={{ color: GC.brown, opacity: 0.65 }}>{effectivePhone}</p>}
+                  </div>
 
-              <div className="rounded-2xl p-4" style={{ background: GC.bg }}>
-                <div className="flex justify-between font-black" style={{ color: GC.dark }}>
-                  <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(subtotal)}</span>
+                  <div className="space-y-2">
+                    {cart.slice(0, 4).map((item) => (
+                      <div key={item.key} className="flex items-start justify-between gap-2 text-sm">
+                        <span className="line-clamp-2" style={{ color: GC.dark }}>{item.qty}× {item.product.name}</span>
+                        <span className="font-bold shrink-0" style={{ color: GC.dark }}>{formatCents(itemUnitPriceCents(item) * item.qty)}</span>
+                      </div>
+                    ))}
+                    {cart.length > 4 && (
+                      <p className="text-xs" style={{ color: GC.brown, opacity: 0.65 }}>
+                        +{cart.length - 4} item(ns)
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </aside>
             </div>
           </div>
         )}
@@ -680,7 +743,7 @@ export default function PhoneOrderBuilder() {
                 <span>Forma</span><span>{paymentMethodLabel(paymentMethod)}</span>
               </div>
               <div className="flex justify-between pt-2 font-black" style={{ borderTop: `1px solid rgba(107,79,58,0.12)`, color: GC.dark }}>
-                <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(subtotal)}</span>
+                <span>Total</span><span style={{ color: GC.caramel, fontSize: "1.1rem" }}>{formatCents(total)}</span>
               </div>
             </div>
 
@@ -691,7 +754,7 @@ export default function PhoneOrderBuilder() {
                 Cancelar
               </button>
               <button
-                disabled={(paymentMethod === "CASH" && cashGivenCents < subtotal) || confirmMut.isPending}
+                disabled={(paymentMethod === "CASH" && cashGivenCents < total) || confirmMut.isPending}
                 onClick={() => { setSubmitError(null); confirmMut.mutate(); }}
                 className="flex-1 py-3.5 rounded-2xl text-sm font-black text-white disabled:opacity-50 transition active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}>
@@ -703,14 +766,14 @@ export default function PhoneOrderBuilder() {
         )}
 
         {/* â”€â”€ Next button (steps 2-4) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-        {step !== "search" && step !== "summary" && step !== "customer" && (
+        {step === "cart" && (
           <div className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3"
             style={{ background: `linear-gradient(to top, ${GC.bg} 70%, transparent)` }}>
             <div className="mx-auto max-w-4xl">
               <button onClick={goNext} disabled={!canProceed[step]}
                 className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40 transition active:scale-[0.98] flex items-center justify-center gap-2"
                 style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 18px rgba(28,18,9,0.3)" }}>
-                {step === "payment" ? "Ver resumo" : "Próximo"} <ArrowRight size={18} />
+                Ir para pagamento <ArrowRight size={18} />
               </button>
             </div>
           </div>
@@ -835,4 +898,3 @@ function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setS
     </div>
   );
 }
-

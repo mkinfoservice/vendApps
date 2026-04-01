@@ -42,6 +42,7 @@ export type OrderItem = {
 export type GetOrderResponse = {
   id: string;
   orderNumber: string;
+  davPublicId?: string | null;
   status: string;
   name: string;
   phone: string;

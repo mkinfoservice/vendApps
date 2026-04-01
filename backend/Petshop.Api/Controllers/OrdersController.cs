@@ -107,6 +107,13 @@ public class OrdersController : ControllerBase
         if (order is null)
             return NotFound("Pedido não encontrado.");
 
+        var davPublicId = await _db.SalesQuotes
+            .AsNoTracking()
+            .Where(q => q.CompanyId == CompanyId && q.OriginOrderId == order.Id)
+            .OrderByDescending(q => q.CreatedAtUtc)
+            .Select(q => q.PublicId)
+            .FirstOrDefaultAsync();
+
         Table? table = null;
         if (order.TableId.HasValue)
         {
@@ -135,6 +142,7 @@ public class OrdersController : ControllerBase
             TotalCents = order.TotalCents,
 
             PaymentMethodStr = order.PaymentMethod,
+            DavPublicId = davPublicId,
             CashGivenCents = order.CashGivenCents,
             ChangeCents = order.ChangeCents,
             Coupon = order.Coupon,
