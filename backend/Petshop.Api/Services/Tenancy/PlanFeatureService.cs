@@ -9,6 +9,7 @@ public static class AppFeatureKeys
     public const string Agenda = "agenda";
     public const string Commissions = "commissions";
     public const string Tips = "tips";
+    public const string DavMenu = "dav_menu";
 }
 
 public class PlanFeatureService
@@ -24,7 +25,8 @@ public class PlanFeatureService
     [
         AppFeatureKeys.Agenda,
         AppFeatureKeys.Commissions,
-        AppFeatureKeys.Tips
+        AppFeatureKeys.Tips,
+        AppFeatureKeys.DavMenu
     ];
 
     public async Task<Dictionary<string, bool>> ResolveFeaturesAsync(Company company, CancellationToken ct = default)
@@ -51,6 +53,7 @@ public class PlanFeatureService
             [AppFeatureKeys.Agenda] = IsPlanAtLeast(plan, "pro"),
             [AppFeatureKeys.Commissions] = IsPlanAtLeast(plan, "trial"),
             [AppFeatureKeys.Tips] = IsPlanAtLeast(plan, "trial"),
+            [AppFeatureKeys.DavMenu] = true,
         };
     }
 

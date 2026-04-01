@@ -123,6 +123,7 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/atendimento/pedido",
     group: "OPERACAO",
     roles: null,
+    featureKey: "dav_menu",
     isActive: true,
   },
   {

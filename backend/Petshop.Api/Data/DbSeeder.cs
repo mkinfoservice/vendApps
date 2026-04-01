@@ -48,6 +48,7 @@ public static class DbSeeder
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Agenda, false);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Commissions, true);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Tips, true);
+        await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.DavMenu, false);
     }
 
     // ── Core ─────────────────────────────────────────────────────────────────

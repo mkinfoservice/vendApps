@@ -18,7 +18,7 @@ import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
 import { useDashboard } from "@/features/admin/dashboard/queries";
 import type { AdminDashboardResponse } from "@/features/admin/dashboard/api";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -27,7 +27,7 @@ function getGreeting(): string {
   return "Boa noite";
 }
 
-// ── KPI Card ──────────────────────────────────────────────────────────────────
+// â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type KpiItem = {
   label: string;
@@ -74,7 +74,7 @@ function KpiCard({ label, value, icon: Icon, accent, sub, route }: KpiItem) {
       </div>
       {clickable && (
         <p className="text-[10px] font-semibold uppercase tracking-widest mt-auto" style={{ color: accent }}>
-          Ver detalhes →
+          Ver detalhes â†’
         </p>
       )}
     </div>
@@ -150,7 +150,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
   ];
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function OperationCenter() {
   const navigate = useNavigate();
@@ -181,7 +181,7 @@ export default function OperationCenter() {
   const kpis = dash ? buildKpis(dash) : null;
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null;
 
-  // Module data — filtrado por isActive e permissões do role
+  // Module data â€” filtrado por isActive e permissÃµes do role
   const modulesByGroup = getModulesByGroup();
   const groupOrder = getGroupOrder();
   const activeModules = APP_MODULES.filter(
@@ -220,7 +220,7 @@ export default function OperationCenter() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-8 space-y-8">
 
-      {/* ── Welcome header ───────────────────────────────────────────── */}
+      {/* â”€â”€ Welcome header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="space-y-1">
         <h1
           className="text-2xl font-bold tracking-tight"
@@ -230,12 +230,12 @@ export default function OperationCenter() {
         </h1>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           {companyName
-            ? `${companyName} — Central de Operações`
-            : "Central de Operações"}
+            ? `${companyName} â€” Central de OperaÃ§Ãµes`
+            : "Central de OperaÃ§Ãµes"}
         </p>
       </div>
 
-      {/* ── Search bar ───────────────────────────────────────────────── */}
+      {/* â”€â”€ Search bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="relative max-w-md">
         <Search
           size={16}
@@ -244,7 +244,7 @@ export default function OperationCenter() {
         />
         <input
           type="text"
-          placeholder="Buscar módulo..."
+          placeholder="Buscar mÃ³dulo..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full h-10 rounded-xl border pl-9 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-[#C8953A]/30"
@@ -256,14 +256,14 @@ export default function OperationCenter() {
         />
       </div>
 
-      {/* ── Acesso Rápido ────────────────────────────────────────────── */}
+      {/* â”€â”€ Acesso RÃ¡pido â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {searchResults === null && (
         <section className="space-y-2">
           <h2
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: "var(--text-muted)" }}
           >
-            Acesso rápido
+            Acesso rÃ¡pido
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Mesas */}
@@ -295,7 +295,7 @@ export default function OperationCenter() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm leading-tight" style={{ color: "var(--text)" }}>Atendimento</p>
-                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Pedidos por telefone e balcão</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Pedidos por telefone e balcÃ£o</p>
               </div>
               <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#C8953A" }} />
             </button>
@@ -317,27 +317,29 @@ export default function OperationCenter() {
               <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#C8953A" }} />
             </button>
 
-            {/* Orçamento / DAV */}
-            <button
-              type="button"
-              onClick={() => { trackRecent("orcamento"); navigate("/app/dav"); }}
-              className="group relative overflow-hidden rounded-2xl border p-5 flex items-center gap-4 text-left transition-all hover:ring-2 hover:ring-[#A07230]/40 hover:scale-[1.02] active:scale-[0.99]"
-              style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
-            >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(160,114,48,0.14)" }}>
-                <FileText size={22} color="#A07230" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm leading-tight" style={{ color: "var(--text)" }}>Orçamento / DAV</p>
-                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Montar orçamento para o cliente</p>
-              </div>
-              <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#A07230" }} />
-            </button>
+            {/* OrÃ§amento / DAV */}
+            {(tenantFeatures?.dav_menu ?? true) && (
+              <button
+                type="button"
+                onClick={() => { trackRecent("orcamento"); navigate("/app/dav"); }}
+                className="group relative overflow-hidden rounded-2xl border p-5 flex items-center gap-4 text-left transition-all hover:ring-2 hover:ring-[#A07230]/40 hover:scale-[1.02] active:scale-[0.99]"
+                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+              >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(160,114,48,0.14)" }}>
+                  <FileText size={22} color="#A07230" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm leading-tight" style={{ color: "var(--text)" }}>Orçamento / DAV</p>
+                  <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>Montar orçamento para o cliente</p>
+                </div>
+                <ArrowRight size={16} className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: "#A07230" }} />
+              </button>
+            )}
           </div>
         </section>
       )}
 
-      {/* ── KPI Cards ────────────────────────────────────────────────── */}
+      {/* â”€â”€ KPI Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {searchResults === null && (
         <section className="space-y-2">
           <div className="flex items-center justify-between">
@@ -345,12 +347,12 @@ export default function OperationCenter() {
               className="text-xs font-bold uppercase tracking-widest"
               style={{ color: "var(--text-muted)" }}
             >
-              Visão geral de hoje
+              VisÃ£o geral de hoje
             </h2>
             <div className="flex items-center gap-2">
               {updatedAt && (
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  Atualizado às {updatedAt}
+                  Atualizado Ã s {updatedAt}
                 </span>
               )}
               <button
@@ -372,7 +374,7 @@ export default function OperationCenter() {
         </section>
       )}
 
-      {/* ── Search results ───────────────────────────────────────────── */}
+      {/* â”€â”€ Search results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {searchResults !== null && (
         <section className="space-y-3">
           <p
@@ -381,7 +383,7 @@ export default function OperationCenter() {
           >
             {searchResults.length > 0
               ? `${searchResults.length} resultado${searchResults.length > 1 ? "s" : ""}`
-              : "Nenhum módulo encontrado"}
+              : "Nenhum mÃ³dulo encontrado"}
           </p>
           {searchResults.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -399,7 +401,7 @@ export default function OperationCenter() {
         </section>
       )}
 
-      {/* ── Normal layout (no search) ────────────────────────────────── */}
+      {/* â”€â”€ Normal layout (no search) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {searchResults === null && (
         <>
           {/* Favorites */}
@@ -483,3 +485,4 @@ export default function OperationCenter() {
     </div>
   );
 }
+
