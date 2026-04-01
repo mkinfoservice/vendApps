@@ -6,7 +6,7 @@ type Props = {
   brandColor?: string;
 };
 
-export function TopBar({ cartSlot, logoUrl, storeName, storeSlogan, brandColor = "#C8953A" }: Props) {
+export function TopBar({ cartSlot, logoUrl, storeName, storeSlogan }: Props) {
   return (
     <div className="bg-[var(--surface)] shadow-sm border-b border-[var(--border)]">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center gap-3">

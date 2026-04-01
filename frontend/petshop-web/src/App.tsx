@@ -322,8 +322,7 @@ export default function App() {
         {cart.totalItems > 0 && (
           <div
             className="xl:hidden fixed left-0 right-0 bottom-0 z-40 border-t border-[var(--border)] shadow-[0_-8px_24px_rgba(28,18,9,0.12)]"
-            style={{ background: "var(--surface)" }}
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            style={{ background: "var(--surface)", paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
               {/* Ícone do carrinho com badge */}
