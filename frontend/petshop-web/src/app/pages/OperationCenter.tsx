@@ -47,7 +47,7 @@ function KpiCard({ label, value, icon: Icon, accent, sub, route }: KpiItem) {
       onClick={clickable ? () => navigate(route!) : undefined}
       className={[
         "rounded-2xl border p-4 flex flex-col gap-3 transition-all",
-        clickable ? "cursor-pointer hover:ring-2 hover:ring-[#7c5cf8]/30 hover:scale-[1.02] active:scale-[0.99]" : "",
+        clickable ? "cursor-pointer hover:ring-2 hover:ring-[#C8953A]/25 hover:scale-[1.02] active:scale-[0.99]" : "",
       ].join(" ")}
       style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
     >

@@ -504,7 +504,7 @@ export default function PhoneOrderBuilder() {
                               disabled={!guestName.trim() || registerLoading}
                               onClick={handleRegisterAndContinue}
                               className="py-2.5 rounded-xl text-sm font-semibold hover:brightness-110 disabled:opacity-50 transition text-white"
-                              style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+                              style={{ background: "linear-gradient(135deg, #1C1209, #3D2314)" }}
                             >
                               {registerLoading ? "Cadastrando…" : "Cadastrar e continuar"}
                             </button>

@@ -365,6 +365,53 @@ public class PdvController : ControllerBase
         return Ok(MapSale(sale));
     }
 
+    // ── GET /pdv/sales ────────────────────────────────────────────────────────
+    /// <summary>Lista todas as vendas PDV da empresa com paginação e filtros.</summary>
+    [HttpGet("sales")]
+    public async Task<IActionResult> ListSales(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
+        var query = _db.SaleOrders
+            .AsNoTracking()
+            .Where(o => o.CompanyId == CompanyId)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) &&
+            Enum.TryParse<SaleOrderStatus>(status.Trim(), ignoreCase: true, out var parsedStatus))
+            query = query.Where(o => o.Status == parsedStatus);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(o => o.PublicId.Contains(term) ||
+                                     o.CustomerName.Contains(term));
+        }
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(o => o.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(o => new
+            {
+                o.Id, o.PublicId, o.CustomerName, o.CustomerPhone,
+                Status = o.Status.ToString(),
+                o.TotalCents, o.CreatedAtUtc, o.CompletedAtUtc,
+                FromDav = o.SalesQuoteId.HasValue,
+            })
+            .ToListAsync(ct);
+
+        return Ok(new { page, pageSize, total, items });
+    }
+
     // ── POST /pdv/sale/{id}/scan ──────────────────────────────────────────────
     /// <summary>
     /// Lê um código de barras: detecta balança automaticamente,
