@@ -88,11 +88,12 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
 
   return (
     <div
-      className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow group h-full min-w-0 flex flex-col cursor-pointer"
+      className="rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm hover:shadow-lg transition-shadow group h-full min-w-0 flex flex-col cursor-pointer"
+      style={{ background: "var(--surface)" }}
       onClick={handleCardClick}
     >
       {/* Imagem */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100 shrink-0">
+      <div className="relative aspect-[4/3] w-full overflow-hidden shrink-0" style={{ background: "var(--surface-2)" }}>
         <img
           src={img}
           alt={p.name}
@@ -135,7 +136,7 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
 
       {/* Conteúdo */}
       <div className="p-3 flex flex-col flex-1">
-        <p className="text-sm font-medium text-gray-900 line-clamp-2 min-h-[40px] leading-tight">
+        <p className="text-sm font-semibold line-clamp-2 min-h-[40px] leading-tight" style={{ color: "var(--text)" }}>
           {p.name}
         </p>
 
@@ -145,23 +146,24 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
             <button
               type="button"
               onClick={() => setPickerOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 hover:border-gray-300 transition-colors"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl border border-[var(--border)] text-xs font-medium transition-colors"
+              style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}
             >
               <span>{selectedVariant?.variantValue ?? "Escolha o tamanho"}</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${pickerOpen ? "rotate-180" : ""}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform opacity-50 ${pickerOpen ? "rotate-180" : ""}`} />
             </button>
 
             {pickerOpen && (
-              <div className="absolute z-20 left-0 right-0 top-full mt-1 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+              <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl border border-[var(--border)] shadow-lg overflow-hidden" style={{ background: "var(--surface)" }}>
                 {p.variants!.map((v) => (
                   <button
                     key={v.id}
                     type="button"
                     onClick={() => { setSelectedVariant(v); setPickerOpen(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${
-                      selectedVariant?.id === v.id ? "font-semibold" : "font-normal"
-                    }`}
-                    style={selectedVariant?.id === v.id ? { color: "var(--brand)" } : { color: "#374151" }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-[var(--surface-2)]"
+                    style={selectedVariant?.id === v.id
+                      ? { color: "var(--brand)", fontWeight: 700 }
+                      : { color: "var(--text)" }}
                   >
                     <span>{v.variantValue}</span>
                     <span className="tabular-nums">{formatBRL(v.priceCents ?? p.priceCents)}</span>
@@ -175,11 +177,11 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
         <div className="mt-auto pt-2 flex items-center justify-between">
           <div className="flex flex-col">
             {originalCents && (
-              <span className="text-[11px] text-gray-400 line-through tabular-nums leading-tight">
+              <span className="text-[11px] line-through tabular-nums leading-tight opacity-50" style={{ color: "var(--text-muted)" }}>
                 {formatBRL(originalCents)}
               </span>
             )}
-            <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--brand)" }}>
+            <span className="text-sm font-black tabular-nums" style={{ color: "var(--brand)" }}>
               {formatBRL(activePriceCents)}
             </span>
           </div>
@@ -199,17 +201,18 @@ export function ProductCard({ p, onCardClick }: { p: Product; onCardClick?: () =
               <button
                 type="button"
                 onClick={handleDec}
-                className="w-7 h-7 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all"
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-95"
+                style={{ background: "var(--surface-2)" }}
                 aria-label={qty === 1 ? "Remover" : "Diminuir"}
               >
                 {qty === 1 ? (
                   <Trash2 className="w-3 h-3 text-red-400" />
                 ) : (
-                  <Minus className="w-3 h-3 text-gray-600" />
+                  <Minus className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
                 )}
               </button>
 
-              <span className="w-5 text-center text-sm font-bold text-gray-900 tabular-nums select-none">
+              <span className="w-5 text-center text-sm font-black tabular-nums select-none" style={{ color: "var(--text)" }}>
                 {qty}
               </span>
 

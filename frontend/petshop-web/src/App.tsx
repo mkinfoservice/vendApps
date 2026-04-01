@@ -26,16 +26,16 @@ function formatBRL(cents: number) {
 
 function ProductSkeleton() {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm animate-pulse h-full flex flex-col">
-      <div className="h-32 sm:h-40 lg:h-48 w-full bg-gray-200 shrink-0" />
+    <div className="rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm animate-pulse h-full flex flex-col" style={{ background: "var(--surface)" }}>
+      <div className="h-32 sm:h-40 lg:h-48 w-full shrink-0" style={{ background: "var(--surface-2)" }} />
       <div className="p-3 flex flex-col flex-1 justify-between">
         <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-3/4" />
-          <div className="h-4 bg-gray-200 rounded w-1/2" />
+          <div className="h-4 rounded w-3/4" style={{ background: "var(--surface-2)" }} />
+          <div className="h-4 rounded w-1/2" style={{ background: "var(--surface-2)" }} />
         </div>
         <div className="mt-2 flex justify-between items-center">
-          <div className="h-5 bg-gray-200 rounded w-20" />
-          <div className="h-9 w-9 bg-gray-200 rounded-full" />
+          <div className="h-5 rounded w-20" style={{ background: "var(--surface-2)" }} />
+          <div className="h-9 w-9 rounded-full" style={{ background: "var(--surface-2)" }} />
         </div>
       </div>
     </div>
@@ -94,15 +94,15 @@ export default function App() {
   // Empresa suspensa → tela de aviso (não renderiza loja)
   if (_tenantSlug && tenantQuery.isError && (tenantQuery.error as { status?: number })?.status === 403) {
     return (
-      <div className="min-h-dvh bg-gray-50 font-sans flex items-center justify-center px-6">
+      <div className="min-h-dvh font-sans flex items-center justify-center px-6" style={{ background: "var(--bg)" }}>
         <div className="text-center max-w-xs">
           <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-amber-100 flex items-center justify-center">
             <AlertTriangle className="w-8 h-8 text-amber-500" />
           </div>
-          <h1 className="text-xl font-black text-gray-900 mb-2">
+          <h1 className="text-xl font-black mb-2" style={{ color: "var(--text)" }}>
             Loja temporariamente indisponível
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm opacity-60" style={{ color: "var(--text-muted)" }}>
             Esta loja está em manutenção. Tente novamente em breve.
           </p>
         </div>
@@ -116,10 +116,11 @@ export default function App() {
       <CartSheet>
         <button
           type="button"
-          className="relative w-11 h-11 rounded-2xl bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition active:scale-95"
+          className="relative w-11 h-11 rounded-2xl flex items-center justify-center transition active:scale-95 border border-[var(--border)]"
+          style={{ background: "var(--surface-2)" }}
           aria-label="Abrir carrinho"
         >
-          <ShoppingCart className="w-5 h-5 text-gray-700" />
+          <ShoppingCart className="w-5 h-5" style={{ color: "var(--text-muted)" }} />
           {cart.totalItems > 0 && (
             <span
               className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full text-white text-[10px] font-black flex items-center justify-center"
@@ -136,7 +137,8 @@ export default function App() {
   return (
     <ToastProvider>
       <div
-        className="min-h-dvh bg-gray-50 font-sans overflow-x-hidden"
+        className="min-h-dvh font-sans overflow-x-hidden"
+        style={{ background: "var(--bg)" }}
       >
         {/* Sticky header */}
         <div className="sticky top-0 z-40">
@@ -178,18 +180,20 @@ export default function App() {
 
               {/* Barra de busca */}
               <div className="mt-5 relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none opacity-40" style={{ color: "var(--text-muted)" }} />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar produtos..."
-                  className="w-full h-12 pl-10 pr-10 rounded-2xl bg-white border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] shadow-sm transition"
+                  className="w-full h-12 pl-10 pr-10 rounded-2xl border text-sm outline-none shadow-sm transition focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)]"
+                  style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
                 />
                 {(search || categorySlug) && (
                   <button
                     type="button"
                     onClick={() => { setSearch(""); setCategorySlug(""); }}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center opacity-40 hover:opacity-70 transition"
+                    style={{ color: "var(--text-muted)" }}
                     aria-label="Limpar filtros"
                   >
                     <X className="w-4 h-4" />
@@ -199,8 +203,8 @@ export default function App() {
 
               {/* Categorias — pills com fade nas bordas para indicar scroll */}
               <div className="relative mt-4">
-                <div className="absolute left-0 top-0 bottom-1 w-6 bg-gradient-to-r from-gray-50 to-transparent pointer-events-none z-10" />
-                <div className="absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-gray-50 to-transparent pointer-events-none z-10" />
+                <div className="absolute left-0 top-0 bottom-1 w-6 bg-gradient-to-r from-[var(--bg)] to-transparent pointer-events-none z-10" />
+                <div className="absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-[var(--bg)] to-transparent pointer-events-none z-10" />
               <div
                 ref={categoryScroll.ref}
                 onMouseDown={categoryScroll.onMouseDown}
@@ -246,7 +250,7 @@ export default function App() {
               {/* Grid de produtos */}
               <div className="mt-6 min-w-0" id="products">
                 {(featuredProducts.length > 0 || bestSellers.length > 0) && !isFiltered && (
-                  <h2 className="text-base font-black text-gray-900 mb-3">Todos os Produtos</h2>
+                  <h2 className="text-base font-black mb-3" style={{ color: "var(--text)" }}>Todos os Produtos</h2>
                 )}
                 {isLoading ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
@@ -256,10 +260,10 @@ export default function App() {
                   </div>
                 ) : products.length === 0 ? (
                   <div className="text-center py-16">
-                    <p className="text-base font-semibold text-gray-400">
+                    <p className="text-base font-semibold opacity-50" style={{ color: "var(--text-muted)" }}>
                       Nenhum produto encontrado.
                     </p>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-sm mt-1 opacity-40" style={{ color: "var(--text-muted)" }}>
                       Tente buscar com outros termos.
                     </p>
                     <button
@@ -317,7 +321,8 @@ export default function App() {
         {/* Bottom bar — visível abaixo de xl apenas quando há itens */}
         {cart.totalItems > 0 && (
           <div
-            className="xl:hidden fixed left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-100 shadow-[0_-8px_24px_rgba(0,0,0,0.10)]"
+            className="xl:hidden fixed left-0 right-0 bottom-0 z-40 border-t border-[var(--border)] shadow-[0_-8px_24px_rgba(28,18,9,0.12)]"
+            style={{ background: "var(--surface)" }}
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="max-w-[600px] mx-auto px-4 py-3 flex items-center gap-3">
@@ -337,10 +342,10 @@ export default function App() {
 
               {/* Totais */}
               <div className="flex-1 min-w-0">
-                <div className="font-black tabular-nums text-gray-900 text-base leading-tight">
+                <div className="font-black tabular-nums text-base leading-tight" style={{ color: "var(--text)" }}>
                   {formatBRL(cart.subtotalCents)}
                 </div>
-                <div className="text-xs text-gray-400 leading-tight">
+                <div className="text-xs leading-tight opacity-50" style={{ color: "var(--text-muted)" }}>
                   {cart.totalItems} item{cart.totalItems !== 1 ? "s" : ""} no carrinho
                 </div>
               </div>
