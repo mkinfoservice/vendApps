@@ -17,6 +17,8 @@ using Petshop.Api.Entities.Stock;
 using Petshop.Api.Entities.Sync;
 using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Entities.StoreFront;
+using Petshop.Api.Entities.Marketplace;
+using Petshop.Api.Entities.Commissions;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
 using Petshop.Api.Entities.Delivery;
@@ -29,6 +31,7 @@ public class AppDbContext : DbContext
 
     // ── Tenant ───────────────────────────────────────────────
     public DbSet<Company> Companies => Set<Company>();
+    public DbSet<CompanyFeatureOverride> CompanyFeatureOverrides => Set<CompanyFeatureOverride>();
 
     // ── Catálogo ─────────────────────────────────────────────
     public DbSet<Category> Categories => Set<Category>();
@@ -98,6 +101,10 @@ public class AppDbContext : DbContext
     public DbSet<SalesQuote> SalesQuotes => Set<SalesQuote>();
     public DbSet<SalesQuoteItem> SalesQuoteItems => Set<SalesQuoteItem>();
 
+    // ── Marketplace (iFood, etc.) ─────────────────────────────
+    public DbSet<MarketplaceIntegration> MarketplaceIntegrations => Set<MarketplaceIntegration>();
+    public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
+
     // ── PDV ───────────────────────────────────────────────────
     public DbSet<CashRegister>            CashRegisters            => Set<CashRegister>();
     public DbSet<CashRegisterFiscalConfig> CashRegisterFiscalConfigs => Set<CashRegisterFiscalConfig>();
@@ -120,6 +127,12 @@ public class AppDbContext : DbContext
     // ── Agenda de Serviços (Fase 13) ──────────────────────────
     public DbSet<ServiceType>        ServiceTypes        => Set<ServiceType>();
     public DbSet<ServiceAppointment> ServiceAppointments => Set<ServiceAppointment>();
+
+    // ── Comissões e Gorjetas ──────────────────────────────────
+    public DbSet<CommissionConfig> CommissionConfigs => Set<CommissionConfig>();
+    public DbSet<EmployeeCommissionRate> EmployeeCommissionRates => Set<EmployeeCommissionRate>();
+    public DbSet<TipPoolEntry> TipPoolEntries => Set<TipPoolEntry>();
+    public DbSet<EmployeeCommissionAdjustment> EmployeeCommissionAdjustments => Set<EmployeeCommissionAdjustment>();
 
     // ── Compras & Fornecedores ────────────────────────────────
     public DbSet<Supplier>          Suppliers          => Set<Supplier>();
@@ -147,6 +160,16 @@ public class AppDbContext : DbContext
         // ── Company ──────────────────────────────────────────
         modelBuilder.Entity<Company>()
             .HasIndex(c => c.Slug)
+            .IsUnique();
+
+        modelBuilder.Entity<CompanyFeatureOverride>()
+            .HasOne(f => f.Company)
+            .WithMany()
+            .HasForeignKey(f => f.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CompanyFeatureOverride>()
+            .HasIndex(f => new { f.CompanyId, f.FeatureKey })
             .IsUnique();
 
         // ── Category ─────────────────────────────────────────
@@ -735,6 +758,46 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         // ══════════════════════════════════════════════════════
+        // MARKETPLACE (iFood, etc.)
+        // ══════════════════════════════════════════════════════
+
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .HasOne(m => m.Company)
+            .WithMany()
+            .HasForeignKey(m => m.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .Property(m => m.Type)
+            .HasConversion<string>()
+            .HasMaxLength(30);
+
+        // Uma empresa pode ter múltiplas integrações; MerchantId é único por tipo
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .HasIndex(m => new { m.Type, m.MerchantId })
+            .IsUnique();
+
+        modelBuilder.Entity<MarketplaceIntegration>()
+            .HasIndex(m => m.CompanyId);
+
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasOne(mo => mo.Integration)
+            .WithMany(i => i.Orders)
+            .HasForeignKey(mo => mo.MarketplaceIntegrationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasOne(mo => mo.Order)
+            .WithMany()
+            .HasForeignKey(mo => mo.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Deduplicação: um externalOrderId único por integração
+        modelBuilder.Entity<MarketplaceOrder>()
+            .HasIndex(mo => new { mo.MarketplaceIntegrationId, mo.ExternalOrderId })
+            .IsUnique();
+
+        // ══════════════════════════════════════════════════════
         // PDV (Fase 3)
         // ══════════════════════════════════════════════════════
 
@@ -898,6 +961,64 @@ public class AppDbContext : DbContext
         // Busca por empresa + status (painel de atendimento)
         modelBuilder.Entity<ServiceAppointment>()
             .HasIndex(a => new { a.CompanyId, a.Status });
+
+        // ═════════════════════════════════════════════════════════════════════
+        // COMISSÕES & GORJETAS
+        // ═════════════════════════════════════════════════════════════════════
+
+        modelBuilder.Entity<CommissionConfig>()
+            .HasOne(c => c.Company)
+            .WithOne()
+            .HasForeignKey<CommissionConfig>(c => c.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CommissionConfig>()
+            .HasIndex(c => c.CompanyId)
+            .IsUnique();
+
+        modelBuilder.Entity<CommissionConfig>()
+            .Property(c => c.TipDistributionMode)
+            .HasMaxLength(40);
+
+        modelBuilder.Entity<EmployeeCommissionRate>()
+            .HasOne(r => r.Company)
+            .WithMany()
+            .HasForeignKey(r => r.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EmployeeCommissionRate>()
+            .HasOne(r => r.AdminUser)
+            .WithMany()
+            .HasForeignKey(r => r.AdminUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmployeeCommissionRate>()
+            .HasIndex(r => new { r.CompanyId, r.AdminUserId })
+            .IsUnique();
+
+        modelBuilder.Entity<TipPoolEntry>()
+            .HasOne(t => t.Company)
+            .WithMany()
+            .HasForeignKey(t => t.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TipPoolEntry>()
+            .HasIndex(t => new { t.CompanyId, t.ReferenceDateUtc });
+
+        modelBuilder.Entity<EmployeeCommissionAdjustment>()
+            .HasOne(a => a.Company)
+            .WithMany()
+            .HasForeignKey(a => a.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<EmployeeCommissionAdjustment>()
+            .HasOne(a => a.AdminUser)
+            .WithMany()
+            .HasForeignKey(a => a.AdminUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<EmployeeCommissionAdjustment>()
+            .HasIndex(a => new { a.CompanyId, a.ReferenceDateUtc, a.AdminUserId });
 
         // ══════════════════════════════════════════════════════
         // ENRIQUECIMENTO DE CATÁLOGO

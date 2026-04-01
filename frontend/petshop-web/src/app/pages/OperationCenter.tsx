@@ -168,10 +168,13 @@ export default function OperationCenter() {
     staleTime: 5 * 60 * 1000,
   });
   const companyName = tenantQuery.data?.name ?? "";
+  const tenantFeatures = tenantQuery.data?.features ?? null;
 
   // User info from JWT
   const { role, firstName: jwtFirstName } = useCurrentUser();
   const firstName = jwtFirstName ?? "";
+
+  if (tenantSlug && tenantQuery.isPending) return null;
 
   // Dashboard KPIs
   const { data: dash, isLoading: dashLoading, dataUpdatedAt, refetch: refetchDash } = useDashboard();
@@ -182,7 +185,7 @@ export default function OperationCenter() {
   const modulesByGroup = getModulesByGroup();
   const groupOrder = getGroupOrder();
   const activeModules = APP_MODULES.filter(
-    (m) => m.isActive && canAccess(m, role),
+    (m) => m.isActive && canAccess(m, role, tenantFeatures),
   );
 
   // Search filter
@@ -462,7 +465,7 @@ export default function OperationCenter() {
           {/* All module groups */}
           {groupOrder.map((group) => {
             const modules = (modulesByGroup[group] ?? []).filter(
-              (m) => m.isActive && canAccess(m, role),
+              (m) => m.isActive && canAccess(m, role, tenantFeatures),
             );
             return (
               <ModuleGroupSection

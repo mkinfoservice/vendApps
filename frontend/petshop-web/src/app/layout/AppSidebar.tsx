@@ -1,13 +1,25 @@
 import { Link, useLocation } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { APP_MODULES, MODULE_GROUPS, getGroupOrder, canAccess } from "@/config/modules";
 import type { AppModule, ModuleGroup } from "@/config/modules";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { fetchTenantInfo, resolveTenantFromHost } from "@/utils/tenant";
 
 // Módulos vizinhos visíveis na sidebar — todos do mesmo grupo que o usuário pode acessar
 function useSidebarModules(): { group: ModuleGroup; modules: AppModule[] } | null {
   const { pathname } = useLocation();
   const { role } = useCurrentUser();
+  const tenantSlug = resolveTenantFromHost();
+  const tenantQuery = useQuery({
+    queryKey: ["tenant"],
+    queryFn: fetchTenantInfo,
+    enabled: !!tenantSlug,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  if (tenantSlug && tenantQuery.isPending) return null;
+  const features = tenantQuery.data?.features ?? null;
 
   const currentModule = APP_MODULES.find(
     (m) => pathname === m.route || pathname.startsWith(m.route + "/"),
@@ -17,7 +29,7 @@ function useSidebarModules(): { group: ModuleGroup; modules: AppModule[] } | nul
 
   const groupOrder = getGroupOrder();
   const groupModules = APP_MODULES.filter(
-    (m) => m.group === currentModule.group && m.isActive && canAccess(m, role),
+    (m) => m.group === currentModule.group && m.isActive && canAccess(m, role, features),
   );
 
   // Mantém a ordem do grupo

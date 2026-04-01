@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Services;
+using Petshop.Api.Services.Tenancy;
 
 namespace Petshop.Api.Controllers;
 
@@ -11,11 +12,13 @@ public class PublicTenantController : ControllerBase
 {
     private readonly TenantResolverService _resolver;
     private readonly AppDbContext _db;
+    private readonly PlanFeatureService _features;
 
-    public PublicTenantController(TenantResolverService resolver, AppDbContext db)
+    public PublicTenantController(TenantResolverService resolver, AppDbContext db, PlanFeatureService features)
     {
         _resolver = resolver;
         _db = db;
+        _features = features;
     }
 
     /// <summary>
@@ -47,13 +50,17 @@ public class PublicTenantController : ControllerBase
                 suspendedAtUtc = company.SuspendedAtUtc
             });
 
+        var features = await _features.ResolveFeaturesAsync(company, ct);
+
         return Ok(new
         {
             slug = company.Slug,
             name = company.Name,
             companyId = company.Id,
+            plan = company.Plan,
             isActive = company.IsActive,
-            suspendedAtUtc = (DateTime?)null
+            suspendedAtUtc = (DateTime?)null,
+            features
         });
     }
 }

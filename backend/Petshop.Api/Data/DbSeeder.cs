@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Models;
+using Petshop.Api.Services.Tenancy;
 
 namespace Petshop.Api.Data;
 
@@ -42,6 +43,11 @@ public static class DbSeeder
             slug:    "novaempresa",
             segment: "cafeteria",
             seeder:  SeedNovaEmpresaAsync);
+
+        // Tenant específica: desativa Agenda e ativa Comissões/Gorjetas.
+        await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Agenda, false);
+        await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Commissions, true);
+        await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Tips, true);
     }
 
     // ── Core ─────────────────────────────────────────────────────────────────
@@ -194,5 +200,33 @@ public static class DbSeeder
             if (p.PriceCents > 0)
                 p.MarginPercent = Math.Round((decimal)(p.PriceCents - p.CostCents) / p.PriceCents * 100, 2);
         }
+    }
+
+    private static async Task UpsertFeatureOverrideAsync(
+        AppDbContext db,
+        Guid companyId,
+        string featureKey,
+        bool isEnabled)
+    {
+        var existing = await db.CompanyFeatureOverrides
+            .FirstOrDefaultAsync(f => f.CompanyId == companyId && f.FeatureKey == featureKey);
+
+        if (existing is null)
+        {
+            db.CompanyFeatureOverrides.Add(new CompanyFeatureOverride
+            {
+                CompanyId = companyId,
+                FeatureKey = featureKey,
+                IsEnabled = isEnabled,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+        }
+        else if (existing.IsEnabled != isEnabled)
+        {
+            existing.IsEnabled = isEnabled;
+            existing.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync();
     }
 }

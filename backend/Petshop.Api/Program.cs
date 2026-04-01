@@ -24,6 +24,7 @@ using Petshop.Api.Services.Fiscal;
 using Petshop.Api.Services.Fiscal.Jobs;
 using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Scale.Jobs;
+using Petshop.Api.Services.Tenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -245,6 +246,7 @@ builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
 // Services — Tenant
 // ===============================
 builder.Services.AddScoped<Petshop.Api.Services.TenantResolverService>();
+builder.Services.AddScoped<PlanFeatureService>();
 
 // ===============================
 // Services — Impressão
@@ -469,6 +471,95 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE UNIQUE INDEX IF NOT EXISTS "IX_CashRegisterFiscalConfigs_CashRegisterId"
             ON "CashRegisterFiscalConfigs"("CashRegisterId");
+        """);
+
+    // Feature flags por tenant (global + override por empresa)
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "CompanyFeatureOverrides" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "FeatureKey" character varying(80) NOT NULL,
+            "IsEnabled" boolean NOT NULL,
+            "UpdatedAtUtc" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_CompanyFeatureOverrides" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_CompanyFeatureOverrides_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_CompanyFeatureOverrides_CompanyId_FeatureKey"
+            ON "CompanyFeatureOverrides" ("CompanyId", "FeatureKey");
+        """);
+
+    // Comissões e gorjetas
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "CommissionConfigs" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "IsEnabled" boolean NOT NULL,
+            "IsTipEnabled" boolean NOT NULL,
+            "DefaultCommissionPercent" numeric(5,2) NOT NULL,
+            "TipDistributionMode" character varying(40) NOT NULL,
+            "UpdatedAtUtc" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_CommissionConfigs" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_CommissionConfigs_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_CommissionConfigs_CompanyId"
+            ON "CommissionConfigs" ("CompanyId");
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "EmployeeCommissionRates" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "AdminUserId" uuid NOT NULL,
+            "CommissionPercent" numeric(5,2) NOT NULL,
+            "IsActive" boolean NOT NULL,
+            "UpdatedAtUtc" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_EmployeeCommissionRates" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_EmployeeCommissionRates_AdminUsers_AdminUserId"
+                FOREIGN KEY ("AdminUserId") REFERENCES "AdminUsers" ("Id") ON DELETE RESTRICT,
+            CONSTRAINT "FK_EmployeeCommissionRates_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_EmployeeCommissionRates_CompanyId_AdminUserId"
+            ON "EmployeeCommissionRates" ("CompanyId", "AdminUserId");
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "TipPoolEntries" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "ReferenceDateUtc" timestamp with time zone NOT NULL,
+            "AmountCents" integer NOT NULL,
+            "Description" character varying(250) NOT NULL,
+            "CreatedBy" character varying(120) NOT NULL,
+            "CreatedAtUtc" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_TipPoolEntries" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_TipPoolEntries_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_TipPoolEntries_CompanyId_ReferenceDateUtc"
+            ON "TipPoolEntries" ("CompanyId", "ReferenceDateUtc");
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "EmployeeCommissionAdjustments" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "AdminUserId" uuid NOT NULL,
+            "ReferenceDateUtc" timestamp with time zone NOT NULL,
+            "AmountCents" integer NOT NULL,
+            "Description" character varying(250) NOT NULL,
+            "CreatedBy" character varying(120) NOT NULL,
+            "CreatedAtUtc" timestamp with time zone NOT NULL,
+            CONSTRAINT "PK_EmployeeCommissionAdjustments" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_EmployeeCommissionAdjustments_AdminUsers_AdminUserId"
+                FOREIGN KEY ("AdminUserId") REFERENCES "AdminUsers" ("Id") ON DELETE RESTRICT,
+            CONSTRAINT "FK_EmployeeCommissionAdjustments_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_EmployeeCommissionAdjustments_CompanyId_ReferenceDateUtc_AdminUserId"
+            ON "EmployeeCommissionAdjustments" ("CompanyId", "ReferenceDateUtc", "AdminUserId");
         """);
 
     await DbSeeder.SeedAsync(db);

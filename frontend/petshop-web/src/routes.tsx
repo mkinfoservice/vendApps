@@ -47,6 +47,7 @@ import FinancialEntriesPage from "./pages/admin/FinancialEntriesPage";
 import CashRegistersPage from "./pages/admin/CashRegistersPage";
 import CashSessionsPage from "./pages/admin/CashSessionsPage";
 import AgendaPage from "./pages/admin/AgendaPage";
+import CommissionsPage from "./pages/admin/CommissionsPage";
 import ScaleAgentsPage from "./pages/admin/ScaleAgentsPage";
 import DavListPage from "./pages/admin/DavListPage";
 import DavBuilderPage from "./pages/admin/DavBuilderPage";
@@ -74,14 +75,16 @@ import DelivererRouteDetail from "./pages/deliverer/RouteDetail";
 function AppPage({
   children,
   roles,
+  featureKey,
 }: {
   children: React.ReactNode;
   roles?: string[];
+  featureKey?: string;
 }) {
   return (
     <AdminGuard>
       <AppShell>
-        <ModuleGuard roles={roles}>{children}</ModuleGuard>
+        <ModuleGuard roles={roles} featureKey={featureKey}>{children}</ModuleGuard>
       </AppShell>
     </AdminGuard>
   );
@@ -120,7 +123,8 @@ export function AppRoutes() {
         <Route path="/app/dav" element={<AppPage><DavListPage /></AppPage>} />
         <Route path="/app/dav/novo" element={<AppPage><DavBuilderPage /></AppPage>} />
 
-        <Route path="/app/agenda" element={<AppPage><AgendaPage /></AppPage>} />
+        <Route path="/app/agenda" element={<AppPage featureKey="agenda"><AgendaPage /></AppPage>} />
+        <Route path="/app/comissoes" element={<AppPage roles={["admin","gerente"]} featureKey="commissions"><CommissionsPage /></AppPage>} />
         <Route path="/app/impressao" element={<AppPage><PrintQueue /></AppPage>} />
 
         {/* ── /app — Comercial ────────────────────────────────────────── */}
@@ -189,7 +193,7 @@ export function AppRoutes() {
         <Route path="/admin/fiscal" element={<Navigate to="/app/fiscal" replace />} />
         <Route path="/admin/scale" element={<Navigate to="/app/balanca" replace />} />
         <Route path="/admin/print" element={<Navigate to="/app/impressao" replace />} />
-        <Route path="/admin/agenda" element={<Navigate to="/app/agenda" replace />} />
+        <Route path="/admin/agenda" element={<Navigate to="/app/comissoes" replace />} />
 
         {/* ── PDV — tela cheia, fora do AppShell ──────────────────────── */}
         <Route

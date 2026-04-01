@@ -35,8 +35,10 @@ export type TenantInfo = {
   slug: string;
   name: string;
   companyId: string;
+  plan: string;
   isActive: boolean;
   suspendedAtUtc: string | null;
+  features: Record<string, boolean>;
 };
 
 /**

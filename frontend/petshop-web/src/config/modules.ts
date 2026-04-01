@@ -24,6 +24,7 @@ import {
   Sparkles,
   Store,
   Coffee,
+  HandCoins,
   type LucideIcon,
 } from "lucide-react";
 
@@ -48,6 +49,7 @@ export interface AppModule {
   group: ModuleGroup;
   /** null = visível para todos os perfis */
   roles: string[] | null;
+  featureKey?: string;
   isActive: boolean;
 }
 
@@ -157,6 +159,20 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/agenda",
     group: "OPERACAO",
     roles: null,
+    featureKey: "agenda",
+    isActive: true,
+  },
+  {
+    id: "comissoes",
+    label: "Comissões",
+    description: "Cálculo de comissão e distribuição de gorjetas",
+    icon: HandCoins,
+    iconColor: "#A07230",
+    iconBg: "rgba(160,114,48,0.14)",
+    route: "/app/comissoes",
+    group: "OPERACAO",
+    roles: ["admin", "gerente"],
+    featureKey: "commissions",
     isActive: true,
   },
   {
@@ -428,10 +444,20 @@ export const APP_MODULES: AppModule[] = [
  * - `module.roles === null` → aberto para todos os perfis autenticados
  * - caso contrário, o role deve estar na lista
  */
-export function canAccess(module: AppModule, role: string | null): boolean {
-  if (module.roles === null) return true;
-  if (role === null) return false;
-  return module.roles.includes(role);
+export function canAccess(
+  module: AppModule,
+  role: string | null,
+  features?: Record<string, boolean> | null,
+): boolean {
+  if (module.roles !== null) {
+    if (role === null || !module.roles.includes(role)) return false;
+  }
+
+  if (module.featureKey) {
+    return (features?.[module.featureKey] ?? true) === true;
+  }
+
+  return true;
 }
 
 export function getModulesByGroup(): Record<ModuleGroup, AppModule[]> {
