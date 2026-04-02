@@ -8,6 +8,7 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Dav;
 using Petshop.Api.Services;
+using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Dav;
 using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
@@ -28,13 +29,15 @@ public class AdminOrdersController : ControllerBase
     private readonly ILogger<AdminOrdersController> _logger;
     private readonly IBackgroundJobClient _jobs;
     private readonly PrintService _print;
+    private readonly LoyaltyService _loyalty;
 
-    public AdminOrdersController(AppDbContext db, ILogger<AdminOrdersController> logger, IBackgroundJobClient jobs, PrintService print)
+    public AdminOrdersController(AppDbContext db, ILogger<AdminOrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty)
     {
         _db = db;
         _logger = logger;
         _jobs = jobs;
         _print = print;
+        _loyalty = loyalty;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -207,6 +210,11 @@ public class AdminOrdersController : ControllerBase
         // Notificação WhatsApp — fire-and-forget
         _jobs.Enqueue<WhatsAppNotificationService>(
             s => s.NotifyOrderStatusAsync(order.Id, OrderStatus.RECEBIDO, CancellationToken.None));
+
+        // Fidelidade — acumula pontos imediatamente para pedidos telefônicos com cliente cadastrado
+        if (customer is not null)
+            _jobs.Enqueue<LoyaltyService>(
+                s => s.EarnForOrderAsync(order.Id, CancellationToken.None));
 
         return Ok(new CreateOrderResponse
         {

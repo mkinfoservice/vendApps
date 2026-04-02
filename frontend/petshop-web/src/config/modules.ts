@@ -142,7 +142,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: "atendimento",
     label: "Atendimento",
-    description: "Central de atendimento e pedidos por telefone",
+    description: "Atendimento presencial e montagem de pedidos no balcão",
     icon: Headphones,
     iconColor: "#C8953A",
     iconBg: "rgba(200,149,58,0.14)",
@@ -251,6 +251,7 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/logistica/rotas",
     group: "LOGISTICA",
     roles: null,
+    featureKey: "own_delivery",
     isActive: true,
   },
   {
@@ -263,6 +264,7 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/logistica/entregadores",
     group: "LOGISTICA",
     roles: ["admin", "gerente"],
+    featureKey: "own_delivery",
     isActive: true,
   },
   {

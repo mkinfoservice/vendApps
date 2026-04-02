@@ -44,12 +44,13 @@ public static class DbSeeder
             segment: "cafeteria",
             seeder:  SeedNovaEmpresaAsync);
 
-        // Tenant específica: desativa Agenda e ativa Comissões/Gorjetas.
+        // Go Coffee — desativa módulos não utilizados; entrega exclusivamente via iFood.
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Agenda, false);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Commissions, true);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.Tips, true);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.DavMenu, false);
         await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.FinancialMenu, false);
+        await UpsertFeatureOverrideAsync(db, NovaEmpresaId, AppFeatureKeys.OwnDelivery, false);
     }
 
     // ── Core ─────────────────────────────────────────────────────────────────

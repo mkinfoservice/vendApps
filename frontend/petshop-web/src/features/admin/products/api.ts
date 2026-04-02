@@ -20,6 +20,7 @@ export type ProductListItem = {
   imageUrl: string | null;
   hasAddons: boolean;
   isBestSeller: boolean;
+  promotionPriceCents: number | null;
 };
 
 export type ProductListResponse = {

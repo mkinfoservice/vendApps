@@ -11,6 +11,8 @@ public static class AppFeatureKeys
     public const string Tips = "tips";
     public const string DavMenu = "dav_menu";
     public const string FinancialMenu = "financial_menu";
+    /// <summary>Exibe módulos de entrega própria (Rotas, Entregadores). false = entrega somente via marketplace.</summary>
+    public const string OwnDelivery = "own_delivery";
 }
 
 public class PlanFeatureService
@@ -28,7 +30,8 @@ public class PlanFeatureService
         AppFeatureKeys.Commissions,
         AppFeatureKeys.Tips,
         AppFeatureKeys.DavMenu,
-        AppFeatureKeys.FinancialMenu
+        AppFeatureKeys.FinancialMenu,
+        AppFeatureKeys.OwnDelivery
     ];
 
     public async Task<Dictionary<string, bool>> ResolveFeaturesAsync(Company company, CancellationToken ct = default)
@@ -57,6 +60,7 @@ public class PlanFeatureService
             [AppFeatureKeys.Tips] = IsPlanAtLeast(plan, "trial"),
             [AppFeatureKeys.DavMenu] = true,
             [AppFeatureKeys.FinancialMenu] = IsPlanAtLeast(plan, "trial"),
+            [AppFeatureKeys.OwnDelivery] = true,
         };
     }
 

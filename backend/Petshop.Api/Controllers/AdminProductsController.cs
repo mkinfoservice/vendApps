@@ -5,6 +5,7 @@ using Petshop.Api.Contracts.Admin.Products;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Audit;
 using Petshop.Api.Entities.Catalog;
+using Petshop.Api.Entities.Promotions;
 using Petshop.Api.Models;
 using Petshop.Api.Services.Images;
 using System.Security.Claims;
@@ -67,17 +68,61 @@ public class AdminProductsController : ControllerBase
         }
 
         var total = await q.CountAsync(ct);
-        var items = await q
+        var rawItems = await q
             .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(p => new ProductListItem(
+            .Select(p => new
+            {
                 p.Id, p.Name, p.Slug, p.InternalCode, p.Barcode,
-                p.Category.Name, p.Brand != null ? p.Brand.Name : null,
+                CategoryName = p.Category.Name, p.CategoryId,
+                BrandName = p.Brand != null ? p.Brand.Name : null, p.BrandId,
                 p.Unit, p.PriceCents, p.CostCents, p.MarginPercent, p.StockQty,
                 p.IsActive, p.UpdatedAtUtc, p.ImageUrl,
-                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons, p.IsBestSeller))
+                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons, p.IsBestSeller
+            })
             .ToListAsync(ct);
+
+        // Load active promotions to compute discounted prices
+        var now = DateTime.UtcNow;
+        var promos = await _db.Promotions
+            .AsNoTracking()
+            .Where(pr => pr.CompanyId == CompanyId && pr.IsActive
+                && (pr.StartsAtUtc == null || pr.StartsAtUtc <= now)
+                && (pr.ExpiresAtUtc == null || pr.ExpiresAtUtc >= now))
+            .ToListAsync(ct);
+
+        var items = rawItems.Select(p =>
+        {
+            int? promoPriceCents = null;
+            foreach (var promo in promos)
+            {
+                bool applies = promo.Scope switch
+                {
+                    PromotionScope.Product  => promo.TargetId == p.Id,
+                    PromotionScope.Category => promo.TargetId == p.CategoryId,
+                    PromotionScope.Brand    => p.BrandId.HasValue && promo.TargetId == p.BrandId,
+                    PromotionScope.All      => true,
+                    _                       => false,
+                };
+                if (!applies) continue;
+                var discountCents = promo.Type == PromotionType.PercentDiscount
+                    ? (int)Math.Floor(p.PriceCents * (double)promo.Value / 100.0)
+                    : (int)promo.Value;
+                if (promo.MaxDiscountCents.HasValue)
+                    discountCents = Math.Min(discountCents, promo.MaxDiscountCents.Value);
+                var candidate = Math.Max(0, p.PriceCents - discountCents);
+                if (promoPriceCents is null || candidate < promoPriceCents)
+                    promoPriceCents = candidate;
+            }
+            return new ProductListItem(
+                p.Id, p.Name, p.Slug, p.InternalCode, p.Barcode,
+                p.CategoryName, p.BrandName,
+                p.Unit, p.PriceCents, p.CostCents, p.MarginPercent, p.StockQty,
+                p.IsActive, p.UpdatedAtUtc, p.ImageUrl,
+                p.IsSoldByWeight, p.ScaleProductCode, p.HasAddons, p.IsBestSeller,
+                promoPriceCents);
+        }).ToList();
 
         return Ok(new ProductListResponse(page, pageSize, total, items));
     }

@@ -878,8 +878,9 @@ public class PdvController : ControllerBase
             return Ok(new
             {
                 sale.Id,
-                ItemsAdded   = itemsAdded,
+                ItemsAdded    = itemsAdded,
                 dav.PublicId,
+                dav.PaymentMethod,
                 SubtotalCents = updated?.SubtotalCents ?? 0,
                 TotalCents    = updated?.TotalCents ?? 0,
             });

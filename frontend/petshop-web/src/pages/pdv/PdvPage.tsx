@@ -388,9 +388,10 @@ interface PayPanelProps {
   onPay: (method: string, amountCents: number, customerDocument?: string) => void;
   onCancel: () => void;
   paying: boolean;
+  defaultMethod?: string | null;
 }
 
-function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
+function PayPanel({ totalCents, onPay, onCancel, paying, defaultMethod }: PayPanelProps) {
   const [cash, setCash] = useState("");
   const [pendingPayment, setPendingPayment] = useState<{ method: string; amountCents: number } | null>(null);
   const [docType, setDocType] = useState<"none" | "cpf" | "cnpj">("none");
@@ -431,18 +432,35 @@ function PayPanel({ totalCents, onPay, onCancel, paying }: PayPanelProps) {
     <div className="space-y-4">
       <p className="text-center text-2xl font-black" style={{ color: GC.dark }}>{brl(totalCents)}</p>
 
+      {defaultMethod && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
+          <span className="opacity-70">Sugestão do atendimento:</span>
+          <span className="font-black">{PAY_METHODS.find((p) => p.method === defaultMethod)?.label ?? defaultMethod}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        {PAY_METHODS.map((pm) => (
-          <button
-            key={pm.method}
-            disabled={paying}
-            onClick={() => openDocPrompt(pm.method, totalCents)}
-            className="py-3 rounded-2xl text-white font-bold text-sm transition active:scale-95 hover:opacity-90"
-            style={{ background: pm.color }}
-          >
-            {pm.label}
-          </button>
-        ))}
+        {PAY_METHODS.map((pm) => {
+          const isSuggested = defaultMethod === pm.method;
+          return (
+            <button
+              key={pm.method}
+              disabled={paying}
+              onClick={() => openDocPrompt(pm.method, totalCents)}
+              className="py-3 rounded-2xl text-white font-bold text-sm transition active:scale-95 hover:opacity-90 relative"
+              style={{ background: pm.color, boxShadow: isSuggested ? `0 0 0 3px ${pm.color}55, 0 4px 14px ${pm.color}44` : undefined }}
+            >
+              {isSuggested && (
+                <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-black bg-white rounded-full px-2 py-0.5 leading-none"
+                  style={{ color: pm.color }}>
+                  ✓ sugerido
+                </span>
+              )}
+              {pm.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex gap-2 items-center">
@@ -1104,6 +1122,7 @@ export default function PdvPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
   const [navOpen, setNavOpen]               = useState(false);
+  const [davPayMethod, setDavPayMethod]     = useState<string | null>(null);
   const autoDavHandledRef = useRef(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
@@ -1162,6 +1181,12 @@ export default function PdvPage() {
     }
   }
 
+  function mapDavPayMethod(m: string | null): string | null {
+    if (!m) return null;
+    const map: Record<string, string> = { PIX: "PIX", CASH: "DINHEIRO", CARD: "CARTAO_CREDITO" };
+    return map[m.toUpperCase()] ?? m;
+  }
+
   async function handleImportDav(e: React.FormEvent) {
     e.preventDefault();
     if (!sale || !davCode.trim()) return;
@@ -1170,6 +1195,7 @@ export default function PdvPage() {
     try {
       const res = await importDav(sale.id, code);
       await refreshSale(sale.id);
+      if (res.paymentMethod) setDavPayMethod(mapDavPayMethod(res.paymentMethod));
       flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
       setDavCode("");
     } catch (e: unknown) {
@@ -1190,6 +1216,7 @@ export default function PdvPage() {
       try {
         const res = await importDav(sale.id, code);
         await refreshSale(sale.id);
+        if (res.paymentMethod) setDavPayMethod(mapDavPayMethod(res.paymentMethod));
         flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
         setDavCode("");
       } catch (e: unknown) {
@@ -1241,6 +1268,7 @@ export default function PdvPage() {
         flash(`Troco: ${brl(result.changeCents)}`, true);
       }
       setShowPay(false);
+      setDavPayMethod(null);
       setSale(null);
       await handleNewSale();
     } catch (e: unknown) {
@@ -1498,6 +1526,7 @@ export default function PdvPage() {
                 onPay={handlePay}
                 onCancel={handleCancelSale}
                 paying={paying}
+                defaultMethod={davPayMethod}
               />
             )}
             {currentSale?.publicId && (

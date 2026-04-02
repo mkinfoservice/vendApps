@@ -39,7 +39,7 @@ function normalizeDavCode(code: string) {
   return normalized.startsWith("DAV-") ? normalized : `DAV-${normalized}`;
 }
 function toPseudoProduct(item: CartItem): ProductListItem {
-  return { id: item.product.id, name: item.product.name, imageUrl: item.product.imageUrl, priceCents: item.product.basePriceCents, hasAddons: true, isBestSeller: false, slug: "", internalCode: null, barcode: null, categoryName: null, brandName: null, unit: "UN", costCents: 0, marginPercent: 0, stockQty: 0, isActive: true, updatedAtUtc: null };
+  return { id: item.product.id, name: item.product.name, imageUrl: item.product.imageUrl, priceCents: item.product.basePriceCents, hasAddons: true, isBestSeller: false, slug: "", internalCode: null, barcode: null, categoryName: null, brandName: null, unit: "UN", costCents: 0, marginPercent: 0, stockQty: 0, isActive: true, updatedAtUtc: null, promotionPriceCents: null };
 }
 
 // â”€â”€ Step pill indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -72,6 +72,7 @@ export default function PhoneOrderBuilder() {
   const [guestComplement, setGuestComplement] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [configuringProductId, setConfiguringProductId] = useState<string | null>(null);
   const [configQty, setConfigQty] = useState(1);
   const [configSelectedAddonIds, setConfigSelectedAddonIds] = useState<string[]>([]);
@@ -104,7 +105,18 @@ export default function PhoneOrderBuilder() {
 
   const products = productsData?.items ?? [];
   const orderedProducts = useMemo(() => [...products].sort((a, b) => { if (a.isBestSeller !== b.isBestSeller) return a.isBestSeller ? -1 : 1; return a.name.localeCompare(b.name, "pt-BR"); }), [products]);
-  const filteredProducts = useMemo(() => { const q = productSearch.trim().toLowerCase(); if (!q) return orderedProducts; return orderedProducts.filter((p) => p.name.toLowerCase().includes(q) || (p.internalCode ?? "").toLowerCase().includes(q) || (p.barcode ?? "").toLowerCase().includes(q)); }, [orderedProducts, productSearch]);
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    products.forEach((p) => { if (p.categoryName) set.add(p.categoryName); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [products]);
+  const filteredProducts = useMemo(() => {
+    let result = orderedProducts;
+    if (activeCategory) result = result.filter((p) => p.categoryName === activeCategory);
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return result;
+    return result.filter((p) => p.name.toLowerCase().includes(q) || (p.internalCode ?? "").toLowerCase().includes(q) || (p.barcode ?? "").toLowerCase().includes(q));
+  }, [orderedProducts, productSearch, activeCategory]);
 
   const confirmMut = useMutation({
     mutationFn: () => {
@@ -137,7 +149,8 @@ export default function PhoneOrderBuilder() {
 
   function addToCart(product: ProductListItem, qty = 1, addonIds: string[] = [], addons: ProductAddon[] = []) {
     const key = buildCartKey(product.id, addonIds);
-    setCart((prev) => { const existing = prev.find((i) => i.key === key); if (existing) return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i)); return [...prev, { key, qty, product: { id: product.id, name: product.name, imageUrl: product.imageUrl, basePriceCents: product.priceCents }, addonIds, addons }]; });
+    const effectivePrice = product.promotionPriceCents ?? product.priceCents;
+    setCart((prev) => { const existing = prev.find((i) => i.key === key); if (existing) return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i)); return [...prev, { key, qty, product: { id: product.id, name: product.name, imageUrl: product.imageUrl, basePriceCents: effectivePrice }, addonIds, addons }]; });
   }
   function setQty(itemKey: string, qty: number) { if (qty <= 0) setCart((prev) => prev.filter((i) => i.key !== itemKey)); else setCart((prev) => prev.map((i) => (i.key === itemKey ? { ...i, qty } : i))); }
   function openConfig(product: ProductListItem, existing?: CartItem) { setConfiguringProductId(product.id); setConfigQty(existing?.qty ?? 1); setConfigSelectedAddonIds(existing?.addonIds ?? []); setEditingCartKey(existing?.key ?? null); }
@@ -471,6 +484,30 @@ export default function PhoneOrderBuilder() {
                 style={{ background: "#fff", border: `1.5px solid rgba(107,79,58,0.12)`, color: GC.dark, boxShadow: "0 2px 8px rgba(28,18,9,0.05)" }} />
             </div>
 
+            {/* Category pills */}
+            {categories.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                <button
+                  onClick={() => setActiveCategory(null)}
+                  className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap"
+                  style={!activeCategory
+                    ? { background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, color: "#fff" }
+                    : { background: GC.cream, color: GC.brown, border: `1.5px solid rgba(107,79,58,0.15)` }}>
+                  Todos
+                </button>
+                {categories.map((cat) => (
+                  <button key={cat}
+                    onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
+                    className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap"
+                    style={activeCategory === cat
+                      ? { background: `linear-gradient(135deg, ${GC.caramel}, #A87830)`, color: "#fff" }
+                      : { background: GC.cream, color: GC.brown, border: `1.5px solid rgba(107,79,58,0.15)` }}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
               {/* Product grid */}
               <div className="rounded-3xl p-4" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.07)" }}>
@@ -495,19 +532,36 @@ export default function PhoneOrderBuilder() {
                             : <div className="w-full h-full flex items-center justify-center"><Coffee size={20} style={{ color: GC.brown, opacity: 0.3 }} /></div>}
                         </div>
                         <p className="text-xs font-semibold line-clamp-2 min-h-[2rem]" style={{ color: GC.dark }}>{p.name}</p>
-                        <div className="mt-1.5 flex items-center justify-between">
-                          <span className="text-sm font-black" style={{ color: GC.caramel }}>{formatCents(p.priceCents)}</span>
-                          <span className="w-6 h-6 rounded-full flex items-center justify-center"
+                        <div className="mt-1.5 flex items-center justify-between gap-1">
+                          <div className="flex flex-col min-w-0">
+                            {p.promotionPriceCents !== null ? (
+                              <>
+                                <span className="text-[10px] line-through" style={{ color: GC.brown, opacity: 0.5 }}>{formatCents(p.priceCents)}</span>
+                                <span className="text-sm font-black" style={{ color: "#059669" }}>{formatCents(p.promotionPriceCents)}</span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-black" style={{ color: GC.caramel }}>{formatCents(p.priceCents)}</span>
+                            )}
+                          </div>
+                          <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                             style={{ background: `${GC.caramel}18`, color: GC.caramel }}>
                             <Plus size={12} />
                           </span>
                         </div>
-                        {p.isBestSeller && (
-                          <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                            style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
-                            <Star size={9} className="fill-current" /> Top
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {p.promotionPriceCents !== null && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(5,150,105,0.12)", color: "#059669" }}>
+                              % Promo
+                            </span>
+                          )}
+                          {p.isBestSeller && (
+                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
+                              <Star size={9} className="fill-current" /> Top
+                            </span>
+                          )}
+                        </div>
                       </button>
                     ))}
                   </div>

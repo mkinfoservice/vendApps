@@ -21,5 +21,6 @@ public record ProductListItem(
     bool IsSoldByWeight,
     string? ScaleProductCode,
     bool HasAddons,
-    bool IsBestSeller
+    bool IsBestSeller,
+    int? PromotionPriceCents = null
 );
