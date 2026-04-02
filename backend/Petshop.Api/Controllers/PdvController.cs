@@ -518,7 +518,10 @@ public class PdvController : ControllerBase
         }
         int addonsCents = addons.Sum(a => a.PriceCents);
 
-        int unitPriceCents = product.PriceCents + addonsCents;
+        var basePrice = (req.UnitPriceCentsOverride.HasValue && req.UnitPriceCentsOverride.Value > 0)
+            ? req.UnitPriceCentsOverride.Value
+            : product.PriceCents;
+        int unitPriceCents = basePrice + addonsCents;
         int total;
         if (product.IsSoldByWeight)
         {
@@ -1158,7 +1161,9 @@ public record AddSaleItemRequest(
     Guid ProductId,
     decimal Qty = 1,
     decimal? WeightKg = null,
-    List<Guid>? AddonIds = null
+    List<Guid>? AddonIds = null,
+    /// <summary>Preço unitário com desconto/promoção calculado pelo frontend. Quando informado, substitui product.PriceCents.</summary>
+    int? UnitPriceCentsOverride = null
 );
 
 public record PaymentEntry(string PaymentMethod, int AmountCents);

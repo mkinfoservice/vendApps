@@ -170,7 +170,7 @@ export async function scanBarcode(
 
 export async function addItem(
   saleId: string,
-  payload: { productId: string; qty: number; weightKg?: number; addonIds?: string[] }
+  payload: { productId: string; qty: number; weightKg?: number; addonIds?: string[]; unitPriceCentsOverride?: number }
 ): Promise<{ id: string; totalCents: number }> {
   return adminFetch(`/pdv/sale/${saleId}/items`, {
     method: "POST",

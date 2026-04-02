@@ -613,6 +613,7 @@ interface QuickProduct {
   id: string;
   name: string;
   priceCents: number;
+  promotionPriceCents?: number | null;
   imageUrl?: string | null;
   hasAddons: boolean;
   isBestSeller?: boolean;
@@ -665,7 +666,8 @@ function AddonModal({
   async function handleConfirm(addonIds: string[]) {
     setAdding(true);
     try {
-      await addItem(saleId, { productId: product.id, qty: 1, addonIds: addonIds.length ? addonIds : undefined });
+      const override = product.promotionPriceCents ?? undefined;
+      await addItem(saleId, { productId: product.id, qty: 1, addonIds: addonIds.length ? addonIds : undefined, unitPriceCentsOverride: override });
       onConfirm(product.name);
     } finally {
       setAdding(false);
@@ -716,10 +718,21 @@ function AddonModal({
             </div>
           )}
 
+          <div className="flex justify-between text-sm px-1">
+            <span style={{ color: GC.brown }}>Produto</span>
+            <span className="flex items-center gap-1.5">
+              {product.promotionPriceCents != null && (
+                <span className="text-xs line-through opacity-50" style={{ color: GC.brown }}>{brl(product.priceCents)}</span>
+              )}
+              <span className="font-bold" style={{ color: product.promotionPriceCents != null ? "#059669" : GC.brown }}>
+                {brl(product.promotionPriceCents ?? product.priceCents)}
+              </span>
+            </span>
+          </div>
           {extraCents > 0 && (
             <div className="flex justify-between text-sm px-1">
               <span style={{ color: GC.brown }}>Total com adicionais</span>
-              <span className="font-black" style={{ color: GC.dark }}>{brl(product.priceCents + extraCents)}</span>
+              <span className="font-black" style={{ color: GC.dark }}>{brl((product.promotionPriceCents ?? product.priceCents) + extraCents)}</span>
             </div>
           )}
 
@@ -831,7 +844,8 @@ function QuickProducts({
     }
     setAdding(p.id);
     try {
-      await addItem(saleId, { productId: p.id, qty: 1 });
+      const override = p.promotionPriceCents ?? undefined;
+      await addItem(saleId, { productId: p.id, qty: 1, unitPriceCentsOverride: override });
       onAdded(p.name);
     } finally {
       setAdding(null);
@@ -927,9 +941,14 @@ function QuickProducts({
               <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: GC.dark }}>
                 {p.name}
               </span>
-              <span className="text-[11px] font-black" style={{ color: GC.caramel }}>
-                {brl(p.priceCents)}
-              </span>
+              {p.promotionPriceCents != null ? (
+                <span className="flex flex-col items-center leading-tight">
+                  <span className="text-[9px] line-through opacity-50" style={{ color: GC.brown }}>{brl(p.priceCents)}</span>
+                  <span className="text-[11px] font-black" style={{ color: "#059669" }}>{brl(p.promotionPriceCents)}</span>
+                </span>
+              ) : (
+                <span className="text-[11px] font-black" style={{ color: GC.caramel }}>{brl(p.priceCents)}</span>
+              )}
               {(p.internalCode || p.barcode) && (
                 <span className="text-[10px] leading-tight text-center" style={{ color: GC.brown, opacity: 0.5 }}>
                   {p.internalCode || p.barcode}
