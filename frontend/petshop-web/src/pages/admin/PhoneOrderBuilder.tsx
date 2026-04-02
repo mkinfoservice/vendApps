@@ -74,6 +74,7 @@ export default function PhoneOrderBuilder() {
   const [productSearch, setProductSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [configuringProductId, setConfiguringProductId] = useState<string | null>(null);
+  const [configuringPromoPrice, setConfiguringPromoPrice] = useState<number | null>(null);
   const [configQty, setConfigQty] = useState(1);
   const [configSelectedAddonIds, setConfigSelectedAddonIds] = useState<string[]>([]);
   const [editingCartKey, setEditingCartKey] = useState<string | null>(null);
@@ -153,15 +154,16 @@ export default function PhoneOrderBuilder() {
     setCart((prev) => { const existing = prev.find((i) => i.key === key); if (existing) return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i)); return [...prev, { key, qty, product: { id: product.id, name: product.name, imageUrl: product.imageUrl, basePriceCents: effectivePrice }, addonIds, addons }]; });
   }
   function setQty(itemKey: string, qty: number) { if (qty <= 0) setCart((prev) => prev.filter((i) => i.key !== itemKey)); else setCart((prev) => prev.map((i) => (i.key === itemKey ? { ...i, qty } : i))); }
-  function openConfig(product: ProductListItem, existing?: CartItem) { setConfiguringProductId(product.id); setConfigQty(existing?.qty ?? 1); setConfigSelectedAddonIds(existing?.addonIds ?? []); setEditingCartKey(existing?.key ?? null); }
-  function closeConfig() { setConfiguringProductId(null); setConfigQty(1); setConfigSelectedAddonIds([]); setEditingCartKey(null); }
+  function openConfig(product: ProductListItem, existing?: CartItem) { setConfiguringProductId(product.id); setConfiguringPromoPrice(product.promotionPriceCents ?? null); setConfigQty(existing?.qty ?? 1); setConfigSelectedAddonIds(existing?.addonIds ?? []); setEditingCartKey(existing?.key ?? null); }
+  function closeConfig() { setConfiguringProductId(null); setConfiguringPromoPrice(null); setConfigQty(1); setConfigSelectedAddonIds([]); setEditingCartKey(null); }
   function confirmProductConfig() {
     if (!configuringProduct) return;
     const activeAddons = (configuringProduct.addons ?? []).filter((a) => a.isActive);
     const selected = activeAddons.filter((a) => configSelectedAddonIds.includes(a.id));
     const addonIds = selected.map((a) => a.id);
     const key = buildCartKey(configuringProduct.id, addonIds);
-    setCart((prev) => { const withoutEdited = editingCartKey ? prev.filter((i) => i.key !== editingCartKey) : prev; const existing = withoutEdited.find((i) => i.key === key); if (existing) return withoutEdited.map((i) => (i.key === key ? { ...i, qty: i.qty + Math.max(1, configQty) } : i)); return [...withoutEdited, { key, qty: Math.max(1, configQty), product: { id: configuringProduct.id, name: configuringProduct.name, imageUrl: configuringProduct.images?.[0]?.url ?? null, basePriceCents: configuringProduct.priceCents }, addonIds, addons: selected }]; });
+    const basePrice = configuringPromoPrice ?? configuringProduct.priceCents;
+    setCart((prev) => { const withoutEdited = editingCartKey ? prev.filter((i) => i.key !== editingCartKey) : prev; const existing = withoutEdited.find((i) => i.key === key); if (existing) return withoutEdited.map((i) => (i.key === key ? { ...i, qty: i.qty + Math.max(1, configQty) } : i)); return [...withoutEdited, { key, qty: Math.max(1, configQty), product: { id: configuringProduct.id, name: configuringProduct.name, imageUrl: configuringProduct.images?.[0]?.url ?? null, basePriceCents: basePrice }, addonIds, addons: selected }]; });
     closeConfig();
   }
   function handleLookup() { const cleaned = lookupInput.replace(/\D/g, ""); if (cleaned.length < 8) return; const isCpf = cleaned.length === 11; setGuestPhone(isCpf ? "" : cleaned); setGuestCpf(isCpf ? cleaned : ""); setLookupValue(cleaned); }
@@ -838,6 +840,7 @@ export default function PhoneOrderBuilder() {
       {configuringProductId && (
         <ProductConfigModal
           product={configuringProduct} isLoading={loadingConfigProduct}
+          promoPrice={configuringPromoPrice}
           qty={configQty} setQty={setConfigQty}
           selectedIds={configSelectedAddonIds} setSelectedIds={setConfigSelectedAddonIds}
           onClose={closeConfig} onConfirm={confirmProductConfig}
@@ -848,15 +851,17 @@ export default function PhoneOrderBuilder() {
 }
 
 // â”€â”€ ProductConfigModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setSelectedIds, onClose, onConfirm }: {
+function ProductConfigModal({ product, isLoading, promoPrice, qty, setQty, selectedIds, setSelectedIds, onClose, onConfirm }: {
   product: ProductDetail | undefined; isLoading: boolean;
+  promoPrice: number | null;
   qty: number; setQty: (v: number) => void;
   selectedIds: string[]; setSelectedIds: (ids: string[]) => void;
   onClose: () => void; onConfirm: () => void;
 }) {
   const addons = (product?.addons ?? []).filter((a) => a.isActive);
   const addonTotal = addons.filter((a) => selectedIds.includes(a.id)).reduce((s, a) => s + a.priceCents, 0);
-  const totalUnit = (product?.priceCents ?? 0) + addonTotal;
+  const basePrice = promoPrice ?? (product?.priceCents ?? 0);
+  const totalUnit = basePrice + addonTotal;
 
   function toggle(addonId: string) {
     if (selectedIds.includes(addonId)) setSelectedIds(selectedIds.filter((id) => id !== addonId));
@@ -926,11 +931,20 @@ function ProductConfigModal({ product, isLoading, qty, setQty, selectedIds, setS
         </div>
 
         <div className="rounded-2xl p-3 space-y-1.5" style={{ background: GC.bg }}>
-          {[["Produto", formatCents(product?.priceCents ?? 0)], ["Adicionais", formatCents(addonTotal)]].map(([l, v]) => (
-            <div key={l} className="flex justify-between text-sm" style={{ color: GC.brown }}>
-              <span>{l}</span><span>{v}</span>
-            </div>
-          ))}
+          <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
+            <span>Produto</span>
+            <span className="flex items-center gap-1.5">
+              {promoPrice !== null && product && (
+                <span className="text-xs line-through opacity-50">{formatCents(product.priceCents)}</span>
+              )}
+              <span style={promoPrice !== null ? { color: "#059669", fontWeight: 700 } : undefined}>
+                {formatCents(basePrice)}
+              </span>
+            </span>
+          </div>
+          <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
+            <span>Adicionais</span><span>{formatCents(addonTotal)}</span>
+          </div>
           <div className="flex justify-between font-black pt-1" style={{ borderTop: `1px solid rgba(107,79,58,0.1)`, color: GC.dark }}>
             <span>Total unitário</span><span style={{ color: GC.caramel }}>{formatCents(totalUnit)}</span>
           </div>
