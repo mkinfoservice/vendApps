@@ -15,6 +15,7 @@ using Petshop.Api.Services.Print;
 using Petshop.Api.Services.WhatsApp;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Entities.Dav;
+using Petshop.Api.Services.Tenancy;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -31,8 +32,9 @@ public class OrdersController : ControllerBase
     private readonly IBackgroundJobClient _jobs;
     private readonly PrintService _print;
     private readonly LoyaltyService _loyalty;
+    private readonly PlanFeatureService _planFeatures;
 
-    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty)
+    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty, PlanFeatureService planFeatures)
     {
         _db = db;
         _geo = geo;
@@ -42,6 +44,7 @@ public class OrdersController : ControllerBase
         _jobs = jobs;
         _print = print;
         _loyalty = loyalty;
+        _planFeatures = planFeatures;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -320,7 +323,13 @@ public class OrdersController : ControllerBase
 
         var oldStatus = order.Status;
 
-        if (!IsValidTransition(oldStatus, newStatus))
+        var company = await _db.Companies.FindAsync(new object[] { CompanyId }, ct);
+        var features = company is not null
+            ? await _planFeatures.ResolveFeaturesAsync(company, ct)
+            : PlanFeatureService.BuildPlanDefaults(null);
+        var ownDelivery = features.GetValueOrDefault(AppFeatureKeys.OwnDelivery, true);
+
+        if (!IsValidTransition(oldStatus, newStatus, ownDelivery))
             return BadRequest($"Transição inválida: {oldStatus} → {newStatus}.");
 
         // ✅ PASSO 5: ao marcar PRONTO_PARA_ENTREGA, tenta geocoding (sem travar o fluxo se falhar)
@@ -443,16 +452,20 @@ public class OrdersController : ControllerBase
         ));
     }
 
-    private static bool IsValidTransition(OrderStatus from, OrderStatus to)
+    private static bool IsValidTransition(OrderStatus from, OrderStatus to, bool ownDelivery = true)
     {
         if (from == OrderStatus.CANCELADO) return false;
         if (to == OrderStatus.CANCELADO) return true;
+
+        // Tenant sem entrega própria: fluxo direto PRONTO → ENTREGUE
+        if (!ownDelivery && from == OrderStatus.PRONTO_PARA_ENTREGA && to == OrderStatus.ENTREGUE)
+            return true;
 
         return (from, to) switch
         {
             (OrderStatus.RECEBIDO, OrderStatus.EM_PREPARO) => true,
             (OrderStatus.EM_PREPARO, OrderStatus.PRONTO_PARA_ENTREGA) => true,
-            (OrderStatus.PRONTO_PARA_ENTREGA, OrderStatus.SAIU_PARA_ENTREGA) => true,
+            (OrderStatus.PRONTO_PARA_ENTREGA, OrderStatus.SAIU_PARA_ENTREGA) => ownDelivery,
             (OrderStatus.SAIU_PARA_ENTREGA, OrderStatus.ENTREGUE) => true,
             _ => false
         };

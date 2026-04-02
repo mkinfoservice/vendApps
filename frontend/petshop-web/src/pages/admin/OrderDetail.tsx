@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Ban, Printer, Store, Truck, Undo2, Wallet } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useOrderById, useUpdateOrderStatus } from "@/features/admin/orders/queries";
 import { type OrderStatus } from "@/features/admin/orders/status";
 import { paymentLabel } from "@/features/admin/orders/payment";
 import { reprintOrder } from "@/features/admin/print/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import { hasRole } from "@/features/admin/auth/auth";
+import { fetchTenantInfo, resolveTenantFromHost } from "@/utils/tenant";
 
 const STATUS_FLOW_DELIVERY: OrderStatus[] = [
   "RECEBIDO",
@@ -92,6 +94,16 @@ export default function OrderDetail() {
   const params = useParams();
   const idOrNumber = params.id ?? "";
 
+  const tenantSlug = resolveTenantFromHost();
+  const tenantQuery = useQuery({
+    queryKey: ["tenant"],
+    queryFn: fetchTenantInfo,
+    enabled: !!tenantSlug,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const ownDelivery = (tenantQuery.data?.features?.["own_delivery"] ?? true) === true;
+
   const orderQuery = useOrderById(idOrNumber);
   const updateStatus = useUpdateOrderStatus();
   const [reprinting, setReprinting] = useState(false);
@@ -104,10 +116,11 @@ export default function OrderDetail() {
   const canEdit = !!order;
 
   const isDeliveryOrder = useMemo(() => {
+    if (!ownDelivery) return false;
     if (!order || order.isTableOrder) return false;
     const hasAddress = Boolean(order.address && order.address.trim() && order.address.trim() !== "-");
     return hasAddress || (order.deliveryCents ?? 0) > 0;
-  }, [order]);
+  }, [order, ownDelivery]);
 
   const statusFlow = isDeliveryOrder ? STATUS_FLOW_DELIVERY : STATUS_FLOW_LOCAL;
   const nextStatus = status === "CANCELADO" ? null : statusFlow[statusFlow.indexOf(status) + 1] ?? null;

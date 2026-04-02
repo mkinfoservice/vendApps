@@ -137,12 +137,12 @@ export function AppRoutes() {
         <Route path="/app/promocoes" element={<AppPage roles={["admin","gerente"]}><PromotionsPage /></AppPage>} />
 
         {/* ── /app — Logística ────────────────────────────────────────── */}
-        <Route path="/app/logistica/rotas" element={<AppPage><RoutesList /></AppPage>} />
-        <Route path="/app/logistica/rotas/planner" element={<AppPage><RoutePlanner /></AppPage>} />
-        <Route path="/app/logistica/rotas/:routeId" element={<AppPage><RouteDetail /></AppPage>} />
-        <Route path="/app/logistica/entregadores" element={<AppPage roles={["admin","gerente"]}><DeliverersList /></AppPage>} />
-        <Route path="/app/logistica/entregadores/novo" element={<AppPage roles={["admin","gerente"]}><DelivererForm /></AppPage>} />
-        <Route path="/app/logistica/entregadores/:id" element={<AppPage roles={["admin","gerente"]}><DelivererForm /></AppPage>} />
+        <Route path="/app/logistica/rotas" element={<AppPage featureKey="own_delivery"><RoutesList /></AppPage>} />
+        <Route path="/app/logistica/rotas/planner" element={<AppPage featureKey="own_delivery"><RoutePlanner /></AppPage>} />
+        <Route path="/app/logistica/rotas/:routeId" element={<AppPage featureKey="own_delivery"><RouteDetail /></AppPage>} />
+        <Route path="/app/logistica/entregadores" element={<AppPage roles={["admin","gerente"]} featureKey="own_delivery"><DeliverersList /></AppPage>} />
+        <Route path="/app/logistica/entregadores/novo" element={<AppPage roles={["admin","gerente"]} featureKey="own_delivery"><DelivererForm /></AppPage>} />
+        <Route path="/app/logistica/entregadores/:id" element={<AppPage roles={["admin","gerente"]} featureKey="own_delivery"><DelivererForm /></AppPage>} />
 
         <Route path="/app/compras" element={<AppPage roles={["admin","gerente"]}><PurchasesPage /></AppPage>} />
         <Route path="/app/compras/:id" element={<AppPage roles={["admin","gerente"]}><PurchaseOrderDetail /></AppPage>} />

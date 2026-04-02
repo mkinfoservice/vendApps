@@ -11,6 +11,7 @@ import { Plus, ShoppingBag, Search, Trash2, Monitor, Coffee } from "lucide-react
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
+import { fetchTenantInfo, resolveTenantFromHost } from "@/utils/tenant";
 
 const GC = { caramel: "#C8953A", brown: "#6B4F3A", dark: "#1C1209" };
 
@@ -102,6 +103,16 @@ export default function OrdersList() {
   const [searchParams] = useSearchParams();
   const { role } = useCurrentUser();
 
+  const tenantSlug = resolveTenantFromHost();
+  const tenantQuery = useQuery({
+    queryKey: ["tenant"],
+    queryFn: fetchTenantInfo,
+    enabled: !!tenantSlug,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const ownDelivery = (tenantQuery.data?.features?.["own_delivery"] ?? true) === true;
+
   const [tab, setTab] = useState<"orders" | "pdv">("orders");
 
   // orders tab state
@@ -180,7 +191,7 @@ export default function OrdersList() {
                   </button>
                 </>
               )}
-              {tab === "orders" && (
+              {tab === "orders" && ownDelivery && (
                 <button type="button"
                   onClick={() => navigate("/app/logistica/rotas/planner")}
                   className="flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-95"
@@ -236,7 +247,10 @@ export default function OrdersList() {
             onChange={(e) => tab === "orders"
               ? (setPage(1), setStatus(e.target.value as OrderStatus | ""))
               : (setPdvPage(1), setPdvStatus(e.target.value))}>
-            {(tab === "orders" ? STATUS_OPTIONS : PDV_STATUS_OPTIONS).map((o) => (
+            {(tab === "orders"
+              ? STATUS_OPTIONS.filter((o) => ownDelivery || o.value !== "SAIU_PARA_ENTREGA")
+              : PDV_STATUS_OPTIONS
+            ).map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
