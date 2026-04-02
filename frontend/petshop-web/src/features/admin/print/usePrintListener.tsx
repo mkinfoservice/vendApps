@@ -6,6 +6,8 @@ import { fetchPendingPrintJobs, markPrinted } from "./api";
 import type { PrintOrderPayload, PendingJobDto } from "./types";
 import { PrintReceipt } from "./PrintReceipt";
 
+export type { PrintOrderPayload };
+
 const API_URL = import.meta.env.VITE_API_URL ?? "";
 
 export const PRINT_STATION_KEY = "vendapps_print_station";
@@ -43,8 +45,9 @@ function printPayload(payload: PrintOrderPayload, jobId: string) {
  * Hook que mantém conexão SignalR com o PrintHub.
  * Só imprime se este PC for a estação de impressão (isPrintStation() === true).
  * Todos os PCs conectam ao hub (para ver a fila), mas apenas a estação imprime.
+ * onNewOrder é chamado em todos os PCs para exibir notificações.
  */
-export function usePrintListener() {
+export function usePrintListener(onNewOrder?: (payload: PrintOrderPayload) => void) {
   const connectionRef = useRef<signalR.HubConnection | null>(null);
   const [connected, setConnected] = useState(false);
   const [printStation, setPrintStationState] = useState<boolean>(isPrintStation);
@@ -92,7 +95,7 @@ export function usePrintListener() {
       if (isPrintStation()) {
         printPayload(data.payload, data.jobId);
       }
-      // PCs que não são estação ignoram o evento (mas continuam conectados para ver a fila)
+      onNewOrder?.(data.payload);
     });
 
     connection.onreconnected(async () => {

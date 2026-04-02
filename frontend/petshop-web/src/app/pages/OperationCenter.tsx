@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Star, Clock, ShoppingBag, ChefHat, Bike, PackageCheck, Users, RefreshCw, Monitor, FileText, Headphones, ArrowRight, Coffee } from "lucide-react";
+import { Search, Star, Clock, ShoppingBag, ChefHat, Bike, PackageCheck, Users, RefreshCw, Monitor, FileText, Headphones, ArrowRight, Coffee, Settings2 } from "lucide-react";
+import { useHiddenKpis } from "@/hooks/useHiddenKpis";
 import { useQuery } from "@tanstack/react-query";
 import {
   APP_MODULES,
@@ -30,6 +31,7 @@ function getGreeting(): string {
 // Ã¢â€â‚¬Ã¢â€â‚¬ KPI Card Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 type KpiItem = {
+  id: string;
   label: string;
   value: number | string;
   icon: React.ElementType;
@@ -106,6 +108,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
 
   return [
     {
+      id: "pedidos-hoje",
       label: "Pedidos hoje",
       value: totalOrders,
       icon: ShoppingBag,
@@ -114,6 +117,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
       route: "/app/pedidos",
     },
     {
+      id: "em-preparo",
       label: "Em preparo",
       value: d.orders.emPreparo,
       icon: ChefHat,
@@ -122,6 +126,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
       route: "/app/pedidos?status=EM_PREPARO",
     },
     {
+      id: "prontos-entrega",
       label: "Prontos p/ entrega",
       value: d.orders.prontoParaEntrega,
       icon: PackageCheck,
@@ -132,6 +137,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
       route: "/app/pedidos?status=PRONTO_PARA_ENTREGA",
     },
     {
+      id: "saiu-entrega",
       label: "Saiu p/ entrega",
       value: d.orders.saiuParaEntrega,
       icon: Bike,
@@ -140,6 +146,7 @@ function buildKpis(d: AdminDashboardResponse): KpiItem[] {
       route: "/app/logistica/rotas",
     },
     {
+      id: "entregadores",
       label: "Entregadores",
       value: d.deliverers.active,
       icon: Users,
@@ -178,8 +185,22 @@ export default function OperationCenter() {
 
   // Dashboard KPIs
   const { data: dash, isLoading: dashLoading, dataUpdatedAt, refetch: refetchDash } = useDashboard();
-  const kpis = dash ? buildKpis(dash) : null;
+  const allKpis = dash ? buildKpis(dash) : null;
+  const { hidden: hiddenKpis, toggle: toggleKpi, isHidden: isKpiHidden } = useHiddenKpis();
+  const kpis = allKpis?.filter((k) => !isKpiHidden(k.id)) ?? null;
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null;
+
+  const [showKpiConfig, setShowKpiConfig] = useState(false);
+  const kpiConfigRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showKpiConfig) return;
+    function handleClick(e: MouseEvent) {
+      if (kpiConfigRef.current && !kpiConfigRef.current.contains(e.target as Node))
+        setShowKpiConfig(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showKpiConfig]);
 
   // Module data — filtrado por isActive e permissões do role
   const modulesByGroup = getModulesByGroup();
@@ -364,12 +385,58 @@ export default function OperationCenter() {
               >
                 <RefreshCw size={13} />
               </button>
+              {/* KPI config */}
+              <div className="relative" ref={kpiConfigRef}>
+                <button
+                  type="button"
+                  title="Personalizar cards"
+                  onClick={() => setShowKpiConfig((v) => !v)}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-[var(--surface)]"
+                  style={{ color: showKpiConfig ? "var(--accent)" : "var(--text-muted)" }}
+                >
+                  <Settings2 size={13} />
+                </button>
+                {showKpiConfig && allKpis && (
+                  <div
+                    className="absolute right-0 top-9 z-50 w-52 rounded-2xl border shadow-xl p-2 space-y-0.5"
+                    style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wider px-2 pt-1 pb-2" style={{ color: "var(--text-muted)" }}>
+                      Cards visíveis
+                    </p>
+                    {allKpis.map((kpi) => {
+                      const hidden = isKpiHidden(kpi.id);
+                      return (
+                        <button
+                          key={kpi.id}
+                          type="button"
+                          onClick={() => toggleKpi(kpi.id)}
+                          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl text-sm transition hover:bg-[var(--surface-2)]"
+                        >
+                          <span
+                            className="w-4 h-4 rounded flex items-center justify-center border shrink-0 transition"
+                            style={{
+                              borderColor: hidden ? "var(--border)" : kpi.accent,
+                              backgroundColor: hidden ? "transparent" : `${kpi.accent}22`,
+                            }}
+                          >
+                            {!hidden && <kpi.icon size={9} color={kpi.accent} />}
+                          </span>
+                          <span style={{ color: hidden ? "var(--text-muted)" : "var(--text)" }}>
+                            {kpi.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {dashLoading
               ? Array.from({ length: 5 }).map((_, i) => <KpiCardSkeleton key={i} />)
-              : kpis?.map((kpi) => <KpiCard key={kpi.label} {...kpi} />)}
+              : kpis?.map((kpi) => <KpiCard key={kpi.id} {...kpi} />)}
           </div>
         </section>
       )}

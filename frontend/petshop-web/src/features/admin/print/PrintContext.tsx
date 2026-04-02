@@ -1,5 +1,9 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { usePrintListener } from "./usePrintListener";
+import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { usePrintListener, type PrintOrderPayload } from "./usePrintListener";
+import { OrderNotificationOverlay, type OrderNotif } from "@/features/admin/notifications/OrderNotificationOverlay";
+import { loadSoundPrefs, playSound } from "@/features/admin/notifications/sounds";
+
+// ── Print context ─────────────────────────────────────────────────────────────
 
 type PrintStatus = {
   connected: boolean;
@@ -17,11 +21,34 @@ export function usePrintStatus() {
   return useContext(PrintCtx);
 }
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 export function PrintProvider({ children }: { children: ReactNode }) {
-  const { connected, printStation, togglePrintStation } = usePrintListener();
+  const [notifications, setNotifications] = useState<OrderNotif[]>([]);
+
+  const handleNewOrder = useCallback((payload: PrintOrderPayload) => {
+    const notif: OrderNotif = {
+      id:            `${payload.orderId}-${Date.now()}`,
+      orderPublicId: payload.publicId,
+      customerName:  payload.customerName || "Cliente",
+    };
+
+    setNotifications((prev) => [...prev, notif]);
+
+    const prefs = loadSoundPrefs();
+    if (prefs.enabled) playSound(prefs.soundId, prefs.volume);
+  }, []);
+
+  const dismiss = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
+
+  const { connected, printStation, togglePrintStation } = usePrintListener(handleNewOrder);
+
   return (
     <PrintCtx.Provider value={{ connected, printStation, togglePrintStation }}>
       {children}
+      <OrderNotificationOverlay notifications={notifications} onDismiss={dismiss} />
     </PrintCtx.Provider>
   );
 }
