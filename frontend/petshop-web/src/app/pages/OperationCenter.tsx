@@ -186,7 +186,7 @@ export default function OperationCenter() {
   // Dashboard KPIs
   const { data: dash, isLoading: dashLoading, dataUpdatedAt, refetch: refetchDash } = useDashboard();
   const allKpis = dash ? buildKpis(dash) : null;
-  const { hidden: hiddenKpis, toggle: toggleKpi, isHidden: isKpiHidden } = useHiddenKpis();
+  const { toggle: toggleKpi, isHidden: isKpiHidden } = useHiddenKpis();
   const kpis = allKpis?.filter((k) => !isKpiHidden(k.id)) ?? null;
   const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : null;
 
