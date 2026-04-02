@@ -192,6 +192,25 @@ export function importPlatformWhatsappFromCompany(companyId: string) {
   );
 }
 
+// ── Feature Flags ─────────────────────────────────────────────
+
+export type CompanyFeaturesDto = {
+  companyId: string;
+  plan: string;
+  features: Record<string, boolean>;
+};
+
+export function fetchCompanyFeatures(companyId: string) {
+  return masterFetch<CompanyFeaturesDto>(`/master/companies/${companyId}/features`);
+}
+
+export function updateCompanyFeatures(companyId: string, features: Record<string, boolean>) {
+  return masterFetch<CompanyFeaturesDto>(`/master/companies/${companyId}/features`, {
+    method: "PUT",
+    body: JSON.stringify({ features }),
+  });
+}
+
 // ── Provision ─────────────────────────────────────────────────
 
 export function provisionCompany(

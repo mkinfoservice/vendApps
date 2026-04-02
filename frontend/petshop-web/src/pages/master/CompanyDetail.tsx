@@ -10,10 +10,11 @@ import {
   fetchWhatsapp, upsertWhatsapp,
   updateWhatsappPrefs,
   provisionCompany,
+  fetchCompanyFeatures, updateCompanyFeatures,
 } from "@/features/master/companies/api";
 import type { CompanyDetailDto, AdminUserDto } from "@/features/master/companies/types";
 
-type Tab = "overview" | "settings" | "admins" | "whatsapp";
+type Tab = "overview" | "settings" | "admins" | "whatsapp" | "features";
 
 // ── Status badge ──────────────────────────────────────────────
 
@@ -1145,13 +1146,107 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
   );
 }
 
+// ── Features Tab ──────────────────────────────────────────────
+
+const FEATURE_META: Record<string, { label: string; description: string }> = {
+  own_delivery:   { label: "Entrega Própria",   description: "Exibe módulos de Rotas e Entregadores. Desative para tenants que não fazem entregas (ex: restaurantes, balcão)." },
+  agenda:         { label: "Agenda",            description: "Módulo de agendamentos (plano Pro+)." },
+  commissions:    { label: "Comissões",         description: "Rastreamento de comissões por vendedor." },
+  tips:           { label: "Gorjetas",          description: "Funcionalidade de gorjetas no checkout." },
+  dav_menu:       { label: "DAV / Orçamento",   description: "Menu de DAV e orçamentos." },
+  financial_menu: { label: "Financeiro",        description: "Menu financeiro e lançamentos." },
+};
+
+function FeaturesTab({ companyId }: { companyId: string }) {
+  const qc = useQueryClient();
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [saved, setSaved]     = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["master", "features", companyId],
+    queryFn:  () => fetchCompanyFeatures(companyId),
+  });
+
+  const [local, setLocal] = useState<Record<string, boolean> | null>(null);
+  useEffect(() => { if (data) setLocal(data.features); }, [data]);
+
+  const saveMut = useMutation({
+    mutationFn: () => updateCompanyFeatures(companyId, local!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["master", "features", companyId] });
+      setSaved(true);
+      setSaveErr(null);
+      setTimeout(() => setSaved(false), 3000);
+    },
+    onError: (e: Error) => setSaveErr(e.message),
+  });
+
+  if (isLoading || !local) {
+    return <div className="h-8 w-40 bg-gray-200 animate-pulse rounded-xl" />;
+  }
+
+  const toggle = (key: string) =>
+    setLocal((prev) => ({ ...prev!, [key]: !prev![key] }));
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500">
+        Overrides aplicados por cima dos defaults do plano <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{data?.plan ?? "—"}</code>.
+        Alterações são imediatas após salvar.
+      </p>
+
+      <div className="rounded-2xl border border-gray-200 overflow-hidden">
+        {Object.entries(local).map(([key, enabled], i, arr) => {
+          const meta = FEATURE_META[key] ?? { label: key, description: "" };
+          return (
+            <div
+              key={key}
+              className={`flex items-center justify-between gap-4 px-5 py-4 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-800">{meta.label}</div>
+                {meta.description && (
+                  <div className="text-xs text-gray-500 mt-0.5">{meta.description}</div>
+                )}
+                <code className="text-[10px] text-gray-400">{key}</code>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(key)}
+                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${enabled ? "bg-purple-600" : "bg-gray-300"}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0"}`}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {saveErr && <p className="text-sm text-red-600">{saveErr}</p>}
+      {saved   && <p className="text-sm text-green-600">✓ Feature flags atualizados!</p>}
+
+      <button
+        onClick={() => saveMut.mutate()}
+        disabled={saveMut.isPending || !local}
+        className="h-10 px-6 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
+        style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
+      >
+        {saveMut.isPending ? "Salvando…" : "Salvar feature flags"}
+      </button>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "overview", label: "Overview"  },
-  { key: "settings", label: "Settings"  },
-  { key: "admins",   label: "Admins"    },
-  { key: "whatsapp", label: "WhatsApp"  },
+  { key: "overview",  label: "Overview"       },
+  { key: "settings",  label: "Settings"       },
+  { key: "admins",    label: "Admins"         },
+  { key: "whatsapp",  label: "WhatsApp"       },
+  { key: "features",  label: "Feature Flags"  },
 ];
 
 export default function CompanyDetail() {
@@ -1242,10 +1337,11 @@ export default function CompanyDetail() {
         {/* Tab content */}
         {company && (
           <>
-            {tab === "overview" && <OverviewTab company={company} onRefresh={refresh} />}
-            {tab === "settings" && <SettingsTab companyId={company.id} />}
-            {tab === "admins"   && <AdminsTab   companyId={company.id} />}
-            {tab === "whatsapp" && <WhatsappTab  companyId={company.id} company={company} />}
+            {tab === "overview"  && <OverviewTab  company={company} onRefresh={refresh} />}
+            {tab === "settings"  && <SettingsTab  companyId={company.id} />}
+            {tab === "admins"    && <AdminsTab    companyId={company.id} />}
+            {tab === "whatsapp"  && <WhatsappTab  companyId={company.id} company={company} />}
+            {tab === "features"  && <FeaturesTab  companyId={company.id} />}
           </>
         )}
       </main>
