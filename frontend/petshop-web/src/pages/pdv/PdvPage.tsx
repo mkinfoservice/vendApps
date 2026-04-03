@@ -13,7 +13,7 @@ const GC = {
 };
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
-  closeSession, getCupom, getSessionReport, addMovement, importDav, addItem,
+  closeSession, getSessionReport, addMovement, importDav, addItem,
   type Sale, type CupomData, type SessionReport,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
