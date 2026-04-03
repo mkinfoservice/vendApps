@@ -189,6 +189,7 @@ export async function paySale(
     discountCents?: number;
     notes?: string;
     customerDocument?: string;
+    customerPhone?: string;
   }
 ): Promise<{ id: string; publicId: string; totalCents: number; fiscalDecision: string; changeCents: number }> {
   return adminFetch(`/pdv/sale/${saleId}/pay`, {

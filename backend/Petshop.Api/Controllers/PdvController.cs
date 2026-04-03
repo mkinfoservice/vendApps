@@ -664,17 +664,22 @@ public class PdvController : ControllerBase
         // Debita estoque via SQL direto (sem EF tracking, sem concurrency check)
         await _stock.DecrementOnSaleAsync(sale, UserName, ct);
 
+        var customerPhone = string.IsNullOrWhiteSpace(req.CustomerPhone)
+            ? sale.CustomerPhone
+            : req.CustomerPhone.Trim();
+
         // UPDATE SaleOrder via SQL direto (sem EF concurrency check)
         await _db.Database.ExecuteSqlAsync(
             $"""
             UPDATE "SaleOrders"
-            SET    "Status"         = 'Completed',
-                   "FiscalDecision" = {fiscalDecision},
-                   "CompletedAtUtc" = {completedAt},
-                   "DiscountCents"  = {discountCents},
-                   "TotalCents"     = {totalCents},
-                   "Notes"          = {finalNotes},
-                   "CustomerDocument" = {customerDocument ?? sale.CustomerDocument}
+            SET    "Status"           = 'Completed',
+                   "FiscalDecision"   = {fiscalDecision},
+                   "CompletedAtUtc"   = {completedAt},
+                   "DiscountCents"    = {discountCents},
+                   "TotalCents"       = {totalCents},
+                   "Notes"            = {finalNotes},
+                   "CustomerDocument" = {customerDocument ?? sale.CustomerDocument},
+                   "CustomerPhone"    = {customerPhone}
             WHERE  "Id" = {saleId}
             """, ct);
 
@@ -730,6 +735,30 @@ public class PdvController : ControllerBase
             ChangeCents  = payments.Sum(p => p.ChangeCents),
             EarnedPoints = earnedPoints,
         });
+    }
+
+    // ── PATCH /pdv/sale/{id}/customer-phone ──────────────────────────────────
+    /// <summary>
+    /// Atualiza o telefone do cliente em uma venda já finalizada,
+    /// permitindo que o job fiscal envie o comprovante por WhatsApp.
+    /// Chamado pelo PDV após o modal pós-venda.
+    /// </summary>
+    [HttpPatch("sale/{id:guid}/customer-phone")]
+    public async Task<IActionResult> UpdateCustomerPhone(
+        Guid id,
+        [FromBody] UpdateCustomerPhoneRequest req,
+        CancellationToken ct)
+    {
+        var affected = await _db.Database.ExecuteSqlAsync(
+            $"""
+            UPDATE "SaleOrders"
+            SET    "CustomerPhone" = {req.CustomerPhone}
+            WHERE  "Id"        = {id}
+              AND  "CompanyId" = {CompanyId}
+            """, ct);
+
+        if (affected == 0) return NotFound();
+        return NoContent();
     }
 
     // ── POST /pdv/sale/{id}/cancel ────────────────────────────────────────────
@@ -1172,7 +1201,8 @@ public record PaySaleRequest(
     IReadOnlyList<PaymentEntry> Payments,
     int? DiscountCents = null,
     string? Notes = null,
-    string? CustomerDocument = null
+    string? CustomerDocument = null,
+    string? CustomerPhone = null
 );
 
 public record AddMovementRequest(
@@ -1182,3 +1212,5 @@ public record AddMovementRequest(
 );
 
 public record ImportDavRequest(string QuoteCode);
+
+public record UpdateCustomerPhoneRequest(string CustomerPhone);

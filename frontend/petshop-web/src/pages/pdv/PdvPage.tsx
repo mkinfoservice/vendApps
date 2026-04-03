@@ -383,6 +383,203 @@ const PAY_METHODS: PayMethod[] = [
   { method: "CARTAO_DEBITO",  label: "Debito",         color: GC.brown },
 ];
 
+// ── SaleCompleteModal ─────────────────────────────────────────────────────────
+
+type SaleCompleteAction = "print" | "skip" | "whatsapp";
+
+function SaleCompleteModal({
+  saleId, publicId, totalCents, changeCents, customerPhone: initialPhone, onClose,
+}: {
+  saleId: string; publicId: string; totalCents: number;
+  changeCents: number; customerPhone: string | null;
+  onClose: () => void;
+}) {
+  const [chosen, setChosen]   = useState<SaleCompleteAction | null>(null);
+  const [phone, setPhone]     = useState(initialPhone ?? "");
+  const [phoneErr, setPhoneErr] = useState("");
+  const [waStatus, setWaStatus] = useState<"idle" | "saving" | "ok" | "err">("idle");
+  const [printing, setPrinting] = useState(false);
+
+  const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  async function handlePrint() {
+    setPrinting(true);
+    try {
+      const cupomData = await adminFetch<Parameters<typeof printCupom>[0]>(`/pdv/sale/${saleId}/cupom`);
+      printCupom(cupomData);
+    } finally {
+      setPrinting(false);
+      onClose();
+    }
+  }
+
+  async function handleWhatsApp() {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) { setPhoneErr("Informe um número válido com DDD."); return; }
+    setPhoneErr("");
+    setWaStatus("saving");
+    try {
+      await adminFetch(`/pdv/sale/${saleId}/customer-phone`, {
+        method: "PATCH",
+        body: JSON.stringify({ customerPhone: phone.trim() }),
+      });
+      setWaStatus("ok");
+      setTimeout(onClose, 1800);
+    } catch {
+      setWaStatus("err");
+    }
+  }
+
+  const CARDS: { key: SaleCompleteAction; icon: string; title: string; desc: string; accent: string; highlighted?: boolean }[] = [
+    {
+      key: "print",
+      icon: "🖨️",
+      title: "Imprimir comprovante",
+      desc: "Imprime o cupom fiscal na impressora configurada",
+      accent: GC.caramel,
+      highlighted: true,
+    },
+    {
+      key: "whatsapp",
+      icon: "📲",
+      title: "Receber no WhatsApp",
+      desc: initialPhone ? `Enviar NFC-e para ${initialPhone}` : "Informe o telefone para enviar o PDF",
+      accent: "#16a34a",
+    },
+    {
+      key: "skip",
+      icon: "✕",
+      title: "Não imprimir",
+      desc: "Fechar sem imprimir",
+      accent: "#6b7280",
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(28,18,9,0.72)", backdropFilter: "blur(4px)" }}>
+      <div className="w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden"
+        style={{ background: GC.bg, border: `1.5px solid ${GC.caramel}33` }}>
+
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 text-center"
+          style={{ background: `linear-gradient(160deg, ${GC.dark} 0%, #2A1A0E 100%)` }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A07230)` }}>
+            ✓
+          </div>
+          <p className="text-lg font-black text-white tracking-tight">Venda concluída!</p>
+          <p className="text-xs mt-0.5" style={{ color: "rgba(245,237,224,0.6)" }}>#{publicId}</p>
+          <p className="text-3xl font-black mt-2" style={{ color: GC.caramel }}>{brl(totalCents)}</p>
+          {changeCents > 0 && (
+            <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+              style={{ background: "#16a34a22", color: "#4ade80" }}>
+              <span>Troco:</span>
+              <span>{brl(changeCents)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action cards or WhatsApp step */}
+        <div className="p-5 space-y-3">
+          {chosen !== "whatsapp" ? (
+            <>
+              <p className="text-xs font-bold uppercase tracking-widest text-center mb-1"
+                style={{ color: GC.brown }}>O que deseja fazer?</p>
+
+              {CARDS.map((card) => (
+                <button
+                  key={card.key}
+                  type="button"
+                  disabled={printing}
+                  onClick={() => {
+                    if (card.key === "print") { handlePrint(); return; }
+                    if (card.key === "skip")  { onClose(); return; }
+                    setChosen("whatsapp");
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition active:scale-[0.98] hover:brightness-95"
+                  style={card.highlighted
+                    ? { background: `linear-gradient(135deg, ${card.accent}, #A07230)`, boxShadow: `0 4px 18px ${card.accent}44` }
+                    : { background: GC.cream, border: `1.5px solid rgba(107,79,58,0.14)` }}
+                >
+                  <span className="text-2xl flex-shrink-0">{card.icon}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-sm font-bold ${card.highlighted ? "text-white" : ""}`}
+                      style={card.highlighted ? undefined : { color: GC.dark }}>
+                      {card.title}
+                    </span>
+                    <span className={`block text-xs mt-0.5 truncate ${card.highlighted ? "text-white/70" : ""}`}
+                      style={card.highlighted ? undefined : { color: GC.brown }}>
+                      {card.desc}
+                    </span>
+                  </span>
+                  {card.highlighted && (
+                    <span className="text-xs font-black text-white/80 shrink-0">→</span>
+                  )}
+                </button>
+              ))}
+            </>
+          ) : (
+            /* WhatsApp step */
+            <div className="space-y-3">
+              <button type="button" onClick={() => setChosen(null)}
+                className="flex items-center gap-1 text-xs font-medium transition hover:opacity-70"
+                style={{ color: GC.brown }}>
+                ← Voltar
+              </button>
+
+              <p className="text-sm font-bold" style={{ color: GC.dark }}>
+                📲 Enviar NFC-e por WhatsApp
+              </p>
+              <p className="text-xs" style={{ color: GC.brown }}>
+                O comprovante em PDF será enviado após autorização da nota fiscal.
+              </p>
+
+              {waStatus === "ok" ? (
+                <div className="rounded-2xl p-4 text-center" style={{ background: "#dcfce7" }}>
+                  <p className="text-sm font-bold text-green-700">✓ Número registrado!</p>
+                  <p className="text-xs text-green-600 mt-0.5">O PDF chegará no WhatsApp em instantes.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold" style={{ color: GC.brown }}>
+                      {initialPhone ? "Confirme ou altere o telefone" : "Telefone do cliente (com DDD)"}
+                    </label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value); setPhoneErr(""); }}
+                      placeholder="(11) 99999-0000"
+                      autoFocus
+                      className="w-full h-11 rounded-xl px-4 text-sm focus:outline-none"
+                      style={{ border: `1.5px solid rgba(107,79,58,0.2)`, background: "#fff", color: GC.dark }}
+                    />
+                    {phoneErr && <p className="text-xs text-red-500">{phoneErr}</p>}
+                    {waStatus === "err" && <p className="text-xs text-red-500">Erro ao salvar. Tente novamente.</p>}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={waStatus === "saving"}
+                    onClick={handleWhatsApp}
+                    className="w-full h-12 rounded-2xl text-white text-sm font-bold transition active:scale-[0.98] disabled:opacity-60"
+                    style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 14px #16a34a44" }}
+                  >
+                    {waStatus === "saving" ? "Salvando…" : "Confirmar envio"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PayPanel ──────────────────────────────────────────────────────────────────
+
 interface PayPanelProps {
   totalCents: number;
   onPay: (method: string, amountCents: number, customerDocument?: string) => void;
@@ -1137,6 +1334,10 @@ export default function PdvPage() {
   const [showDavSearch, setShowDavSearch]   = useState(false);
   const [paying, setPaying]                 = useState(false);
   const [showPay, setShowPay]               = useState(false);
+  const [saleComplete, setSaleComplete]     = useState<{
+    saleId: string; publicId: string; totalCents: number;
+    changeCents: number; customerPhone: string | null;
+  } | null>(null);
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
@@ -1275,21 +1476,22 @@ export default function PdvPage() {
       return;
     }
     setPaying(true);
+    const saleId      = sale.id;
+    const salePhone   = sale.customerPhone;
     try {
-      const result = await paySale(sale.id, {
+      const result = await paySale(saleId, {
         payments: [{ paymentMethod: method, amountCents }],
         customerDocument,
       });
-      const cupomData = await getCupom(sale.id);
-      printCupom(cupomData);
-      flash(`Venda finalizada! ${brl(result.totalCents)}`, true);
-      if (result.changeCents > 0) {
-        flash(`Troco: ${brl(result.changeCents)}`, true);
-      }
       setShowPay(false);
       setDavPayMethod(null);
-      setSale(null);
-      await handleNewSale();
+      setSaleComplete({
+        saleId,
+        publicId:    result.publicId,
+        totalCents:  result.totalCents,
+        changeCents: result.changeCents,
+        customerPhone: salePhone ?? null,
+      });
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : "Erro ao finalizar venda", false);
     } finally {
@@ -1396,6 +1598,18 @@ export default function PdvPage() {
         }`}>
           {feedback.msg}
         </div>
+      )}
+
+      {/* Post-sale modal */}
+      {saleComplete && (
+        <SaleCompleteModal
+          {...saleComplete}
+          onClose={async () => {
+            setSaleComplete(null);
+            setSale(null);
+            await handleNewSale();
+          }}
+        />
       )}
 
       {/* Mobile: Payment panel overlay */}
