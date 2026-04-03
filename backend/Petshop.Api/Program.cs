@@ -330,6 +330,7 @@ builder.Services.AddHttpClient<Petshop.Api.Services.WhatsApp.WhatsAppClient>(cli
 builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppWebhookProcessor>();
 builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppNotificationService>();
 builder.Services.AddScoped<Petshop.Api.Services.WhatsApp.WhatsAppInboundRouter>();
+builder.Services.AddSingleton<Petshop.Api.Services.Pdv.SaleReceiptPdfService>();
 
 // ===============================
 // CORS

@@ -76,6 +76,109 @@ public class WhatsAppClient
         return SendAsync(to, BuildTemplatePayload(to, templateName, languageCode, components), companyId, ct);
     }
 
+    /// <summary>
+    /// Envia um template com documento no header (PDF) e variáveis de texto no body.
+    /// O documento é identificado pelo mediaId previamente obtido via UploadMediaAsync.
+    /// </summary>
+    public Task<string?> SendTemplateWithDocumentAsync(
+        string to,
+        string templateName,
+        string languageCode,
+        string mediaId,
+        string filename,
+        IReadOnlyList<string>? bodyParams = null,
+        Guid? companyId = null,
+        CancellationToken ct = default)
+    {
+        var components = new List<object>
+        {
+            new
+            {
+                type = "header",
+                parameters = new[]
+                {
+                    new
+                    {
+                        type     = "document",
+                        document = new { id = mediaId, filename }
+                    }
+                }
+            }
+        };
+
+        if (bodyParams is { Count: > 0 })
+        {
+            components.Add(new
+            {
+                type = "body",
+                parameters = bodyParams.Select(p => new { type = "text", text = p }).ToArray()
+            });
+        }
+
+        return SendAsync(to, BuildTemplatePayload(to, templateName, languageCode, components), companyId, ct);
+    }
+
+    /// <summary>
+    /// Faz upload de um arquivo para a API de mídia da Meta e retorna o media_id.
+    /// Retorna null se falhar.
+    /// </summary>
+    public async Task<string?> UploadMediaAsync(
+        byte[] fileBytes,
+        string mimeType,
+        string filename,
+        Guid? companyId = null,
+        CancellationToken ct = default)
+    {
+        var creds = await ResolveCredentialsAsync(companyId, ct);
+        if (creds is null) return null;
+
+        var (phoneNumberId, accessToken, graphVersion) = creds.Value;
+        var url = $"https://graph.facebook.com/{graphVersion}/{phoneNumberId}/media";
+
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent("whatsapp"), "messaging_product");
+        form.Add(new StringContent(mimeType),   "type");
+
+        var fileContent = new ByteArrayContent(fileBytes);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(mimeType);
+        form.Add(fileContent, "file", filename);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = form };
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await _http.SendAsync(request, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "WA_MEDIA_UPLOAD_ERROR | CompanyId={CompanyId} | {Message}", companyId, ex.Message);
+            return null;
+        }
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError("WA_MEDIA_UPLOAD_FAIL | CompanyId={CompanyId} | Status={Status} | Body={Body}",
+                companyId, (int)response.StatusCode, body);
+            return null;
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(body);
+            var mediaId = doc.RootElement.GetProperty("id").GetString();
+            _logger.LogInformation("WA_MEDIA_UPLOAD_OK | CompanyId={CompanyId} | MediaId={MediaId}", companyId, mediaId);
+            return mediaId;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "WA_MEDIA_PARSE_WARN | CompanyId={CompanyId} | Não foi possível extrair media_id", companyId);
+            return null;
+        }
+    }
+
     // ── Helpers de normalização ──────────────────────────────────────────────
 
     /// <summary>

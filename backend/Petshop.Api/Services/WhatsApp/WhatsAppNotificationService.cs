@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.WhatsApp;
+using Petshop.Api.Services.Pdv;
 
 namespace Petshop.Api.Services.WhatsApp;
 
@@ -16,15 +17,18 @@ public class WhatsAppNotificationService
 {
     private readonly AppDbContext _db;
     private readonly WhatsAppClient _wa;
+    private readonly SaleReceiptPdfService _pdf;
     private readonly ILogger<WhatsAppNotificationService> _logger;
 
     public WhatsAppNotificationService(
         AppDbContext db,
         WhatsAppClient wa,
+        SaleReceiptPdfService pdf,
         ILogger<WhatsAppNotificationService> logger)
     {
         _db = db;
         _wa = wa;
+        _pdf = pdf;
         _logger = logger;
     }
 
@@ -173,27 +177,10 @@ public class WhatsAppNotificationService
         }
     }
 
-    // ── Resolução de template ─────────────────────────────────────────────────
+    // ── Resolução de template por OrderStatus ────────────────────────────────
 
-    /// <summary>
-    /// Retorna o nome do template configurado para o status, ou null se não houver.
-    /// notificationTemplatesJson format: {"RECEBIDO":"pedido_recebido","ENTREGUE":"pedido_entregue"}
-    /// </summary>
-    private static string? ResolveTemplateName(string? notificationTemplatesJson, OrderStatus status)
-    {
-        if (string.IsNullOrWhiteSpace(notificationTemplatesJson)) return null;
-        try
-        {
-            var map = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
-                notificationTemplatesJson,
-                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (map is null) return null;
-            map.TryGetValue(status.ToString(), out var templateName);
-            return string.IsNullOrWhiteSpace(templateName) ? null : templateName.Trim();
-        }
-        catch { return null; }
-    }
+    private static string? ResolveTemplateName(string? json, OrderStatus status)
+        => ResolveTemplateName(json, status.ToString());
 
     private static string GetStatusLabel(OrderStatus s) => s switch
     {
@@ -288,6 +275,150 @@ public class WhatsAppNotificationService
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    // ── Notificação de venda PDV (NFC-e por WhatsApp) ─────────────────────────
+
+    /// <summary>
+    /// Envia comprovante NFC-e via WhatsApp após autorização fiscal.
+    /// Usa a chave SALE_COMPLETED em NotificationTemplatesJson para o nome do template.
+    /// Template: purchase_receipt_1 — vars: {{1}}=nome, {{2}}=valor (45,79), {{3}}=publicId.
+    /// </summary>
+    public async Task NotifySaleCompletedAsync(
+        Guid saleId,
+        CancellationToken ct = default)
+    {
+        var sale = await _db.SaleOrders
+            .AsNoTracking()
+            .Include(s => s.Items)
+            .Include(s => s.Payments)
+            .FirstOrDefaultAsync(s => s.Id == saleId, ct);
+
+        if (sale is null)
+        {
+            _logger.LogWarning("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | Venda não encontrada", saleId);
+            return;
+        }
+
+        var companyId = sale.CompanyId;
+
+        // Carrega integração WhatsApp ativa
+        var integration = await _db.CompanyIntegrationsWhatsapp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.IsActive, ct);
+
+        if (integration is null || integration.Mode != "cloud_api")
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | cloud_api não ativo", saleId);
+            return;
+        }
+
+        // Verifica se template SALE_COMPLETED está configurado
+        var templateName = ResolveTemplateName(integration.NotificationTemplatesJson, "SALE_COMPLETED");
+        if (templateName is null)
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | SALE_COMPLETED não configurado", saleId);
+            return;
+        }
+
+        // Normaliza telefone do cliente
+        var waId = WhatsAppClient.NormalizeToE164Brazil(sale.CustomerPhone);
+        if (waId is null)
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | Sem telefone ou inválido", saleId);
+            return;
+        }
+
+        // Idempotência — já enviamos comprovante para esta venda?
+        var alreadySent = await _db.WhatsAppMessageLogs
+            .AnyAsync(l => l.TriggerStatus == "SALE_COMPLETED"
+                        && l.Direction == "out"
+                        && l.PayloadJson != null && l.PayloadJson.Contains(saleId.ToString()),
+                ct);
+
+        if (alreadySent)
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_DEDUPE | SaleId={SaleId} | Comprovante já enviado", saleId);
+            return;
+        }
+
+        // Carrega nome da empresa para o PDF
+        var company = await _db.Companies.AsNoTracking()
+            .Where(c => c.Id == companyId)
+            .Select(c => new { c.Name })
+            .FirstOrDefaultAsync(ct);
+
+        // Gera PDF
+        byte[] pdfBytes;
+        try
+        {
+            pdfBytes = _pdf.Generate(sale, company?.Name ?? "VendApps");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "WA_SALE_PDF_ERROR | SaleId={SaleId}", saleId);
+            return;
+        }
+
+        // Faz upload do PDF para a API de mídia da Meta
+        var filename = $"recibo-{sale.PublicId}.pdf";
+        var mediaId = await _wa.UploadMediaAsync(pdfBytes, "application/pdf", filename, companyId, ct);
+        if (mediaId is null)
+        {
+            _logger.LogWarning("WA_SALE_UPLOAD_FAIL | SaleId={SaleId} | Upload do PDF falhou", saleId);
+            return;
+        }
+
+        // Body params: {{1}}=primeiro nome, {{2}}=valor formatado, {{3}}=publicId
+        var firstName  = (sale.CustomerName ?? "").Split(' ')[0];
+        var totalFmt   = (sale.TotalCents / 100m).ToString("N2").Replace('.', ',');
+        var bodyParams = new List<string> { firstName, totalFmt, sale.PublicId };
+
+        var langCode = integration.TemplateLanguageCode ?? "pt_BR";
+        var wamid = await _wa.SendTemplateWithDocumentAsync(
+            waId, templateName, langCode, mediaId, filename, bodyParams, companyId, ct);
+
+        // Log
+        var log = new WhatsAppMessageLog
+        {
+            CompanyId     = companyId,
+            Direction     = "out",
+            Wamid         = wamid,
+            WaId          = waId,
+            TriggerStatus = "SALE_COMPLETED",
+            PayloadJson   = JsonSerializer.Serialize(new
+            {
+                saleId   = saleId.ToString(),
+                publicId = sale.PublicId,
+                phone    = sale.CustomerPhone,
+                waId,
+                templateName,
+                mediaId
+            })
+        };
+        _db.WhatsAppMessageLogs.Add(log);
+        await _db.SaveChangesAsync(ct);
+
+        if (wamid is not null)
+            _logger.LogInformation("WA_SALE_OK | SaleId={SaleId} | PublicId={Id} | Wamid={Wamid}", saleId, sale.PublicId, wamid);
+        else
+            _logger.LogWarning("WA_SALE_FAIL | SaleId={SaleId} | PublicId={Id} | wamid null", saleId, sale.PublicId);
+    }
+
+    // ── Resolução de template por chave genérica ──────────────────────────────
+
+    private static string? ResolveTemplateName(string? json, string key)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            var map = JsonSerializer.Deserialize<Dictionary<string, string>>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (map is null) return null;
+            map.TryGetValue(key, out var name);
+            return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        }
+        catch { return null; }
     }
 
     // ── Formatação ────────────────────────────────────────────────────────────

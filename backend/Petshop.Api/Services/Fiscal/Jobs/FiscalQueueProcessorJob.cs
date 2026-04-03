@@ -1,7 +1,9 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Fiscal;
 using Petshop.Api.Entities.Pdv;
+using Petshop.Api.Services.WhatsApp;
 
 namespace Petshop.Api.Services.Fiscal.Jobs;
 
@@ -15,6 +17,7 @@ public class FiscalQueueProcessorJob
     private readonly IFiscalEngine                    _fiscalEngine;
     private readonly RealFiscalEngine                 _realEngine;
     private readonly NfceNumberService                _numberSvc;
+    private readonly IBackgroundJobClient             _jobs;
     private readonly ILogger<FiscalQueueProcessorJob> _logger;
 
     private const int BatchSize = 50;
@@ -25,12 +28,14 @@ public class FiscalQueueProcessorJob
         IFiscalEngine fiscalEngine,
         RealFiscalEngine realEngine,
         NfceNumberService numberSvc,
+        IBackgroundJobClient jobs,
         ILogger<FiscalQueueProcessorJob> logger)
     {
         _db           = db;
         _fiscalEngine = fiscalEngine;
         _realEngine   = realEngine;
         _numberSvc    = numberSvc;
+        _jobs         = jobs;
         _logger       = logger;
     }
 
@@ -249,6 +254,10 @@ public class FiscalQueueProcessorJob
                 fiscalDoc.XmlContent               = engineResult.XmlSigned;
                 item.Status           = FiscalQueueStatus.Completed;
                 item.FiscalDocumentId = fiscalDoc.Id;
+
+                // Envia comprovante NFC-e via WhatsApp (fire-and-forget)
+                _jobs.Enqueue<WhatsAppNotificationService>(
+                    s => s.NotifySaleCompletedAsync(sale.Id, CancellationToken.None));
             }
             else if (engineResult.Status == FiscalDocumentStatus.Contingency)
             {
