@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,8 @@ using Petshop.Api.Data;
 using Petshop.Api.Entities.Fiscal;
 using Petshop.Api.Entities.Pdv;
 using Petshop.Api.Services.Fiscal;
+using Petshop.Api.Services.Fiscal.Jobs;
+using Petshop.Api.Services.WhatsApp;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -17,13 +20,15 @@ namespace Petshop.Api.Controllers;
 [Authorize(Roles = "admin,gerente")]
 public class FiscalAdminController : ControllerBase
 {
-    private readonly AppDbContext    _db;
-    private readonly SefazHttpClient _sefaz;
+    private readonly AppDbContext        _db;
+    private readonly SefazHttpClient     _sefaz;
+    private readonly IBackgroundJobClient _jobs;
 
-    public FiscalAdminController(AppDbContext db, SefazHttpClient sefaz)
+    public FiscalAdminController(AppDbContext db, SefazHttpClient sefaz, IBackgroundJobClient jobs)
     {
         _db    = db;
         _sefaz = sefaz;
+        _jobs  = jobs;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -352,6 +357,43 @@ window.onload=function(){{setTimeout(function(){{window.print();}},600);}};
             .ToListAsync(ct);
 
         return Ok(new { total, page, items });
+    }
+
+    // ── Debug / Testes ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Enfileira o WhatsApp de comprovante para uma venda já existente (mock ou real).
+    /// Útil para testar PDF + upload + envio sem precisar passar pelo fluxo fiscal completo.
+    /// Apenas admin — não expor em produção para usuários finais.
+    /// </summary>
+    [HttpPost("debug/sale/{saleId:guid}/notify-whatsapp")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> DebugNotifyWhatsApp(Guid saleId, CancellationToken ct)
+    {
+        var exists = await _db.SaleOrders
+            .AnyAsync(s => s.Id == saleId && s.CompanyId == CompanyId, ct);
+
+        if (!exists)
+            return NotFound("Venda não encontrada.");
+
+        var jobId = _jobs.Enqueue<WhatsAppNotificationService>(
+            s => s.NotifySaleCompletedAsync(saleId, CancellationToken.None));
+
+        return Ok(new { jobId, message = "Job enfileirado. Acompanhe em /hangfire." });
+    }
+
+    /// <summary>
+    /// Reprocessa a fila fiscal da empresa manualmente (dispara o FiscalQueueProcessorJob).
+    /// Útil para testar o fluxo completo: fiscal → WhatsApp em sequência.
+    /// </summary>
+    [HttpPost("debug/process-queue")]
+    [Authorize(Roles = "admin")]
+    public IActionResult DebugProcessFiscalQueue()
+    {
+        var jobId = _jobs.Enqueue<FiscalQueueProcessorJob>(
+            j => j.ProcessAsync(CompanyId, CancellationToken.None));
+
+        return Ok(new { jobId, message = "Job fiscal enfileirado. Acompanhe em /hangfire." });
     }
 
     // ── QR Code hash helper ───────────────────────────────────────────────────
