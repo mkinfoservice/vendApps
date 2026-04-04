@@ -1,0 +1,16 @@
+{
+  "PrintAgent": {
+    "ApiBaseUrl": "https://vendapps.onrender.com",
+    "Username": "SEU_USUARIO",
+    "Password": "SUA_SENHA",
+    "HubPath": "/hubs/print",
+    "PrinterName": ""
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore.SignalR": "Warning",
+      "PrintAgent": "Information"
+    }
+  }
+}

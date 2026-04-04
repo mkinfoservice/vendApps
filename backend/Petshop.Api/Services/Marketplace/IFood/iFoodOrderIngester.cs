@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
@@ -47,6 +49,16 @@ public class iFoodOrderIngester : IMarketplaceOrderIngester
         MarketplaceIntegration integration,
         CancellationToken ct = default)
     {
+        // 0. Valida assinatura HMAC-SHA256 se WebhookSecret estiver configurado
+        if (!string.IsNullOrWhiteSpace(integration.WebhookSecret))
+        {
+            if (!VerifyHmacSignature(rawPayload, signature, integration.WebhookSecret))
+            {
+                _logger.LogWarning("[iFood] Assinatura inválida. IntegrationId={Id}", integration.Id);
+                return IngestResult.Fail("Assinatura inválida");
+            }
+        }
+
         // 1. Deserializa o evento webhook (envelope externo)
         iFoodWebhookEvent? evt;
         try
@@ -247,5 +259,27 @@ public class iFoodOrderIngester : IMarketplaceOrderIngester
             return ToСents(changeFor);
 
         return null;
+    }
+
+    private static bool VerifyHmacSignature(string rawPayload, string? signature, string secret)
+    {
+        if (string.IsNullOrWhiteSpace(signature)) return false;
+
+        var keyBytes  = Encoding.UTF8.GetBytes(secret);
+        var bodyBytes = Encoding.UTF8.GetBytes(rawPayload);
+
+        using var hmac     = new HMACSHA256(keyBytes);
+        var expectedBytes  = hmac.ComputeHash(bodyBytes);
+        var expectedHex    = Convert.ToHexString(expectedBytes).ToLowerInvariant();
+
+        // Assinatura pode vir como "sha256=<hex>" ou só "<hex>"
+        var receivedHex = signature.StartsWith("sha256=", StringComparison.OrdinalIgnoreCase)
+            ? signature[7..]
+            : signature;
+
+        // Comparação em tempo constante para evitar timing attacks
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expectedHex),
+            Encoding.UTF8.GetBytes(receivedHex.ToLowerInvariant()));
     }
 }

@@ -1,0 +1,15 @@
+{
+  "ScaleAgent": {
+    "ApiBaseUrl": "https://vendapps.onrender.com",
+    "AgentKey": "COLE_AQUI_A_AGENT_KEY_GERADA_NO_ADMIN",
+    "HubPath": "/hubs/scale-agent",
+    "AuthPath": "/scale/agent/auth"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore.SignalR": "Debug",
+      "ScaleAgent": "Debug"
+    }
+  }
+}

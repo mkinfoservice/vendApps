@@ -1,0 +1,38 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=petshop_db;Username=SEU_USUARIO;Password=SUA_SENHA"
+  },
+
+  "Jwt": {
+    "Issuer": "vendApps.Api",
+    "Audience": "vendApps.Admin",
+    "Key": "GERE_UMA_CHAVE_ALEATORIA_DE_32_CHARS_MINIMO",
+    "AdminUser": "admin",
+    "AdminPassword": "SENHA_FORTE_AQUI",
+    "CompanyId": "11111111-0000-0000-0000-000000000001"
+  },
+
+  "Master": {
+    "Enabled": "true",
+    "User": "masteradmin",
+    "Password": "SENHA_FORTE_AQUI"
+  },
+
+  "TENANT_BASE_DOMAIN": "vendapps.com.br",
+
+  "Geocoding": {
+    "Provider": "ORS",
+    "Ors": {
+      "ApiKey": "SUA_ORS_API_KEY",
+      "BaseUrl": "https://api.openrouteservice.org",
+      "TimeoutSeconds": 8,
+      "MaxRetries": 2
+    }
+  }
+}

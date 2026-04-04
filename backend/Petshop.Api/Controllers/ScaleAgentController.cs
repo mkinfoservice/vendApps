@@ -277,7 +277,7 @@ public class ScaleAgentAuthController : ControllerBase
             issuer:   jwt["Issuer"],
             audience: jwt["Audience"],
             claims:   claims,
-            expires:  DateTime.UtcNow.AddDays(365),
+            expires:  DateTime.UtcNow.AddDays(30),
             signingCredentials: creds);
 
         return Ok(new AgentAuthResponse(
