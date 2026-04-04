@@ -8,6 +8,7 @@ using Hangfire;
 using Petshop.Api.Entities.Fiscal;
 using Petshop.Api.Services.Fiscal;
 using Petshop.Api.Services.Fiscal.Jobs;
+using Petshop.Api.Services.WhatsApp;
 using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Stock;
@@ -758,6 +759,12 @@ public class PdvController : ControllerBase
             """, ct);
 
         if (affected == 0) return NotFound();
+
+        // Dispara envio do comprovante agora que o telefone está salvo.
+        // Idempotência no job impede duplo envio se fiscal já tiver disparado antes.
+        _jobs.Enqueue<WhatsAppNotificationService>(
+            s => s.NotifySaleCompletedAsync(id, CancellationToken.None));
+
         return NoContent();
     }
 

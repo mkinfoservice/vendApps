@@ -231,6 +231,30 @@ public class WhatsAppNotificationService
         }
     }
 
+    /// <summary>
+    /// Retorna true se SALE_COMPLETED estiver explicitamente na lista de notifyOnStatuses.
+    /// Diferente de ShouldNotify: aqui a ausência de configuração significa NÃO enviar
+    /// (opt-in), enquanto os status de pedido têm comportamento opt-out (enviam por padrão).
+    /// </summary>
+    private static bool ShouldNotifySaleCompleted(string? notifyOnStatusesJson)
+    {
+        if (string.IsNullOrWhiteSpace(notifyOnStatusesJson))
+            return false;
+
+        try
+        {
+            var list = JsonSerializer.Deserialize<List<string>>(notifyOnStatusesJson);
+            if (list is null || list.Count == 0) return false;
+
+            return list.Any(s =>
+                string.Equals(s.Trim(), "SALE_COMPLETED", StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     // ── Builder de mensagens por status ──────────────────────────────────────
 
     private static string BuildMessage(Order order, OrderStatus status)
@@ -341,6 +365,13 @@ public class WhatsAppNotificationService
         if (!canSend)
         {
             _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | WhatsappMode={Mode} sem cloud_api ativo", saleId, companyWaMode);
+            return;
+        }
+
+        // Verifica se SALE_COMPLETED está habilitado em NotifyOnStatuses
+        if (!ShouldNotifySaleCompleted(integration?.NotifyOnStatuses))
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | SALE_COMPLETED não está em NotifyOnStatuses", saleId);
             return;
         }
 

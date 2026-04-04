@@ -892,6 +892,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
     mode: "link", wabaId: "", phoneNumberId: "",
     accessToken: "", webhookSecret: "",
     notifyStatuses: [] as OrderStatus[],
+    notifySaleCompleted: false,
     templates: {} as Record<string, string>,
     templateLanguageCode: "pt_BR",
     isActive: false,
@@ -901,8 +902,12 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
 
   useEffect(() => {
     if (!data) return;
-    let notifyStatuses: OrderStatus[] = [];
-    try { notifyStatuses = JSON.parse(data.notifyOnStatuses ?? "[]"); } catch { /* ignore */ }
+    let rawStatuses: string[] = [];
+    try { rawStatuses = JSON.parse(data.notifyOnStatuses ?? "[]"); } catch { /* ignore */ }
+    const notifyStatuses = rawStatuses.filter((s): s is OrderStatus =>
+      (ALL_STATUSES as readonly string[]).includes(s));
+    const notifySaleCompleted = rawStatuses.some(
+      (s) => s.toUpperCase() === "SALE_COMPLETED");
     let templates: Record<string, string> = {};
     try { templates = JSON.parse(data.notificationTemplatesJson ?? "{}"); } catch { /* ignore */ }
     setForm({
@@ -912,6 +917,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
       accessToken:         "",
       webhookSecret:       data.webhookSecret ?? "",
       notifyStatuses,
+      notifySaleCompleted,
       templates,
       templateLanguageCode: data.templateLanguageCode ?? "pt_BR",
       isActive:            data.isActive,
@@ -934,7 +940,10 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
       phoneNumberId:             form.phoneNumberId || undefined,
       accessToken:               form.accessToken   || undefined,
       webhookSecret:             form.webhookSecret || undefined,
-      notifyOnStatuses:          JSON.stringify(form.notifyStatuses),
+      notifyOnStatuses:          JSON.stringify([
+        ...form.notifyStatuses,
+        ...(form.notifySaleCompleted ? ["SALE_COMPLETED"] : []),
+      ]),
       notificationTemplatesJson: JSON.stringify(form.templates),
       templateLanguageCode:      form.templateLanguageCode || "pt_BR",
       isActive:                  form.isActive,
@@ -1030,6 +1039,15 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
                   {STATUS_LABELS[s]}
                 </label>
               ))}
+              <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifySaleCompleted}
+                  onChange={() => setForm((f) => ({ ...f, notifySaleCompleted: !f.notifySaleCompleted }))}
+                  className="w-4 h-4 accent-purple-600"
+                />
+                Recibo PDV (NFC-e)
+              </label>
             </div>
           </div>
 
