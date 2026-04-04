@@ -387,6 +387,14 @@ const PAY_METHODS: PayMethod[] = [
 
 type SaleCompleteAction = "print" | "skip" | "whatsapp";
 
+function maskPhone(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 2)  return d.length ? `(${d}` : "";
+  if (d.length <= 6)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+
 function SaleCompleteModal({
   saleId, publicId, totalCents, changeCents, customerPhone: initialPhone, onClose,
 }: {
@@ -394,8 +402,9 @@ function SaleCompleteModal({
   changeCents: number; customerPhone: string | null;
   onClose: () => void;
 }) {
-  const [chosen, setChosen]   = useState<SaleCompleteAction | null>(null);
-  const [phone, setPhone]     = useState(initialPhone ?? "");
+  const hasPhone = Boolean(initialPhone && initialPhone.trim());
+  const [chosen, setChosen]     = useState<SaleCompleteAction | null>(null);
+  const [phone, setPhone]       = useState(hasPhone ? maskPhone(initialPhone!) : "");
   const [phoneErr, setPhoneErr] = useState("");
   const [waStatus, setWaStatus] = useState<"idle" | "saving" | "ok" | "err">("idle");
   const [printing, setPrinting] = useState(false);
@@ -413,15 +422,16 @@ function SaleCompleteModal({
     }
   }
 
-  async function handleWhatsApp() {
-    const digits = phone.replace(/\D/g, "");
+  async function handleWhatsApp(phoneOverride?: string) {
+    const raw    = phoneOverride ?? phone;
+    const digits = raw.replace(/\D/g, "");
     if (digits.length < 10) { setPhoneErr("Informe um número válido com DDD."); return; }
     setPhoneErr("");
     setWaStatus("saving");
     try {
       await adminFetch(`/pdv/sale/${saleId}/customer-phone`, {
         method: "PATCH",
-        body: JSON.stringify({ customerPhone: phone.trim() }),
+        body: JSON.stringify({ customerPhone: raw.trim() }),
       });
       setWaStatus("ok");
       setTimeout(onClose, 1800);
@@ -443,7 +453,7 @@ function SaleCompleteModal({
       key: "whatsapp",
       icon: "📲",
       title: "Receber no WhatsApp",
-      desc: initialPhone ? `Enviar NFC-e para ${initialPhone}` : "Informe o telefone para enviar o PDF",
+      desc: hasPhone ? `Enviar para ${maskPhone(initialPhone!)}` : "Informe o telefone para enviar o PDF",
       accent: "#16a34a",
     },
     {
@@ -491,10 +501,12 @@ function SaleCompleteModal({
                 <button
                   key={card.key}
                   type="button"
-                  disabled={printing}
+                  disabled={printing || waStatus === "saving"}
                   onClick={() => {
-                    if (card.key === "print") { handlePrint(); return; }
-                    if (card.key === "skip")  { onClose(); return; }
+                    if (card.key === "print")     { handlePrint(); return; }
+                    if (card.key === "skip")      { onClose(); return; }
+                    // WhatsApp: se já tem telefone, dispara direto; senão abre step
+                    if (hasPhone) { handleWhatsApp(initialPhone!); return; }
                     setChosen("whatsapp");
                   }}
                   className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition active:scale-[0.98] hover:brightness-95"
@@ -518,9 +530,19 @@ function SaleCompleteModal({
                   )}
                 </button>
               ))}
+
+              {/* Inline sending feedback when dispatching directly */}
+              {waStatus === "saving" && (
+                <p className="text-center text-xs" style={{ color: GC.brown }}>Registrando número…</p>
+              )}
+              {waStatus === "ok" && (
+                <div className="rounded-2xl p-3 text-center" style={{ background: "#dcfce7" }}>
+                  <p className="text-sm font-bold text-green-700">✓ PDF será enviado no WhatsApp!</p>
+                </div>
+              )}
             </>
           ) : (
-            /* WhatsApp step */
+            /* WhatsApp step — só aparece quando não há telefone cadastrado */
             <div className="space-y-3">
               <button type="button" onClick={() => setChosen(null)}
                 className="flex items-center gap-1 text-xs font-medium transition hover:opacity-70"
@@ -544,12 +566,12 @@ function SaleCompleteModal({
                 <>
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold" style={{ color: GC.brown }}>
-                      {initialPhone ? "Confirme ou altere o telefone" : "Telefone do cliente (com DDD)"}
+                      Telefone do cliente (com DDD)
                     </label>
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => { setPhone(e.target.value); setPhoneErr(""); }}
+                      onChange={(e) => { setPhone(maskPhone(e.target.value)); setPhoneErr(""); }}
                       placeholder="(11) 99999-0000"
                       autoFocus
                       className="w-full h-11 rounded-xl px-4 text-sm focus:outline-none"
@@ -562,7 +584,7 @@ function SaleCompleteModal({
                   <button
                     type="button"
                     disabled={waStatus === "saving"}
-                    onClick={handleWhatsApp}
+                    onClick={() => handleWhatsApp()}
                     className="w-full h-12 rounded-2xl text-white text-sm font-bold transition active:scale-[0.98] disabled:opacity-60"
                     style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 14px #16a34a44" }}
                   >
