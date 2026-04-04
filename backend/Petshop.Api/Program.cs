@@ -26,6 +26,9 @@ using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Scale.Jobs;
 using Petshop.Api.Services.Tenancy;
 
+// QuestPDF Community license — deve ser configurado antes de qualquer uso
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ===============================

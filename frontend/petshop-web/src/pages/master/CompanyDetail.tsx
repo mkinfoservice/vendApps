@@ -1043,6 +1043,28 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
             />
           </div>
 
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-bold text-purple-700">📄 NFC-e por WhatsApp (PDV)</p>
+              <p className="text-xs text-purple-500 mt-0.5">
+                Envia comprovante PDF ao cliente após autorização fiscal.
+                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor (ex: 45,79), &#123;&#123;3&#125;&#125;=nº venda.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-40 text-xs text-gray-600 font-medium shrink-0">Template</span>
+              <input
+                value={form.templates["SALE_COMPLETED"] ?? ""}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  templates: { ...f.templates, SALE_COMPLETED: e.target.value },
+                }))}
+                placeholder="ex: purchase_receipt_1"
+                className="flex-1 h-9 px-3 rounded-xl border border-purple-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-2">
               Template por status{" "}
@@ -1063,28 +1085,6 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
                   />
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-purple-100 bg-purple-50 p-4 space-y-3">
-            <div>
-              <p className="text-xs font-bold text-purple-700">NFC-e por WhatsApp (PDV)</p>
-              <p className="text-xs text-purple-500 mt-0.5">
-                Envia comprovante PDF ao cliente após autorização da NFC-e.
-                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor, &#123;&#123;3&#125;&#125;=nº venda.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-40 text-xs text-gray-500 shrink-0">Recibo PDV</span>
-              <input
-                value={form.templates["SALE_COMPLETED"] ?? ""}
-                onChange={(e) => setForm((f) => ({
-                  ...f,
-                  templates: { ...f.templates, SALE_COMPLETED: e.target.value },
-                }))}
-                placeholder="ex: purchase_receipt_1"
-                className="flex-1 h-8 px-3 rounded-xl border border-purple-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white"
-              />
             </div>
           </div>
         </div>

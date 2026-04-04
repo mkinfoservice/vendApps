@@ -13,8 +13,6 @@ public class SaleReceiptPdfService
 {
     public byte[] Generate(SaleOrder sale, string companyName)
     {
-        QuestPDF.Settings.License = LicenseType.Community;
-
         var doc = Document.Create(container =>
         {
             container.Page(page =>
