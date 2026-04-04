@@ -66,6 +66,15 @@ export interface Sale {
   payments: SalePayment[];
 }
 
+export interface PdvPromotionResult {
+  id: string;
+  name: string;
+  description: string | null;
+  couponCode: string | null;
+  discountCents: number;
+  isAutoApplied: boolean;
+}
+
 export interface CupomData {
   companyName: string;
   publicId: string;
@@ -216,6 +225,16 @@ export async function importDav(saleId: string, quoteCode: string): Promise<{ id
 
 // ── Movements (Sangria / Suprimento) ──────────────────────────────────────────
 
+
+export async function evaluateSalePromotions(
+  saleId: string,
+  coupon?: string
+): Promise<PdvPromotionResult[]> {
+  const p = new URLSearchParams();
+  if (coupon) p.set("coupon", coupon);
+  const qs = p.toString() ? `?${p.toString()}` : "";
+  return adminFetch<PdvPromotionResult[]>(`/pdv/promotions/evaluate-sale/${saleId}${qs}`);
+}
 export interface CashMovement {
   id: string;
   type: "Sangria" | "Suprimento";
@@ -303,3 +322,4 @@ export async function listAdminSessions(params?: {
   const qs = p.toString() ? `?${p}` : "";
   return adminFetch<AdminSessionsResponse>(`/admin/pdv/sessions${qs}`);
 }
+

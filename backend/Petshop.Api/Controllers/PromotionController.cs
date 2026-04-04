@@ -2,10 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
+using Petshop.Api.Entities.Pdv;
 using Petshop.Api.Entities.Promotions;
 using Petshop.Api.Services.Promotions;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace Petshop.Api.Controllers;
 
@@ -46,6 +48,7 @@ public class PromotionController : ControllerBase
 {
     private readonly AppDbContext   _db;
     private readonly PromotionEngine _engine;
+    private static readonly Regex CouponCodeRegex = new("^[A-Z0-9_-]{4,24}$", RegexOptions.Compiled);
 
     public PromotionController(AppDbContext db, PromotionEngine engine)
     {
@@ -90,6 +93,18 @@ public class PromotionController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UpsertPromotionRequest req, CancellationToken ct)
     {
+        if (!TryValidateRequest(req, out var error))
+            return BadRequest(error);
+
+        var normalizedCoupon = NormalizeCouponCode(req.CouponCode);
+        if (normalizedCoupon is not null)
+        {
+            var exists = await _db.Promotions.AsNoTracking().AnyAsync(
+                p => p.CompanyId == CompanyId && p.CouponCode == normalizedCoupon, ct);
+            if (exists)
+                return BadRequest($"Já existe uma promoção com o cupom '{normalizedCoupon}'.");
+        }
+
         var promo = Map(req, new Promotion { CompanyId = CompanyId });
         _db.Promotions.Add(promo);
         await _db.SaveChangesAsync(ct);
@@ -109,9 +124,24 @@ public class PromotionController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpsertPromotionRequest req, CancellationToken ct)
     {
+        if (!TryValidateRequest(req, out var error))
+            return BadRequest(error);
+
         var p = await _db.Promotions
             .FirstOrDefaultAsync(x => x.Id == id && x.CompanyId == CompanyId, ct);
         if (p is null) return NotFound();
+
+        var normalizedCoupon = NormalizeCouponCode(req.CouponCode);
+        if (normalizedCoupon is not null)
+        {
+            var exists = await _db.Promotions.AsNoTracking().AnyAsync(
+                x => x.CompanyId == CompanyId &&
+                     x.CouponCode == normalizedCoupon &&
+                     x.Id != id, ct);
+            if (exists)
+                return BadRequest($"Já existe uma promoção com o cupom '{normalizedCoupon}'.");
+        }
+
         Map(req, p);
         p.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
@@ -155,12 +185,91 @@ public class PromotionController : ControllerBase
         p.TargetId        = req.TargetId;
         p.TargetName      = req.TargetName?.Trim();
         p.Value           = req.Value;
-        p.CouponCode      = req.CouponCode?.Trim().ToUpper();
+        p.CouponCode      = NormalizeCouponCode(req.CouponCode);
         p.MinOrderCents   = req.MinOrderCents;
         p.MaxDiscountCents = req.MaxDiscountCents;
         p.StartsAtUtc     = req.StartsAtUtc;
         p.ExpiresAtUtc    = req.ExpiresAtUtc;
         return p;
+    }
+
+    private static string? NormalizeCouponCode(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return raw.Trim().ToUpperInvariant();
+    }
+
+    private static bool TryValidateRequest(UpsertPromotionRequest req, out string? error)
+    {
+        error = null;
+
+        if (!Enum.TryParse<PromotionType>(req.Type, out var type))
+        {
+            error = "Tipo de promoção inválido.";
+            return false;
+        }
+
+        if (!Enum.TryParse<PromotionScope>(req.Scope, out var scope))
+        {
+            error = "Escopo de promoção inválido.";
+            return false;
+        }
+
+        if (scope != PromotionScope.All && req.TargetId is null)
+        {
+            error = "Selecione um alvo para o escopo escolhido (categoria, marca ou produto).";
+            return false;
+        }
+
+        if (type == PromotionType.PercentDiscount)
+        {
+            if (req.Value <= 0 || req.Value > 100)
+            {
+                error = "Para desconto percentual, informe um valor entre 0,01% e 100%.";
+                return false;
+            }
+        }
+        else
+        {
+            if (req.Value <= 0)
+            {
+                error = "Para desconto fixo, o valor deve ser maior que zero.";
+                return false;
+            }
+
+            if (req.Value != decimal.Truncate(req.Value))
+            {
+                error = "Para desconto fixo, informe o valor em centavos (inteiro).";
+                return false;
+            }
+        }
+
+        if (req.MinOrderCents is < 0)
+        {
+            error = "Pedido mínimo não pode ser negativo.";
+            return false;
+        }
+
+        if (req.MaxDiscountCents is < 0)
+        {
+            error = "Teto de desconto não pode ser negativo.";
+            return false;
+        }
+
+        if (req.StartsAtUtc.HasValue && req.ExpiresAtUtc.HasValue && req.StartsAtUtc > req.ExpiresAtUtc)
+        {
+            error = "A data de início deve ser menor ou igual à data de expiração.";
+            return false;
+        }
+
+        var coupon = NormalizeCouponCode(req.CouponCode);
+        if (coupon is not null && !CouponCodeRegex.IsMatch(coupon))
+        {
+            error = "Código de cupom inválido. Use 4-24 caracteres (A-Z, 0-9, _ ou -).";
+            return false;
+        }
+
+        return true;
     }
 
     private static PromotionDto ToDto(Promotion p)
@@ -188,8 +297,13 @@ public class PromotionController : ControllerBase
 [Authorize(Roles = "admin,gerente,atendente,caixa")]
 public class PdvPromotionController : ControllerBase
 {
+    private readonly AppDbContext _db;
     private readonly PromotionEngine _engine;
-    public PdvPromotionController(PromotionEngine engine) => _engine = engine;
+    public PdvPromotionController(AppDbContext db, PromotionEngine engine)
+    {
+        _db = db;
+        _engine = engine;
+    }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
@@ -203,6 +317,52 @@ public class PdvPromotionController : ControllerBase
         CancellationToken  ct = default)
     {
         var results = await _engine.EvaluateSimpleAsync(CompanyId, totalCents, coupon, ct);
+        return Ok(results);
+    }
+
+    /// <summary>
+    /// Avalia promoções para uma venda real do PDV (itens da venda), cobrindo escopos
+    /// por produto/categoria/marca e também promoções da compra inteira.
+    /// </summary>
+    [HttpGet("evaluate-sale/{saleId:guid}")]
+    public async Task<IActionResult> EvaluateSale(
+        Guid saleId,
+        [FromQuery] string? coupon = null,
+        CancellationToken ct = default)
+    {
+        var sale = await _db.SaleOrders.AsNoTracking()
+            .Include(s => s.Items)
+            .FirstOrDefaultAsync(s =>
+                s.Id == saleId &&
+                s.CompanyId == CompanyId &&
+                s.Status == SaleOrderStatus.Open, ct);
+
+        if (sale is null)
+            return NotFound("Venda não encontrada ou já finalizada.");
+
+        if (sale.Items.Count == 0)
+            return Ok(Array.Empty<PromotionResult>());
+
+        var productIds = sale.Items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _db.Products.AsNoTracking()
+            .Where(p => p.CompanyId == CompanyId && productIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.CategoryId, p.BrandId })
+            .ToDictionaryAsync(p => p.Id, ct);
+
+        var items = new List<CartItem>(sale.Items.Count);
+        foreach (var it in sale.Items)
+        {
+            if (!products.TryGetValue(it.ProductId, out var p)) continue;
+            items.Add(new CartItem(it.ProductId, p.CategoryId, p.BrandId, it.TotalCents));
+        }
+
+        var results = await _engine.EvaluateAsync(
+            CompanyId,
+            items,
+            sale.SubtotalCents,
+            coupon,
+            ct);
+
         return Ok(results);
     }
 }

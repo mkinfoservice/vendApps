@@ -14,7 +14,7 @@ const GC = {
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
   closeSession, getSessionReport, addMovement, importDav, addItem,
-  type Sale, type CupomData, type SessionReport,
+  evaluateSalePromotions, type Sale, type CupomData, type SessionReport,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import OpenSessionPage from "./OpenSessionPage";
@@ -603,19 +603,40 @@ function SaleCompleteModal({
 // ── PayPanel ──────────────────────────────────────────────────────────────────
 
 interface PayPanelProps {
+  saleId: string;
+  subtotalCents: number;
+  baseDiscountCents: number;
   totalCents: number;
+  appliedCoupon: { code: string; discountCents: number; promotionName: string } | null;
+  onApplyCoupon: (couponCode: string) => Promise<void>;
+  onRemoveCoupon: () => void;
   onPay: (method: string, amountCents: number, customerDocument?: string) => void;
   onCancel: () => void;
   paying: boolean;
   defaultMethod?: string | null;
 }
 
-function PayPanel({ totalCents, onPay, onCancel, paying, defaultMethod }: PayPanelProps) {
+function PayPanel({
+  saleId,
+  subtotalCents,
+  baseDiscountCents,
+  totalCents,
+  appliedCoupon,
+  onApplyCoupon,
+  onRemoveCoupon,
+  onPay,
+  onCancel,
+  paying,
+  defaultMethod,
+}: PayPanelProps) {
   const [cash, setCash] = useState("");
   const [pendingPayment, setPendingPayment] = useState<{ method: string; amountCents: number } | null>(null);
   const [docType, setDocType] = useState<"none" | "cpf" | "cnpj">("none");
   const [docValue, setDocValue] = useState("");
   const [docError, setDocError] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const openDocPrompt = (method: string, amountCents: number) => {
     setPendingPayment({ method, amountCents });
@@ -647,8 +668,101 @@ function PayPanel({ totalCents, onPay, onCancel, paying, defaultMethod }: PayPan
     closeDocPrompt();
   };
 
+  const normalizeCoupon = (raw: string) =>
+    raw
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "")
+      .slice(0, 24);
+
+  const handleApplyCoupon = async () => {
+    if (!saleId) return;
+    const code = normalizeCoupon(couponInput.trim());
+    if (code.length < 4) {
+      setCouponError("Use um código com ao menos 4 caracteres.");
+      return;
+    }
+
+    try {
+      setCouponLoading(true);
+      setCouponError(null);
+      await onApplyCoupon(code);
+      setCouponInput(code);
+    } catch (e: unknown) {
+      setCouponError(e instanceof Error ? e.message : "Não foi possível aplicar o cupom.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const totalDiscountCents = Math.max(baseDiscountCents, appliedCoupon?.discountCents ?? 0);
+
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl p-3 space-y-2.5"
+        style={{ background: "#fff", border: `1.5px solid rgba(107,79,58,0.15)` }}>
+        <p className="text-[11px] font-black uppercase tracking-wide" style={{ color: GC.brown }}>Cupom de desconto</p>
+
+        {!appliedCoupon ? (
+          <>
+            <div className="flex gap-2">
+              <input
+                value={couponInput}
+                onChange={(e) => {
+                  setCouponInput(normalizeCoupon(e.target.value));
+                  setCouponError(null);
+                }}
+                placeholder="Ex: BEMVINDO10"
+                className="flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold focus:outline-none uppercase"
+                style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
+              />
+              <button
+                type="button"
+                disabled={couponLoading || paying || !saleId}
+                onClick={handleApplyCoupon}
+                className="px-4 py-2.5 rounded-xl text-white text-sm font-bold transition hover:opacity-90 disabled:opacity-40"
+                style={{ background: `linear-gradient(135deg, ${GC.caramel}, #b9822d)` }}
+              >
+                {couponLoading ? "..." : "Aplicar"}
+              </button>
+            </div>
+            {couponError && <p className="text-xs text-red-500">{couponError}</p>}
+          </>
+        ) : (
+          <div className="rounded-xl px-3 py-2.5 flex items-center justify-between gap-2"
+            style={{ background: `${GC.caramel}18`, color: GC.dark }}>
+            <div className="min-w-0">
+              <p className="text-xs font-black truncate">Cupom {appliedCoupon.code}</p>
+              <p className="text-[11px] truncate opacity-75">
+                {appliedCoupon.promotionName} · -{brl(appliedCoupon.discountCents)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onRemoveCoupon}
+              disabled={paying}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition hover:opacity-85 disabled:opacity-40"
+              style={{ background: "#fff", color: GC.brown, border: `1px solid rgba(107,79,58,0.2)` }}
+            >
+              Remover
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl p-3 space-y-1.5"
+        style={{ background: "#fff", border: `1.5px solid rgba(107,79,58,0.12)` }}>
+        <div className="flex justify-between text-xs" style={{ color: GC.brown }}>
+          <span>Subtotal</span>
+          <span>{brl(subtotalCents)}</span>
+        </div>
+        {totalDiscountCents > 0 && (
+          <div className="flex justify-between text-xs text-red-500">
+            <span>Desconto aplicado</span>
+            <span>-{brl(totalDiscountCents)}</span>
+          </div>
+        )}
+      </div>
+
       <p className="text-center text-2xl font-black" style={{ color: GC.dark }}>{brl(totalCents)}</p>
 
       {defaultMethod && (
@@ -1365,6 +1479,11 @@ export default function PdvPage() {
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
   const [navOpen, setNavOpen]               = useState(false);
   const [davPayMethod, setDavPayMethod]     = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon]   = useState<{
+    code: string;
+    discountCents: number;
+    promotionName: string;
+  } | null>(null);
   const autoDavHandledRef = useRef(false);
 
   const barcodeRef = useRef<HTMLInputElement>(null);
@@ -1380,6 +1499,10 @@ export default function PdvPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  useEffect(() => {
+    setAppliedCoupon(null);
+  }, [sale?.id, sale?.subtotalCents, sale?.items.length]);
 
   const flash = useCallback((msg: string, ok: boolean) => {
     setFeedback({ msg, ok });
@@ -1491,10 +1614,39 @@ export default function PdvPage() {
     await refreshSale(sale.id);
   }
 
+  async function handleApplyCoupon(code: string) {
+    if (!sale) return;
+    const normalized = code.trim().toUpperCase();
+    const results = await evaluateSalePromotions(sale.id, normalized);
+    const couponResults = results.filter(
+      (r) => (r.couponCode ?? "").toUpperCase() === normalized
+    );
+    if (couponResults.length === 0) {
+      throw new Error("Cupom inválido, expirado ou não aplicável aos itens da venda.");
+    }
+
+    const best = couponResults.sort((a, b) => b.discountCents - a.discountCents)[0];
+    setAppliedCoupon({
+      code: normalized,
+      discountCents: best.discountCents,
+      promotionName: best.name,
+    });
+    flash(`Cupom ${normalized} aplicado (-${brl(best.discountCents)})`, true);
+  }
+
+  function handleRemoveCoupon() {
+    if (!appliedCoupon) return;
+    flash(`Cupom ${appliedCoupon.code} removido`, true);
+    setAppliedCoupon(null);
+  }
+
   async function handlePay(method: string, amountCents: number, customerDocument?: string) {
     if (!sale) return;
-    if (amountCents < sale.totalCents) {
-      flash(`Valor insuficiente. Total: ${brl(sale.totalCents)}`, false);
+    const discountCents = Math.max(sale.discountCents, appliedCoupon?.discountCents ?? 0);
+    const totalToPayCents = Math.max(0, sale.subtotalCents - discountCents);
+
+    if (amountCents < totalToPayCents) {
+      flash(`Valor insuficiente. Total: ${brl(totalToPayCents)}`, false);
       return;
     }
     setPaying(true);
@@ -1503,10 +1655,12 @@ export default function PdvPage() {
     try {
       const result = await paySale(saleId, {
         payments: [{ paymentMethod: method, amountCents }],
+        discountCents,
         customerDocument,
       });
       setShowPay(false);
       setDavPayMethod(null);
+      setAppliedCoupon(null);
       setSaleComplete({
         saleId,
         publicId:    result.publicId,
@@ -1547,6 +1701,8 @@ export default function PdvPage() {
   }
 
   const currentSale = sale as Sale | null;
+  const effectiveDiscountCents = Math.max(currentSale?.discountCents ?? 0, appliedCoupon?.discountCents ?? 0);
+  const effectiveTotalCents = Math.max(0, (currentSale?.subtotalCents ?? 0) - effectiveDiscountCents);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: GC.bg }}>
@@ -1646,17 +1802,28 @@ export default function PdvPage() {
               <div className="flex justify-between text-sm" style={{ color: GC.brown }}>
                 <span>Subtotal</span><span>{brl(currentSale?.subtotalCents ?? 0)}</span>
               </div>
-              {(currentSale?.discountCents ?? 0) > 0 && (
+              {effectiveDiscountCents > 0 && (
                 <div className="flex justify-between text-sm text-red-500">
-                  <span>Desconto</span><span>-{brl(currentSale!.discountCents)}</span>
+                  <span>Desconto</span><span>-{brl(effectiveDiscountCents)}</span>
                 </div>
               )}
               <div className="flex justify-between text-xl font-black pt-2 mt-1"
                 style={{ color: GC.dark, borderTop: `1px solid rgba(107,79,58,0.12)` }}>
-                <span>Total</span><span>{brl(currentSale?.totalCents ?? 0)}</span>
+                <span>Total</span><span>{brl(effectiveTotalCents)}</span>
               </div>
             </div>
-            <PayPanel totalCents={currentSale?.totalCents ?? 0} onPay={handlePay} onCancel={handleCancelSale} paying={paying} />
+            <PayPanel
+              saleId={currentSale?.id ?? ""}
+              subtotalCents={currentSale?.subtotalCents ?? 0}
+              baseDiscountCents={currentSale?.discountCents ?? 0}
+              totalCents={effectiveTotalCents}
+              appliedCoupon={appliedCoupon}
+              onApplyCoupon={handleApplyCoupon}
+              onRemoveCoupon={handleRemoveCoupon}
+              onPay={handlePay}
+              onCancel={handleCancelSale}
+              paying={paying}
+            />
           </div>
         </div>
       )}
@@ -1728,7 +1895,7 @@ export default function PdvPage() {
               style={{ background: GC.cream, border: `1px solid rgba(107,79,58,0.12)` }}>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: GC.brown }}>Total</div>
-                <div className="text-2xl font-black" style={{ color: GC.dark }}>{brl(currentSale?.totalCents ?? 0)}</div>
+                <div className="text-2xl font-black" style={{ color: GC.dark }}>{brl(effectiveTotalCents)}</div>
                 {currentSale?.publicId && (
                   <div className="text-[10px] mt-0.5" style={{ color: GC.brown, opacity: 0.5 }}>{currentSale.publicId}</div>
                 )}
@@ -1754,16 +1921,16 @@ export default function PdvPage() {
               <span>Subtotal</span>
               <span>{brl(currentSale?.subtotalCents ?? 0)}</span>
             </div>
-            {(currentSale?.discountCents ?? 0) > 0 && (
+            {effectiveDiscountCents > 0 && (
               <div className="flex justify-between text-sm text-red-500">
                 <span>Desconto</span>
-                <span>-{brl(currentSale!.discountCents)}</span>
+                <span>-{brl(effectiveDiscountCents)}</span>
               </div>
             )}
             <div className="flex justify-between text-2xl font-black pt-2"
               style={{ color: GC.dark, borderTop: `1px solid rgba(107,79,58,0.12)` }}>
               <span>Total</span>
-              <span>{brl(currentSale?.totalCents ?? 0)}</span>
+              <span>{brl(effectiveTotalCents)}</span>
             </div>
 
             {!showPay ? (
@@ -1777,7 +1944,13 @@ export default function PdvPage() {
               </button>
             ) : (
               <PayPanel
-                totalCents={currentSale?.totalCents ?? 0}
+                saleId={currentSale?.id ?? ""}
+                subtotalCents={currentSale?.subtotalCents ?? 0}
+                baseDiscountCents={currentSale?.discountCents ?? 0}
+                totalCents={effectiveTotalCents}
+                appliedCoupon={appliedCoupon}
+                onApplyCoupon={handleApplyCoupon}
+                onRemoveCoupon={handleRemoveCoupon}
                 onPay={handlePay}
                 onCancel={handleCancelSale}
                 paying={paying}

@@ -95,6 +95,7 @@ function PromotionModal({
   );
 
   const [productSearch, setProductSearch] = useState(promo?.targetName ?? "");
+  const [couponInput, setCouponInput] = useState(promo?.couponCode ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const scopeItems = useCatalogItems(form.scope);
@@ -109,6 +110,10 @@ function PromotionModal({
 
   function set<K extends keyof typeof form>(k: K, v: typeof form[K]) {
     setForm(p => ({ ...p, [k]: v }));
+  }
+
+  function sanitizeCouponCode(raw: string): string {
+    return raw.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 24);
   }
 
   // Reset target when scope changes
@@ -147,9 +152,25 @@ function PromotionModal({
               <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 {form.type === "PercentDiscount" ? "Desconto (%)" : "Desconto (R$)"}
               </label>
-              <input type="number" step={form.type === "PercentDiscount" ? "1" : "100"} min="0"
-                className={`mt-1 ${INPUT}`} value={form.value}
-                onChange={e => set("value", parseFloat(e.target.value) || 0)} />
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={`mt-1 ${INPUT}`}
+                value={form.type === "PercentDiscount" ? String(form.value) : (form.value / 100).toFixed(2)}
+                onChange={e => {
+                  const parsed = parseFloat(e.target.value);
+                  if (!Number.isFinite(parsed)) {
+                    set("value", 0);
+                    return;
+                  }
+                  if (form.type === "PercentDiscount") {
+                    set("value", parsed);
+                  } else {
+                    set("value", Math.round(parsed * 100));
+                  }
+                }}
+              />
             </div>
           </div>
 
@@ -220,9 +241,17 @@ function PromotionModal({
             <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
               Código de cupom <span className="normal-case text-gray-400">(vazio = automático)</span>
             </label>
-            <input className={`mt-1 ${INPUT} uppercase`} value={form.couponCode ?? ""}
+            <input
+              className={`mt-1 ${INPUT} uppercase`}
+              value={couponInput}
               placeholder="ex: VERAO20"
-              onChange={e => set("couponCode", e.target.value.toUpperCase() || null)} />
+              onChange={e => {
+                const code = sanitizeCouponCode(e.target.value);
+                setCouponInput(code);
+                set("couponCode", code || null);
+              }}
+            />
+            <p className="text-[11px] mt-1 text-gray-400">Padrão: 4-24 chars (A-Z, 0-9, "_" ou "-").</p>
           </div>
 
           {/* Min order / max discount */}
