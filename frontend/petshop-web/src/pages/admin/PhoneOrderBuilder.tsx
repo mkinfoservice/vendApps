@@ -1,11 +1,12 @@
 ﻿import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { fetchCustomerByPhoneOrCpf, createCustomer } from "@/features/admin/customers/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchCustomerByPhoneOrCpf, createCustomer, updateCustomer } from "@/features/admin/customers/api";
 import type { CustomerDetailDto } from "@/features/admin/customers/types";
 import { fetchAdminProductById, fetchAdminProducts } from "@/features/admin/products/api";
 import type { ProductAddon, ProductDetail, ProductListItem } from "@/features/admin/products/api";
 import { createPhoneOrder } from "@/features/admin/phoneOrder/api";
+import { digitsOnly, formatCpf, isValidCpf } from "@/utils/cpf";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Coffee, Loader2, MapPin,
   Minus, Pencil, Phone, Plus, Search, ShoppingBag, Star,
@@ -24,6 +25,13 @@ type CartItem = {
   addonIds: string[]; addons: ProductAddon[];
 };
 
+type CustomerEditForm = {
+  id: string;
+  name: string;
+  phone: string;
+  cpf: string;
+};
+
 function stepIndex(step: Step) { return STEPS.indexOf(step); }
 function formatCents(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,16 +45,6 @@ function paymentMethodLabel(method: string) {
 function normalizeDavCode(code: string) {
   const normalized = code.trim().toUpperCase();
   return normalized.startsWith("DAV-") ? normalized : `DAV-${normalized}`;
-}
-function digitsOnly(value: string) {
-  return value.replace(/\D/g, "");
-}
-function formatCpf(value: string) {
-  const d = digitsOnly(value).slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 function formatPhone(value: string) {
   const d = digitsOnly(value).slice(0, 11);
@@ -82,6 +80,7 @@ function StepBar({ current }: { current: Step }) {
 // â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function PhoneOrderBuilder() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [step, setStep] = useState<Step>("search");
   const [searchMode, setSearchMode] = useState<SearchMode>("lookup");
   const [lookupInput, setLookupInput] = useState("");
@@ -90,9 +89,13 @@ export default function PhoneOrderBuilder() {
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [guestCpf, setGuestCpf] = useState("");
+  const [cpfConfirmation, setCpfConfirmation] = useState("");
+  const [cpfConfirmationError, setCpfConfirmationError] = useState<string | null>(null);
   const [guestCep, setGuestCep] = useState("");
   const [guestAddress, setGuestAddress] = useState("");
   const [guestComplement, setGuestComplement] = useState("");
+  const [editingCustomer, setEditingCustomer] = useState<CustomerEditForm | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -148,6 +151,7 @@ export default function PhoneOrderBuilder() {
       return createPhoneOrder({
         customerId: customer?.id, customerName: customer ? customer.name : guestName,
         customerPhone: customer ? customer.phone : guestPhone,
+        customerCpfConfirmation: customer?.cpf ? digitsOnly(cpfConfirmation) || undefined : undefined,
         cep: customer ? (customer.cep ?? undefined) : guestCep || undefined,
         address: customer ? (customer.address ?? undefined) : guestAddress || undefined,
         complement: customer ? (customer.complement ?? undefined) : guestComplement || undefined,
@@ -163,6 +167,23 @@ export default function PhoneOrderBuilder() {
     },
   });
 
+  const editCustomerMut = useMutation({
+    mutationFn: (body: { id: string; name: string; phone?: string; cpf?: string }) =>
+      updateCustomer(body.id, { name: body.name, phone: body.phone, cpf: body.cpf }),
+    onSuccess: (updated) => {
+      setCustomer(updated);
+      qc.setQueryData(["customer-by-phone-or-cpf", lookupValue], updated);
+      setLookupValue(updated.phone || updated.cpf || lookupValue);
+      setEditingCustomer(null);
+      setEditError(null);
+    },
+    onError: async (e: unknown) => {
+      const res = e as Response;
+      const body = await res.json?.().catch(() => ({}));
+      setEditError(body?.error ?? "Erro ao salvar cadastro do cliente.");
+    },
+  });
+
   function itemUnitPriceCents(item: CartItem) { return item.product.basePriceCents + item.addons.reduce((sum, a) => sum + a.priceCents, 0); }
   const subtotal = cart.reduce((sum, item) => sum + itemUnitPriceCents(item) * item.qty, 0);
   const total = subtotal + deliveryCents;
@@ -170,6 +191,9 @@ export default function PhoneOrderBuilder() {
   const change = cashGivenCents - total;
   const effectiveName = customer ? customer.name : guestName;
   const effectivePhone = customer ? customer.phone : guestPhone || (guestCpf ? `CPF ${guestCpf}` : "");
+  const hasCustomerCpf = !!digitsOnly(customer?.cpf ?? "");
+  const cpfConfirmed = !hasCustomerCpf || digitsOnly(cpfConfirmation) === digitsOnly(customer?.cpf ?? "");
+  const mustConfirmCpf = hasCustomerCpf && !!customer;
 
   function addToCart(product: ProductListItem, qty = 1, addonIds: string[] = [], addons: ProductAddon[] = []) {
     const key = buildCartKey(product.id, addonIds);
@@ -202,12 +226,15 @@ export default function PhoneOrderBuilder() {
   function resetFlow() {
     setStep("search"); setSearchMode("lookup"); setLookupInput(""); setLookupValue(""); setCustomer(null);
     setGuestName(""); setGuestPhone(""); setGuestCpf(""); setGuestCep(""); setGuestAddress(""); setGuestComplement("");
+    setCpfConfirmation(""); setCpfConfirmationError(null);
     setCart([]); setPaymentMethod("PIX"); setCashGiven(""); setDeliveryCents(0);
     setConfirmedOrderId(null); setConfirmedOrderNumber(null); setConfirmedDavId(null); closeConfig();
   }
   function continueFromSearch() {
     if (foundCustomer && !lookupError) {
       setCustomer(foundCustomer);
+      setCpfConfirmation("");
+      setCpfConfirmationError(null);
     } else {
       setCustomer(null);
       const isCpf = lookupValue.length === 11 && lookupValue[2] !== "9";
@@ -215,6 +242,32 @@ export default function PhoneOrderBuilder() {
       setGuestCpf(isCpf ? formatCpf(lookupValue) : "");
     }
     setStep("cart");
+  }
+  function openEditCustomerModal() {
+    if (!foundCustomer) return;
+    setEditingCustomer({
+      id: foundCustomer.id,
+      name: foundCustomer.name,
+      phone: formatPhone(foundCustomer.phone ?? ""),
+      cpf: formatCpf(foundCustomer.cpf ?? ""),
+    });
+    setEditError(null);
+  }
+  async function submitCustomerEdit() {
+    if (!editingCustomer) return;
+    const cpfDigits = digitsOnly(editingCustomer.cpf);
+    if (cpfDigits && !isValidCpf(cpfDigits)) {
+      setEditError("CPF inválido. Verifique os dígitos informados.");
+      return;
+    }
+
+    setEditError(null);
+    editCustomerMut.mutate({
+      id: editingCustomer.id,
+      name: editingCustomer.name.trim(),
+      phone: digitsOnly(editingCustomer.phone) || undefined,
+      cpf: cpfDigits || undefined,
+    });
   }
   async function handleRegisterAndContinue() {
     if (!guestName.trim()) return; setRegisterLoading(true); setRegisterError(null);
@@ -404,11 +457,18 @@ export default function PhoneOrderBuilder() {
                             )}
                           </div>
                         </div>
-                        <button onClick={continueFromSearch}
-                          className="w-full py-3 rounded-2xl font-black text-sm text-white transition active:scale-[0.98]"
-                          style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
-                          Confirmar e montar pedido →
-                        </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <button onClick={openEditCustomerModal}
+                            className="w-full py-3 rounded-2xl text-sm font-bold transition active:scale-[0.98] flex items-center justify-center gap-2"
+                            style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
+                            <Pencil size={14} /> Editar cadastro
+                          </button>
+                          <button onClick={continueFromSearch}
+                            className="w-full py-3 rounded-2xl font-black text-sm text-white transition active:scale-[0.98]"
+                            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, boxShadow: "0 4px 16px rgba(28,18,9,0.25)" }}>
+                            Confirmar e montar pedido →
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <>
@@ -851,6 +911,40 @@ export default function PhoneOrderBuilder() {
               </div>
             </div>
 
+            {mustConfirmCpf && (
+              <div className="rounded-3xl p-5 space-y-3" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.08)" }}>
+                <p className="text-xs font-black uppercase tracking-widest" style={{ color: GC.brown, opacity: 0.55 }}>
+                  Confirmar fidelidade
+                </p>
+                <p className="text-sm" style={{ color: GC.brown, opacity: 0.8 }}>
+                  Informe o CPF do cliente para validar o acúmulo de pontos neste pedido.
+                </p>
+                <input
+                  value={cpfConfirmation}
+                  onChange={(e) => {
+                    const next = formatCpf(e.target.value);
+                    setCpfConfirmation(next);
+                    if (!digitsOnly(next)) setCpfConfirmationError(null);
+                    else if (!isValidCpf(next)) setCpfConfirmationError("CPF inválido.");
+                    else setCpfConfirmationError(null);
+                  }}
+                  placeholder="000.000.000-00"
+                  className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
+                  style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }}
+                />
+                {cpfConfirmationError && (
+                  <p className="text-xs" style={{ color: "#dc2626" }}>{cpfConfirmationError}</p>
+                )}
+                {!cpfConfirmationError && digitsOnly(cpfConfirmation) && (
+                  <p className="text-xs" style={{ color: cpfConfirmed ? "#059669" : "#dc2626" }}>
+                    {cpfConfirmed
+                      ? "CPF confirmado. Pontos de fidelidade serão acumulados."
+                      : "CPF não confere com o cadastro. O pedido será concluído sem acumular pontos."}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button onClick={() => navigate("/app/atendimento")}
                 className="flex-1 py-3.5 rounded-2xl text-sm font-bold transition active:scale-[0.98]"
@@ -894,6 +988,91 @@ export default function PhoneOrderBuilder() {
           onClose={closeConfig} onConfirm={confirmProductConfig}
         />
       )}
+
+      {editingCustomer && (
+        <CustomerEditModal
+          form={editingCustomer}
+          saving={editCustomerMut.isPending}
+          error={editError}
+          onClose={() => { if (!editCustomerMut.isPending) setEditingCustomer(null); }}
+          onChange={(next) => setEditingCustomer(next)}
+          onSave={submitCustomerEdit}
+        />
+      )}
+    </div>
+  );
+}
+
+function CustomerEditModal({ form, saving, error, onClose, onChange, onSave }: {
+  form: CustomerEditForm;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onChange: (next: CustomerEditForm) => void;
+  onSave: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4" style={{ background: "rgba(28,18,9,0.55)", backdropFilter: "blur(4px)" }}>
+      <div className="w-full max-w-lg rounded-3xl p-5 space-y-4" style={{ background: "#fff", boxShadow: "0 16px 48px rgba(28,18,9,0.25)" }}>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-black text-base" style={{ color: GC.dark }}>Editar cliente</p>
+            <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>Atualize nome, telefone e CPF.</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: GC.cream, color: GC.brown }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <input
+            value={form.name}
+            onChange={(e) => onChange({ ...form, name: e.target.value })}
+            placeholder="Nome"
+            className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
+            style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }}
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              value={form.phone}
+              onChange={(e) => onChange({ ...form, phone: formatPhone(e.target.value) })}
+              placeholder="Telefone"
+              className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }}
+            />
+            <input
+              value={form.cpf}
+              onChange={(e) => onChange({ ...form, cpf: formatCpf(e.target.value) })}
+              placeholder="CPF"
+              className="w-full px-4 py-3 rounded-2xl text-sm focus:outline-none"
+              style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs" style={{ color: "#dc2626" }}>{error}</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onClose}
+            className="py-3 rounded-2xl text-sm font-semibold transition active:scale-95"
+            style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onSave}
+            disabled={saving || !form.name.trim()}
+            className="py-3 rounded-2xl text-sm font-black text-white disabled:opacity-50 transition active:scale-95"
+            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

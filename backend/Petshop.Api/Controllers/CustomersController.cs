@@ -139,7 +139,10 @@ public class CustomersController : ControllerBase
         if (err is not null) return BadRequest(new { error = err });
 
         var phone = CleanPhone(req.Phone);
-        var cpf = CleanCpf(req.Cpf);
+        var cpf = CpfValidator.Normalize(req.Cpf);
+
+        if (!string.IsNullOrWhiteSpace(cpf) && !CpfValidator.IsValid(cpf))
+            return BadRequest(new { error = "CPF inválido." });
 
         if (!string.IsNullOrWhiteSpace(phone) &&
             await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone, ct))
@@ -203,7 +206,10 @@ public class CustomersController : ControllerBase
         if (customer is null) return NotFound();
 
         var phone = CleanPhone(req.Phone);
-        var cpf = CleanCpf(req.Cpf);
+        var cpf = CpfValidator.Normalize(req.Cpf);
+
+        if (!string.IsNullOrWhiteSpace(cpf) && !CpfValidator.IsValid(cpf))
+            return BadRequest(new { error = "CPF inválido." });
 
         // Garante que não conflita com outro cliente
         if (!string.IsNullOrWhiteSpace(phone) &&
@@ -298,9 +304,6 @@ public class CustomersController : ControllerBase
 
     private static string CleanPhone(string? phone) =>
         string.IsNullOrWhiteSpace(phone) ? "" : Regex.Replace(phone, @"\D", "");
-
-    private static string? CleanCpf(string? cpf) =>
-        string.IsNullOrWhiteSpace(cpf) ? null : Regex.Replace(cpf, @"\D", "");
 
     private static string? CleanCep(string? cep) =>
         string.IsNullOrWhiteSpace(cep) ? null : Regex.Replace(cep, @"\D", "");

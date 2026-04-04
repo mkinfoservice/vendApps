@@ -289,13 +289,13 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<MarketplaceOrder>()
-            .HasOne<MarketplaceIntegration>()
+            .HasOne(o => o.Integration)
             .WithMany(i => i.Orders)
             .HasForeignKey(o => o.MarketplaceIntegrationId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<MarketplaceOrder>()
-            .HasOne<Order>()
+            .HasOne(o => o.Order)
             .WithMany()
             .HasForeignKey(o => o.OrderId)
             .OnDelete(DeleteBehavior.Restrict);

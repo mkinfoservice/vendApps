@@ -10,6 +10,7 @@ export type CreatePhoneOrderRequest = {
   customerId?: string;
   customerName: string;
   customerPhone?: string;
+  customerCpfConfirmation?: string;
   cep?: string;
   address?: string;
   complement?: string;

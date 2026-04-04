@@ -66,6 +66,8 @@ public class AdminOrdersController : ControllerBase
             // Não bloquear se não encontrar — pode ter sido deletado entre a busca e o confirm
         }
 
+        var normalizedCpfConfirmation = CpfValidator.Normalize(req.CustomerCpfConfirmation);
+
         // ── Determina o AttendantUserId a partir do JWT ───────────────────────
         // O claim "sub" contém o username; busca o Id real do AdminUser.
         Guid? attendantId = null;
@@ -212,7 +214,7 @@ public class AdminOrdersController : ControllerBase
             s => s.NotifyOrderStatusAsync(order.Id, OrderStatus.RECEBIDO, CancellationToken.None));
 
         // Fidelidade — acumula pontos imediatamente para pedidos telefônicos com cliente cadastrado
-        if (customer is not null)
+        if (customer is not null && CanAccumulateLoyalty(customer, normalizedCpfConfirmation))
             _jobs.Enqueue<LoyaltyService>(
                 s => s.EarnForOrderAsync(order.Id, CancellationToken.None));
 
@@ -397,6 +399,17 @@ public class AdminOrdersController : ControllerBase
             deletedDeliveryDavs
         });
     }
+
+    private static bool CanAccumulateLoyalty(Customer customer, string? cpfConfirmation)
+    {
+        if (string.IsNullOrWhiteSpace(customer.Cpf))
+            return true;
+
+        if (!CpfValidator.IsValid(cpfConfirmation))
+            return false;
+
+        return string.Equals(customer.Cpf, cpfConfirmation, StringComparison.Ordinal);
+    }
 }
 
 public sealed class RetrogradeOrderRequest
@@ -424,6 +437,7 @@ public sealed class CreatePhoneOrderRequest
     public List<PhoneOrderItemRequest> Items { get; init; } = new();
 
     public string? PaymentMethod { get; init; } = "PIX";
+    public string? CustomerCpfConfirmation { get; init; }
 
     /// <summary>Taxa de entrega em centavos (opcional, padrão 0 para pedidos telefônicos).</summary>
     public int? DeliveryCents { get; init; }

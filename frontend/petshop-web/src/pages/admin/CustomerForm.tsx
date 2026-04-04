@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchCustomer, createCustomer, updateCustomer } from "@/features/admin/customers/api";
 import type { UpsertCustomerRequest } from "@/features/admin/customers/types";
+import { formatCpf, isValidCpf, digitsOnly } from "@/utils/cpf";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 // ── Masks ─────────────────────────────────────────────────────────────────────
@@ -11,11 +12,8 @@ function maskPhone(v: string) {
   if (d.length <= 10) return d.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
   return d.replace(/^(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3").replace(/-$/, "");
 }
-function maskCPF(v: string) {
-  const d = v.replace(/\D/g, "").slice(0, 11);
-  return d.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-}
-function unmask(v: string) { return v.replace(/\D/g, ""); }
+function maskCPF(v: string) { return formatCpf(v); }
+function unmask(v: string) { return digitsOnly(v); }
 
 type FormState = { name: string; phone: string; cpf: string };
 
@@ -67,10 +65,17 @@ export default function CustomerForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const cpfDigits = unmask(form.cpf);
+    if (cpfDigits && !isValidCpf(cpfDigits)) {
+      setError("CPF inválido. Verifique os dígitos informados.");
+      return;
+    }
+
     const payload: UpsertCustomerRequest = {
       name: form.name.trim(),
       phone: unmask(form.phone) || undefined,
-      cpf: unmask(form.cpf) || undefined,
+      cpf: cpfDigits || undefined,
     };
     if (isEdit) updateMut.mutate(payload);
     else createMut.mutate(payload);

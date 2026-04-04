@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Pagination } from "@/components/ui/Pagination";
-import { UserPlus, Search, ChevronRight, Users } from "lucide-react";
+import { UserPlus, Search, ChevronRight, Pencil, Users } from "lucide-react";
 
 export default function CustomersList() {
   const navigate = useNavigate();
@@ -135,7 +135,20 @@ export default function CustomersList() {
                     {c.city ? `${c.city}${c.state ? `/${c.state}` : ""}` : "—"}
                   </td>
                   <td className="px-4 py-3.5 text-right">
-                    <ChevronRight size={15} style={{ color: "var(--text-muted)" }} />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/app/atendimento/clientes/${c.id}/editar`);
+                        }}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors"
+                        style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <ChevronRight size={15} style={{ color: "var(--text-muted)" }} />
+                    </div>
                   </td>
                 </tr>
               ))}
