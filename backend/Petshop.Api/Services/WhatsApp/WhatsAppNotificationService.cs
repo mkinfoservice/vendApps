@@ -65,21 +65,36 @@ public class WhatsAppNotificationService
 
         var companyId = order.CompanyId.Value;
 
-        // 2. Carrega config WhatsApp da empresa
-        var integration = await _db.CompanyIntegrationsWhatsapp
+        // 2. Carrega modo WhatsApp da empresa e integração
+        var companyWaMode = await _db.Companies
             .AsNoTracking()
-            .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.IsActive, ct);
+            .Where(c => c.Id == companyId)
+            .Select(c => c.WhatsappMode)
+            .FirstOrDefaultAsync(ct) ?? "none";
 
-        if (integration is null || integration.Mode != "cloud_api")
+        if (companyWaMode == "none")
         {
             _logger.LogDebug(
-                "WA_NOTIFY_SKIP | OrderId={OrderId} | CompanyId={CompanyId} | Integração cloud_api não ativa",
+                "WA_NOTIFY_SKIP | OrderId={OrderId} | CompanyId={CompanyId} | WhatsappMode=none",
                 orderId, companyId);
             return;
         }
 
+        var integration = await _db.CompanyIntegrationsWhatsapp
+            .AsNoTracking()
+            .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.IsActive, ct);
+
+        var canSend = companyWaMode == "platform" || (integration?.Mode == "cloud_api");
+        if (!canSend)
+        {
+            _logger.LogDebug(
+                "WA_NOTIFY_SKIP | OrderId={OrderId} | CompanyId={CompanyId} | WhatsappMode={Mode} sem cloud_api ativo",
+                orderId, companyId, companyWaMode);
+            return;
+        }
+
         // 3. Verifica se este status está na lista de notificações configuradas
-        if (!ShouldNotify(integration.NotifyOnStatuses, triggerStatus))
+        if (!ShouldNotify(integration?.NotifyOnStatuses, triggerStatus))
         {
             _logger.LogDebug(
                 "WA_NOTIFY_SKIP | OrderId={OrderId} | Status={Status} | Não está em NotifyOnStatuses",
@@ -114,7 +129,8 @@ public class WhatsAppNotificationService
         }
 
         // 6. Resolve template ou fallback para texto livre
-        var templateName = ResolveTemplateName(integration.NotificationTemplatesJson, triggerStatus);
+        var templateName = ResolveTemplateName(integration?.NotificationTemplatesJson, triggerStatus);
+        var langCode     = integration?.TemplateLanguageCode ?? "pt_BR";
 
         string? wamid;
         string sendMode;
@@ -130,7 +146,7 @@ public class WhatsAppNotificationService
             };
 
             wamid = await _wa.SendTemplateAsync(
-                waId, templateName, integration.TemplateLanguageCode, bodyParams, companyId, ct);
+                waId, templateName, langCode, bodyParams, companyId, ct);
             sendMode = $"template:{templateName}";
         }
         else
@@ -302,19 +318,34 @@ public class WhatsAppNotificationService
 
         var companyId = sale.CompanyId;
 
-        // Carrega integração WhatsApp ativa
+        // Carrega modo WhatsApp da empresa (own/platform/none)
+        var companyWaMode = await _db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == companyId)
+            .Select(c => c.WhatsappMode)
+            .FirstOrDefaultAsync(ct) ?? "none";
+
+        if (companyWaMode == "none")
+        {
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | WhatsappMode=none", saleId);
+            return;
+        }
+
+        // Carrega integração WhatsApp ativa (onde ficam os templates configurados)
         var integration = await _db.CompanyIntegrationsWhatsapp
             .AsNoTracking()
             .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.IsActive, ct);
 
-        if (integration is null || integration.Mode != "cloud_api")
+        // Permite envio se empresa usa cloud_api próprio OU modo platform (credenciais globais)
+        var canSend = companyWaMode == "platform" || (integration?.Mode == "cloud_api");
+        if (!canSend)
         {
-            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | cloud_api não ativo", saleId);
+            _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | WhatsappMode={Mode} sem cloud_api ativo", saleId, companyWaMode);
             return;
         }
 
         // Verifica se template SALE_COMPLETED está configurado
-        var templateName = ResolveTemplateName(integration.NotificationTemplatesJson, "SALE_COMPLETED");
+        var templateName = ResolveTemplateName(integration?.NotificationTemplatesJson, "SALE_COMPLETED");
         if (templateName is null)
         {
             _logger.LogDebug("WA_SALE_NOTIFY_SKIP | SaleId={SaleId} | SALE_COMPLETED não configurado", saleId);
@@ -374,7 +405,7 @@ public class WhatsAppNotificationService
         var totalFmt   = (sale.TotalCents / 100m).ToString("N2").Replace('.', ',');
         var bodyParams = new List<string> { firstName, totalFmt, sale.PublicId };
 
-        var langCode = integration.TemplateLanguageCode ?? "pt_BR";
+        var langCode = integration?.TemplateLanguageCode ?? "pt_BR";
         var wamid = await _wa.SendTemplateWithDocumentAsync(
             waId, templateName, langCode, mediaId, filename, bodyParams, companyId, ct);
 
