@@ -608,22 +608,14 @@ public class PdvController : ControllerBase
         if (req.Payments is null || !req.Payments.Any())
             return BadRequest("Informe ao menos uma forma de pagamento.");
 
+        // Calcula o total final considerando eventual desconto enviado no pagamento.
+        var requestedDiscountCents = req.DiscountCents is > 0 ? req.DiscountCents.Value : sale.DiscountCents;
+        var discountCents          = Math.Clamp(requestedDiscountCents, 0, sale.SubtotalCents);
+        var totalCents             = Math.Max(0, sale.SubtotalCents - discountCents);
+
         var totalPaid = req.Payments.Sum(p => p.AmountCents);
-        if (totalPaid < sale.TotalCents)
-            return BadRequest($"Valor pago ({totalPaid}¢) é inferior ao total da venda ({sale.TotalCents}¢).");
-
-        // Aplicar desconto
-        if (req.DiscountCents is > 0)
-        {
-            sale.DiscountCents = req.DiscountCents.Value;
-            sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
-        }
-
-        // Calcular totais finais (com eventual desconto)
-        var discountCents = req.DiscountCents is > 0 ? req.DiscountCents.Value : sale.DiscountCents;
-        var totalCents    = req.DiscountCents is > 0
-            ? Math.Max(0, sale.SubtotalCents - discountCents)
-            : sale.TotalCents;
+        if (totalPaid < totalCents)
+            return BadRequest($"Valor pago ({totalPaid}¢) é inferior ao total da venda ({totalCents}¢).");
 
         // Decisão fiscal
         var register = sale.CashSession.CashRegister;
