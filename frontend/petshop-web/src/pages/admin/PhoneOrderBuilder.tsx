@@ -38,6 +38,29 @@ function normalizeDavCode(code: string) {
   const normalized = code.trim().toUpperCase();
   return normalized.startsWith("DAV-") ? normalized : `DAV-${normalized}`;
 }
+function digitsOnly(value: string) {
+  return value.replace(/\D/g, "");
+}
+function formatCpf(value: string) {
+  const d = digitsOnly(value).slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+function formatPhone(value: string) {
+  const d = digitsOnly(value).slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+function formatLookupPhoneOrCpf(value: string) {
+  const d = digitsOnly(value).slice(0, 11);
+  if (!d) return "";
+  if (d.length <= 10) return formatPhone(d);
+  return d[2] === "9" ? formatPhone(d) : formatCpf(d);
+}
 function toPseudoProduct(item: CartItem): ProductListItem {
   return { id: item.product.id, name: item.product.name, imageUrl: item.product.imageUrl, priceCents: item.product.basePriceCents, hasAddons: true, isBestSeller: false, slug: "", internalCode: null, barcode: null, categoryName: null, brandName: null, unit: "UN", costCents: 0, marginPercent: 0, stockQty: 0, isActive: true, updatedAtUtc: null, promotionPriceCents: null };
 }
@@ -166,7 +189,14 @@ export default function PhoneOrderBuilder() {
     setCart((prev) => { const withoutEdited = editingCartKey ? prev.filter((i) => i.key !== editingCartKey) : prev; const existing = withoutEdited.find((i) => i.key === key); if (existing) return withoutEdited.map((i) => (i.key === key ? { ...i, qty: i.qty + Math.max(1, configQty) } : i)); return [...withoutEdited, { key, qty: Math.max(1, configQty), product: { id: configuringProduct.id, name: configuringProduct.name, imageUrl: configuringProduct.images?.[0]?.url ?? null, basePriceCents: basePrice }, addonIds, addons: selected }]; });
     closeConfig();
   }
-  function handleLookup() { const cleaned = lookupInput.replace(/\D/g, ""); if (cleaned.length < 8) return; const isCpf = cleaned.length === 11; setGuestPhone(isCpf ? "" : cleaned); setGuestCpf(isCpf ? cleaned : ""); setLookupValue(cleaned); }
+  function handleLookup() {
+    const cleaned = digitsOnly(lookupInput);
+    if (cleaned.length < 8) return;
+    const isCpf = cleaned.length === 11 && cleaned[2] !== "9";
+    setGuestPhone(isCpf ? "" : formatPhone(cleaned));
+    setGuestCpf(isCpf ? formatCpf(cleaned) : "");
+    setLookupValue(cleaned);
+  }
   function goNext() { const idx = stepIndex(step); if (idx < STEPS.length - 1) setStep(STEPS[idx + 1]); }
   function goPrev() { const idx = stepIndex(step); if (idx > 0) setStep(STEPS[idx - 1]); }
   function resetFlow() {
@@ -175,10 +205,28 @@ export default function PhoneOrderBuilder() {
     setCart([]); setPaymentMethod("PIX"); setCashGiven(""); setDeliveryCents(0);
     setConfirmedOrderId(null); setConfirmedOrderNumber(null); setConfirmedDavId(null); closeConfig();
   }
-  function continueFromSearch() { if (foundCustomer && !lookupError) setCustomer(foundCustomer); else { setCustomer(null); const isCpf = lookupValue.length === 11; setGuestPhone(isCpf ? "" : lookupValue); setGuestCpf(isCpf ? lookupValue : ""); } setStep("cart"); }
+  function continueFromSearch() {
+    if (foundCustomer && !lookupError) {
+      setCustomer(foundCustomer);
+    } else {
+      setCustomer(null);
+      const isCpf = lookupValue.length === 11 && lookupValue[2] !== "9";
+      setGuestPhone(isCpf ? "" : formatPhone(lookupValue));
+      setGuestCpf(isCpf ? formatCpf(lookupValue) : "");
+    }
+    setStep("cart");
+  }
   async function handleRegisterAndContinue() {
     if (!guestName.trim()) return; setRegisterLoading(true); setRegisterError(null);
-    try { const created = await createCustomer({ name: guestName.trim(), phone: guestPhone.trim() || undefined, cpf: guestCpf.trim() || undefined }); setCustomer(created); setStep("cart"); }
+    try {
+      const created = await createCustomer({
+        name: guestName.trim(),
+        phone: digitsOnly(guestPhone) || undefined,
+        cpf: digitsOnly(guestCpf) || undefined,
+      });
+      setCustomer(created);
+      setStep("cart");
+    }
     catch (e) { setRegisterError(e instanceof Error ? e.message : "Erro ao cadastrar cliente."); }
     finally { setRegisterLoading(false); }
   }
@@ -319,7 +367,7 @@ export default function PhoneOrderBuilder() {
                     <Phone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                       style={{ color: GC.brown, opacity: 0.5 }} />
                     <input type="tel" value={lookupInput}
-                      onChange={(e) => setLookupInput(e.target.value)}
+                      onChange={(e) => setLookupInput(formatLookupPhoneOrCpf(e.target.value))}
                       onKeyDown={(e) => e.key === "Enter" && handleLookup()}
                       placeholder="Telefone ou CPF" autoFocus
                       className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm focus:outline-none"
@@ -373,10 +421,10 @@ export default function PhoneOrderBuilder() {
                             className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none"
                             style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
                           <div className="grid grid-cols-2 gap-2">
-                            <input value={guestPhone} onChange={(e) => setGuestPhone(e.target.value)} placeholder="Telefone"
+                            <input value={guestPhone} onChange={(e) => setGuestPhone(formatPhone(e.target.value))} placeholder="Telefone"
                               className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none"
                               style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
-                            <input value={guestCpf} onChange={(e) => setGuestCpf(e.target.value)} placeholder="CPF"
+                            <input value={guestCpf} onChange={(e) => setGuestCpf(formatCpf(e.target.value))} placeholder="CPF"
                               className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none"
                               style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: GC.bg, color: GC.dark }} />
                           </div>
