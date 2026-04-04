@@ -14,7 +14,8 @@ const GC = {
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
   closeSession, getSessionReport, addMovement, importDav, addItem,
-  evaluateSalePromotions, type Sale, type CupomData, type SessionReport,
+  evaluateSalePromotions, searchCustomerByPhone,
+  type Sale, type CupomData, type SessionReport, type PdvCustomer,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import OpenSessionPage from "./OpenSessionPage";
@@ -1458,6 +1459,98 @@ function NavDrawer({ onClose }: { onClose: () => void }) {
 
 //
 
+// ── CustomerSearchModal ───────────────────────────────────────────────────────
+function CustomerSearchModal({
+  onSelect, onSkip, onClose,
+}: {
+  onSelect: (c: PdvCustomer) => void;
+  onSkip: () => void;
+  onClose: () => void;
+}) {
+  const [phone, setPhone] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<PdvCustomer | null | "notfound">(null);
+
+  function applyMask(raw: string) {
+    const d = raw.replace(/\D/g, "").slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : "";
+    if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+    return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return;
+    setLoading(true);
+    try {
+      const found = await searchCustomerByPhone(digits);
+      setResult(found ?? "notfound");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4"
+        style={{ background: "#FAF7F2" }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <p className="font-bold text-base" style={{ color: "#1C1209" }}>Identificar Cliente</p>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            autoFocus
+            value={phone}
+            onChange={(e) => setPhone(applyMask(e.target.value))}
+            placeholder="(DDD) Telefone"
+            className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
+            style={{ border: "1.5px solid rgba(107,79,58,0.2)", background: "#fff", color: "#1C1209" }}
+          />
+          <button type="submit" disabled={loading || phone.replace(/\D/g,"").length < 10}
+            className="px-4 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-95 disabled:opacity-50"
+            style={{ background: "linear-gradient(135deg, #1C1209, #3D2314)" }}>
+            {loading ? "..." : "Buscar"}
+          </button>
+        </form>
+
+        {result === "notfound" && (
+          <p className="text-sm text-red-500">Nenhum cliente encontrado para este telefone.</p>
+        )}
+
+        {result && result !== "notfound" && (
+          <div className="rounded-xl p-3 space-y-1" style={{ background: "rgba(107,79,58,0.08)" }}>
+            <p className="font-semibold text-sm" style={{ color: "#1C1209" }}>{result.name}</p>
+            <p className="text-xs" style={{ color: "#6B4F3A" }}>{result.phone}</p>
+            {result.pointsBalance > 0 && (
+              <p className="text-xs font-medium" style={{ color: "#C8953A" }}>
+                {result.pointsBalance} pontos de fidelidade
+              </p>
+            )}
+            <button
+              onClick={() => onSelect(result as PdvCustomer)}
+              className="mt-2 w-full py-2 rounded-xl text-white text-sm font-bold transition active:scale-95"
+              style={{ background: "linear-gradient(135deg, #059669, #047857)" }}>
+              Usar este cliente
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={onSkip}
+          className="w-full py-2 rounded-xl text-sm transition hover:bg-black/5"
+          style={{ color: "#6B4F3A" }}>
+          Pular identificação
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PdvPage() {
   const { session, sale, loading, refreshSession, refreshSale, setSale } = usePdv();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1474,6 +1567,8 @@ export default function PdvPage() {
     saleId: string; publicId: string; totalCents: number;
     changeCents: number; customerPhone: string | null;
   } | null>(null);
+  const [pendingCustomer, setPendingCustomer] = useState<PdvCustomer | null>(null);
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [feedback, setFeedback]             = useState<{ msg: string; ok: boolean } | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
@@ -1519,10 +1614,14 @@ export default function PdvPage() {
     if (displayCode) setDavCode(displayCode);
   }, [autoDavCodeParam]);
 
-  async function handleNewSale() {
+  async function handleNewSale(customer?: PdvCustomer | null) {
     if (!session) return;
     try {
-      const created = await createSale({ cashSessionId: session.id });
+      const c = customer ?? pendingCustomer;
+      const created = await createSale({
+        cashSessionId: session.id,
+        ...(c ? { customerName: c.name, customerPhone: c.phone } : {}),
+      });
       await refreshSale(created.id);
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : "Erro ao criar venda", false);
@@ -1785,8 +1884,23 @@ export default function PdvPage() {
           onClose={async () => {
             setSaleComplete(null);
             setSale(null);
-            await handleNewSale();
+            setPendingCustomer(null);
+            await handleNewSale(null);
           }}
+        />
+      )}
+
+      {showCustomerSearch && (
+        <CustomerSearchModal
+          onSelect={(c) => {
+            setPendingCustomer(c);
+            setShowCustomerSearch(false);
+          }}
+          onSkip={() => {
+            setPendingCustomer(null);
+            setShowCustomerSearch(false);
+          }}
+          onClose={() => setShowCustomerSearch(false)}
         />
       )}
 
@@ -1831,6 +1945,30 @@ export default function PdvPage() {
       <div className="flex flex-col lg:flex-row flex-1 gap-3 p-3 sm:p-4 min-h-0">
         {/* Left: Barcode + products */}
         <div className="flex-1 flex flex-col gap-3 min-w-0">
+          {/* Cliente identificado */}
+          {pendingCustomer && (
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
+              style={{ background: "rgba(107,79,58,0.08)", border: `1px solid rgba(107,79,58,0.15)` }}>
+              <span className="text-lg">👤</span>
+              <span className="flex-1 font-medium truncate" style={{ color: GC.dark }}>
+                {pendingCustomer.name}
+                {pendingCustomer.pointsBalance > 0 && (
+                  <span className="ml-2 text-xs font-normal" style={{ color: GC.caramel }}>
+                    {pendingCustomer.pointsBalance} pts
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPendingCustomer(null)}
+                className="text-xs px-2 py-0.5 rounded-lg transition hover:bg-white/50"
+                style={{ color: GC.brown }}
+              >
+                Remover
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleScan} className="flex gap-2">
             <input
               ref={barcodeRef}
@@ -1845,6 +1983,15 @@ export default function PdvPage() {
               className="px-5 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-95 disabled:opacity-50"
               style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
               {scanning ? "..." : "Ler"}
+            </button>
+            <button
+              type="button"
+              title="Identificar cliente"
+              onClick={() => setShowCustomerSearch(true)}
+              className="px-3 py-2.5 rounded-xl text-sm font-bold transition active:scale-95"
+              style={{ background: "rgba(107,79,58,0.1)", color: GC.brown }}
+            >
+              👤
             </button>
           </form>
 

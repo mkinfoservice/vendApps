@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Services;
@@ -27,6 +28,7 @@ public class PublicTenantController : ControllerBase
     /// (ex: Vercel SPA + Render API). Fallback: extrai do Host header.
     /// </summary>
     [HttpGet("resolve")]
+    [EnableRateLimiting("public_api")]
     public async Task<IActionResult> Resolve([FromQuery] string? slug, CancellationToken ct)
     {
         var resolvedSlug = slug?.Trim().ToLowerInvariant()

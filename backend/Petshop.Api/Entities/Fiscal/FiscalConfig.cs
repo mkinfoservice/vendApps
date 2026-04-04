@@ -41,8 +41,8 @@ public class FiscalConfig
     /// </summary>
     public string? CertificateBase64 { get; set; }
 
-    /// <summary>Senha do certificado.</summary>
-    [MaxLength(200)]
+    /// <summary>Senha do certificado — armazenada criptografada.</summary>
+    [MaxLength(1000)]
     public string? CertificatePassword { get; set; }
 
     /// <summary>Legado: caminho de arquivo. Mantido para migração gradual.</summary>

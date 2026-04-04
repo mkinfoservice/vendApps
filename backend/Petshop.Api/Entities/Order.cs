@@ -61,6 +61,7 @@ namespace Petshop.Api.Entities
 
        public int SubtotalCents { get; set; } // Subtotal do pedido (em centavos)
        public int DeliveryCents { get; set; } // Taxa de entrega (em centavos)
+       public int DiscountCents { get; set; } // Desconto aplicado (em centavos)
        public int TotalCents { get; set; } // Total do pedido (em centavos)
 
        public OrderStatus Status { get; set; } = OrderStatus.RECEBIDO; // Status do pedido

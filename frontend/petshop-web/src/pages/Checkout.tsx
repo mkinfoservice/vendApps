@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/features/cart/cart";
 import { useNavigate } from "react-router-dom";
-import { CreateOrder, type CreateOrderRequest } from "@/features/orders/api";
+import { CreateOrder, validateCoupon, type CreateOrderRequest } from "@/features/orders/api";
 import { fetchAddressByCep } from "@/features/shipping/viacep";
-import { ArrowLeft, CheckCircle2, ChevronRight, MapPin, CreditCard, Banknote, QrCode, Package } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, MapPin, CreditCard, Banknote, QrCode, Package, Tag, X } from "lucide-react";
 import { useBrandVar } from "@/hooks/useBrandVar";
+import { useStoreFront } from "@/features/catalog/queries";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -56,7 +57,8 @@ type ReviewSnapshot = {
   items: Array<{ qty: number; name: string; totalCents: number }>;
   paymentMethodStr: PaymentMethod; paymentLabel: string;
   cashGivenCents: number | null; changeEstimateCents: number | null;
-  subtotalCentsUI: number; deliveryCentsUI: number; totalCentsUI: number;
+  subtotalCentsUI: number; deliveryCentsUI: number; discountCentsUI: number; totalCentsUI: number;
+  coupon: string | null; promotionName: string | null;
 };
 
 /* ─── Tela de confirmação ────────────────────────── */
@@ -153,6 +155,7 @@ export default function Checkout() {
   useBrandVar();
   const cart = useCart();
   const navigate = useNavigate();
+  const { data: storeFront } = useStoreFront();
 
   const draft: CustomerDraft | null = useMemo(() => {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); }
@@ -173,6 +176,10 @@ export default function Checkout() {
   const [cepError, setCepError] = useState("");
   const [payment, setPayment] = useState<PaymentMethod>("PIX");
   const [cashGiven, setCashGiven] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{ code: string; discountCents: number; promotionName: string } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState("");
   const [review, setReview] = useState<ReviewSnapshot | null>(null);
   const [sending, setSending] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
@@ -212,7 +219,8 @@ export default function Checkout() {
   }, [cep]);
 
   const deliveryCentsUI = useMemo(() => (cep.trim().length < 8 ? 0 : 1200), [cep]);
-  const totalCentsUI = cart.subtotalCents + deliveryCentsUI;
+  const discountCentsUI = couponApplied?.discountCents ?? 0;
+  const totalCentsUI = Math.max(0, cart.subtotalCents + deliveryCentsUI - discountCentsUI);
   const cashGivenCents = useMemo(() => {
     if (payment !== "CASH") return null;
     return parseBRLToCents(cashGiven);
@@ -238,7 +246,32 @@ export default function Checkout() {
     address.trim().length >= 3 &&
     (payment !== "CASH" || (cashGivenCents !== null && cashGivenCents >= totalCentsUI));
 
-function handleOpenReview() {
+  async function handleApplyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code || !storeFront?.id) return;
+    setCouponError("");
+    setCouponLoading(true);
+    try {
+      const couponItems = cart.items.map((i) => ({
+        productId: i.product.id.split("__")[0],
+        totalCents: (i.product.priceCents ?? 0) * i.qty,
+      }));
+      const result = await validateCoupon(storeFront.id, code, couponItems, cart.subtotalCents);
+      if (result.valid) {
+        setCouponApplied({ code, discountCents: result.discountCents, promotionName: result.promotionName ?? code });
+        setCouponInput("");
+      } else {
+        setCouponError(result.message ?? "Cupom inválido.");
+        setCouponApplied(null);
+      }
+    } catch {
+      setCouponError("Erro ao validar cupom.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleOpenReview() {
     const items = cart.items.map((i) => ({ qty: i.qty, name: i.product.name, totalCents: (i.product.priceCents ?? 0) * i.qty }));
     const changeEstimate = payment === "CASH" && cashGivenCents != null ? cashGivenCents - totalCentsUI : null;
     setReview({
@@ -246,7 +279,9 @@ function handleOpenReview() {
       items, paymentMethodStr: payment, paymentLabel: paymentLabel(payment),
       cashGivenCents: payment === "CASH" ? cashGivenCents : null,
       changeEstimateCents: payment === "CASH" ? changeEstimate : null,
-      subtotalCentsUI: cart.subtotalCents, deliveryCentsUI, totalCentsUI,
+      subtotalCentsUI: cart.subtotalCents, deliveryCentsUI, discountCentsUI, totalCentsUI,
+      coupon: couponApplied?.code ?? null,
+      promotionName: couponApplied?.promotionName ?? null,
     });
   }
 
@@ -264,6 +299,7 @@ function handleOpenReview() {
           return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
         }),
         ...(review.paymentMethodStr === "CASH" ? { cashGivenCents: review.cashGivenCents ?? undefined } : {}),
+        ...(review.coupon ? { coupon: review.coupon } : {}),
       };
       await CreateOrder(payload);
       cart.clear();
@@ -349,6 +385,12 @@ function handleOpenReview() {
                 {deliveryCentsUI > 0 ? formatBRL(deliveryCentsUI) : "—"}
               </span>
             </div>
+            {discountCentsUI > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Desconto</span>
+                <span className="font-semibold tabular-nums">− {formatBRL(discountCentsUI)}</span>
+              </div>
+            )}
             <div className="h-px bg-gray-200" />
             <div className="flex justify-between text-base font-black">
               <span className="text-gray-900">Total</span>
@@ -528,6 +570,54 @@ function handleOpenReview() {
           </p>
         </div>
 
+        {/* Cupom de desconto */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Tag className="w-4 h-4 text-gray-400" />
+            <h2 className="font-black text-gray-900 text-sm">Cupom de desconto</h2>
+          </div>
+
+          {couponApplied ? (
+            <div className="flex items-center justify-between gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <div>
+                <p className="text-sm font-bold text-green-700">{couponApplied.promotionName}</p>
+                <p className="text-xs text-green-600">— {formatBRL(couponApplied.discountCents)} de desconto</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCouponApplied(null); setCouponError(""); }}
+                className="w-7 h-7 rounded-full bg-green-100 hover:bg-green-200 flex items-center justify-center text-green-700 transition"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                className={inputCls + " flex-1"}
+                value={couponInput}
+                onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
+                placeholder="Código do cupom"
+                disabled={couponLoading}
+              />
+              <button
+                type="button"
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponInput.trim()}
+                className="px-4 h-11 rounded-xl font-bold text-sm text-white transition hover:brightness-110 disabled:opacity-40 shrink-0"
+                style={{ background: "var(--brand)" }}
+              >
+                {couponLoading ? "..." : "Aplicar"}
+              </button>
+            </div>
+          )}
+
+          {couponError && (
+            <p className="text-xs text-red-500">{couponError}</p>
+          )}
+        </div>
+
       </div>
 
       {/* CTA fixo no bottom */}
@@ -615,6 +705,12 @@ function handleOpenReview() {
                   <span>Entrega</span>
                   <span className="font-semibold text-gray-900 tabular-nums">{formatBRL(review.deliveryCentsUI)}</span>
                 </div>
+                {review.discountCentsUI > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Desconto{review.promotionName ? ` (${review.promotionName})` : ""}</span>
+                    <span className="font-semibold tabular-nums">− {formatBRL(review.discountCentsUI)}</span>
+                  </div>
+                )}
                 <div className="h-px bg-gray-200" />
                 <div className="flex justify-between text-base font-black">
                   <span className="text-gray-900">Total</span>

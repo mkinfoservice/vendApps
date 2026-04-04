@@ -76,7 +76,7 @@ public class CashRegisterFiscalConfig
     /// <summary>Conteúdo do .pfx em Base64 — cloud-friendly (sem filesystem).</summary>
     public string? CertificateBase64 { get; set; }
 
-    [MaxLength(200)]
+    [MaxLength(1000)]
     public string? CertificatePassword { get; set; }
 
     // ── NFC-e / CSC ───────────────────────────────────────────────────

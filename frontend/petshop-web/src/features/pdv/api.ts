@@ -2,6 +2,24 @@ import { adminFetch } from "@/features/admin/auth/adminFetch";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface PdvCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  cpf: string | null;
+  pointsBalance: number;
+}
+
+export async function searchCustomerByPhone(phone: string): Promise<PdvCustomer | null> {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 10) return null;
+  try {
+    return await adminFetch<PdvCustomer>(`/admin/customers/by-phone/${encodeURIComponent(digits)}`);
+  } catch {
+    return null;
+  }
+}
+
 export interface CashRegister {
   id: string;
   name: string;

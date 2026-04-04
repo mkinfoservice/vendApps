@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Petshop.Api.Contracts.Auth;
@@ -26,6 +27,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth_login")]
     public async Task<IActionResult> Login(
         [FromBody] AdminLoginRequest req,
         CancellationToken ct = default)
@@ -84,6 +86,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("deliverer/login")]
+    [EnableRateLimiting("auth_login")]
     public async Task<IActionResult> DelivererLogin(
         [FromBody] DelivererLoginRequest req,
         CancellationToken ct = default)

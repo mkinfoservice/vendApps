@@ -22,9 +22,13 @@ public class Customer
     [Required, MaxLength(20)]
     public string Phone { get; set; } = default!;
 
-    /// <summary>CPF opcional — para NF futura</summary>
-    [MaxLength(14)]
+    /// <summary>CPF — armazenado criptografado (AES via ASP.NET Core Data Protection)</summary>
+    [MaxLength(500)]
     public string? Cpf { get; set; }
+
+    /// <summary>HMAC-SHA256 do CPF normalizado — para queries de igualdade sem expor o plaintext</summary>
+    [MaxLength(64)]
+    public string? CpfHash { get; set; }
 
     // ── Endereço ─────────────────────────────────────────────
 

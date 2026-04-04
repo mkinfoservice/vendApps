@@ -23,12 +23,14 @@ public class FiscalAdminController : ControllerBase
     private readonly AppDbContext        _db;
     private readonly SefazHttpClient     _sefaz;
     private readonly IBackgroundJobClient _jobs;
+    private readonly FiscalCertProtectionService _certSvc;
 
-    public FiscalAdminController(AppDbContext db, SefazHttpClient sefaz, IBackgroundJobClient jobs)
+    public FiscalAdminController(AppDbContext db, SefazHttpClient sefaz, IBackgroundJobClient jobs, FiscalCertProtectionService certSvc)
     {
-        _db    = db;
-        _sefaz = sefaz;
-        _jobs  = jobs;
+        _db      = db;
+        _sefaz   = sefaz;
+        _jobs    = jobs;
+        _certSvc = certSvc;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -74,8 +76,11 @@ public class FiscalAdminController : ControllerBase
         cfg.Telefone           = dto.Telefone;
         cfg.TaxRegime          = Enum.Parse<TaxRegime>(dto.TaxRegime ?? "SimplesNacional");
         cfg.SefazEnvironment   = Enum.Parse<SefazEnvironment>(dto.SefazEnvironment ?? "Homologacao");
-        cfg.CertificateBase64   = dto.CertificateBase64;
-        cfg.CertificatePassword = dto.CertificatePassword;
+        // Encrypt cert only if new value provided; keep existing encrypted value otherwise
+        if (!string.IsNullOrWhiteSpace(dto.CertificateBase64))
+            cfg.CertificateBase64 = _certSvc.Protect(dto.CertificateBase64);
+        if (!string.IsNullOrWhiteSpace(dto.CertificatePassword))
+            cfg.CertificatePassword = _certSvc.Protect(dto.CertificatePassword);
         cfg.CertificatePath     = dto.CertificatePath; // legado
         cfg.CscId              = dto.CscId;
         cfg.CscToken           = dto.CscToken;
@@ -425,7 +430,9 @@ window.onload=function(){{setTimeout(function(){{window.print();}},600);}};
         Telefone           = cfg.Telefone,
         TaxRegime          = cfg.TaxRegime.ToString(),
         SefazEnvironment   = cfg.SefazEnvironment.ToString(),
-        CertificateBase64  = cfg.CertificateBase64,
+        // Nunca retornamos o certificado criptografado ao frontend — só hasCert
+        CertificateBase64  = null,
+        CertificatePassword = null,
         CertificatePath    = cfg.CertificatePath,
         CscId              = cfg.CscId,
         CscToken           = cfg.CscToken,

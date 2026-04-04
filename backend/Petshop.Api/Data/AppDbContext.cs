@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Audit;
@@ -25,9 +26,12 @@ using Petshop.Api.Entities.Delivery;
 
 namespace Petshop.Api.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : DbContext, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    // ── Data Protection Keys ──────────────────────────────────
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     // ── Tenant ───────────────────────────────────────────────
     public DbSet<Company> Companies => Set<Company>();

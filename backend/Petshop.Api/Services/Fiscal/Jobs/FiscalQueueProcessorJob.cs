@@ -19,6 +19,7 @@ public class FiscalQueueProcessorJob
     private readonly NfceNumberService                _numberSvc;
     private readonly IBackgroundJobClient             _jobs;
     private readonly ILogger<FiscalQueueProcessorJob> _logger;
+    private readonly FiscalCertProtectionService      _certSvc;
 
     private const int BatchSize = 50;
     private const int MaxRetries = 5;
@@ -29,7 +30,8 @@ public class FiscalQueueProcessorJob
         RealFiscalEngine realEngine,
         NfceNumberService numberSvc,
         IBackgroundJobClient jobs,
-        ILogger<FiscalQueueProcessorJob> logger)
+        ILogger<FiscalQueueProcessorJob> logger,
+        FiscalCertProtectionService certSvc)
     {
         _db           = db;
         _fiscalEngine = fiscalEngine;
@@ -37,6 +39,7 @@ public class FiscalQueueProcessorJob
         _numberSvc    = numberSvc;
         _jobs         = jobs;
         _logger       = logger;
+        _certSvc      = certSvc;
     }
 
     public async Task ProcessAsync(Guid companyId, CancellationToken ct = default)
@@ -123,16 +126,16 @@ public class FiscalQueueProcessorJob
             if (registerConfig != null)
             {
                 emitter      = BuildEmitter(registerConfig);
-                certBase64   = registerConfig.CertificateBase64;
-                certPassword = registerConfig.CertificatePassword;
+                certBase64   = _certSvc.Unprotect(registerConfig.CertificateBase64);
+                certPassword = _certSvc.Unprotect(registerConfig.CertificatePassword);
                 certPath     = null;
                 nfceSerie    = registerConfig.NfceSerie;
             }
             else if (fallbackConfig != null)
             {
                 emitter      = BuildEmitter(fallbackConfig);
-                certBase64   = fallbackConfig.CertificateBase64;
-                certPassword = fallbackConfig.CertificatePassword;
+                certBase64   = _certSvc.Unprotect(fallbackConfig.CertificateBase64);
+                certPassword = _certSvc.Unprotect(fallbackConfig.CertificatePassword);
                 certPath     = fallbackConfig.CertificatePath;
                 nfceSerie    = fallbackConfig.NfceSerie;
             }

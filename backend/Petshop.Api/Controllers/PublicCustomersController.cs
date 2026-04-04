@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
@@ -11,32 +12,35 @@ namespace Petshop.Api.Controllers;
 public class PublicCustomersController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly CpfProtectionService _cpfSvc;
 
-    public PublicCustomersController(AppDbContext db)
+    public PublicCustomersController(AppDbContext db, CpfProtectionService cpfSvc)
     {
         _db = db;
+        _cpfSvc = cpfSvc;
     }
 
     /// <summary>
     /// Identifica (ou cria) um cliente pelo telefone, resolvendo a empresa pelo tableId.
-    /// Chamado pela tela de mesa antes de montar o carrinho — permite mostrar pontos de fidelidade.
+    /// Chamado pela tela de mesa antes de montar o carrinho ï¿½ permite mostrar pontos de fidelidade.
     /// </summary>
     [HttpPost("identify")]
+    [EnableRateLimiting("public_api")]
     public async Task<IActionResult> Identify([FromBody] IdentifyCustomerRequest req, CancellationToken ct)
     {
         if (req.TableId == Guid.Empty)
-            return BadRequest(new { error = "tableId obrigatório." });
+            return BadRequest(new { error = "tableId obrigatï¿½rio." });
 
         var phone = new string(req.Phone.Where(char.IsDigit).ToArray());
         if (phone.Length < 10)
-            return BadRequest(new { error = "Telefone inválido." });
+            return BadRequest(new { error = "Telefone invï¿½lido." });
 
         if (string.IsNullOrWhiteSpace(req.Name))
-            return BadRequest(new { error = "Nome obrigatório." });
+            return BadRequest(new { error = "Nome obrigatï¿½rio." });
 
         var cpf = CpfValidator.Normalize(req.Cpf);
         if (!string.IsNullOrWhiteSpace(cpf) && !CpfValidator.IsValid(cpf))
-            return BadRequest(new { error = "CPF inválido." });
+            return BadRequest(new { error = "CPF invï¿½lido." });
 
         // Resolve empresa pelo tableId
         var table = await _db.Set<Entities.StoreFront.Table>()
@@ -44,7 +48,7 @@ public class PublicCustomersController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == req.TableId && t.IsActive, ct);
 
         if (table is null)
-            return NotFound(new { error = "Mesa não encontrada." });
+            return NotFound(new { error = "Mesa nï¿½o encontrada." });
 
         var companyId = table.CompanyId;
 
@@ -61,7 +65,8 @@ public class PublicCustomersController : ControllerBase
                 CompanyId = companyId,
                 Name = req.Name.Trim(),
                 Phone = phone,
-                Cpf = cpf,
+                Cpf     = _cpfSvc.Protect(cpf),
+                CpfHash = cpf != null ? _cpfSvc.Hash(cpf) : null,
             };
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync(ct);

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Fiscal;
 using Petshop.Api.Entities.Pdv;
+using Petshop.Api.Services.Fiscal;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -16,8 +17,13 @@ namespace Petshop.Api.Controllers;
 public class CashRegisterController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly FiscalCertProtectionService _certSvc;
 
-    public CashRegisterController(AppDbContext db) => _db = db;
+    public CashRegisterController(AppDbContext db, FiscalCertProtectionService certSvc)
+    {
+        _db      = db;
+        _certSvc = certSvc;
+    }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
@@ -169,8 +175,10 @@ public class CashRegisterController : ControllerBase
         cfg.Telefone            = dto.Telefone;
         cfg.TaxRegime           = Enum.Parse<TaxRegime>(dto.TaxRegime ?? "SimplesNacional");
         cfg.SefazEnvironment    = Enum.Parse<SefazEnvironment>(dto.SefazEnvironment ?? "Homologacao");
-        cfg.CertificateBase64   = dto.CertificateBase64;
-        cfg.CertificatePassword = dto.CertificatePassword;
+        if (!string.IsNullOrWhiteSpace(dto.CertificateBase64))
+            cfg.CertificateBase64 = _certSvc.Protect(dto.CertificateBase64);
+        if (!string.IsNullOrWhiteSpace(dto.CertificatePassword))
+            cfg.CertificatePassword = _certSvc.Protect(dto.CertificatePassword);
         cfg.CscId               = dto.CscId;
         cfg.CscToken            = dto.CscToken;
         cfg.NfceSerie           = dto.NfceSerie > 0 ? dto.NfceSerie : (short)1;
@@ -228,7 +236,8 @@ public class CashRegisterController : ControllerBase
         Telefone           = cfg.Telefone,
         TaxRegime          = cfg.TaxRegime.ToString(),
         SefazEnvironment   = cfg.SefazEnvironment.ToString(),
-        CertificateBase64  = cfg.CertificateBase64,
+        // Nunca retornamos o certificado criptografado ao frontend — só hasCert indica presença
+        CertificateBase64  = null,
         CscId              = cfg.CscId,
         CscToken           = cfg.CscToken,
         NfceSerie          = cfg.NfceSerie,

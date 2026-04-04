@@ -20,21 +20,23 @@ public class CustomersController : ControllerBase
     private readonly ViaCepService _viaCep;
     private readonly IGeocodingService _geo;
     private readonly ILogger<CustomersController> _logger;
-
     private readonly LoyaltyService _loyalty;
+    private readonly CpfProtectionService _cpfSvc;
 
     public CustomersController(
         AppDbContext db,
         ViaCepService viaCep,
         IGeocodingService geo,
         ILogger<CustomersController> logger,
-        LoyaltyService loyalty)
+        LoyaltyService loyalty,
+        CpfProtectionService cpfSvc)
     {
         _db = db;
         _viaCep = viaCep;
         _geo = geo;
         _loyalty = loyalty;
         _logger = logger;
+        _cpfSvc = cpfSvc;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -66,15 +68,16 @@ public class CustomersController : ControllerBase
             q = q.Where(c => EF.Functions.ILike(c.Name, $"%{name.Trim()}%"));
 
         var total = await q.CountAsync(ct);
-        var items = await q
+        var rawItems = await q
             .OrderBy(c => c.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CustomerListItem(
-                c.Id, c.Name, c.Phone, c.Cpf,
-                c.Address, c.Neighborhood, c.City, c.State,
-                c.UpdatedAtUtc))
             .ToListAsync(ct);
+
+        var items = rawItems.Select(c => new CustomerListItem(
+            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+            c.Address, c.Neighborhood, c.City, c.State,
+            c.UpdatedAtUtc)).ToList();
 
         return Ok(new { page, pageSize, total, items });
     }
@@ -85,19 +88,13 @@ public class CustomersController : ControllerBase
     public async Task<IActionResult> ByPhone(string phone, CancellationToken ct = default)
     {
         var cleaned = CleanPhone(phone);
-        var customer = await _db.Customers
+        var c2 = await _db.Customers
             .AsNoTracking()
             .Where(c => c.CompanyId == CompanyId && c.Phone == cleaned)
-            .Select(c => new CustomerDetailDto(
-                c.Id, c.Name, c.Phone, c.Cpf,
-                c.Cep, c.Address, c.Complement, c.Neighborhood,
-                c.City, c.State, c.AddressReference, c.Notes,
-                c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
-                null))
             .FirstOrDefaultAsync(ct);
 
-        if (customer is null) return NotFound();
-        return Ok(customer);
+        if (c2 is null) return NotFound();
+        return Ok(MapDetail(c2, null));
     }
 
     // -- GET /admin/customers/{id} ---------------------------------------------
@@ -122,7 +119,7 @@ public class CustomersController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(new CustomerDetailDto(
-            c.Id, c.Name, c.Phone, c.Cpf,
+            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
             c.Cep, c.Address, c.Complement, c.Neighborhood,
             c.City, c.State, c.AddressReference, c.Notes,
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
@@ -148,16 +145,21 @@ public class CustomersController : ControllerBase
             await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone, ct))
             return Conflict(new { error = $"Já existe um cliente com o telefone '{req.Phone}'." });
 
-        if (!string.IsNullOrWhiteSpace(cpf) &&
-            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Cpf == cpf, ct))
-            return Conflict(new { error = $"Já existe um cliente com o CPF '{req.Cpf}'." });
+        string? cpfHash = null;
+        if (!string.IsNullOrWhiteSpace(cpf))
+        {
+            cpfHash = _cpfSvc.Hash(cpf);
+            if (await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.CpfHash == cpfHash, ct))
+                return Conflict(new { error = $"Já existe um cliente com o CPF '{req.Cpf}'." });
+        }
 
         var customer = new Customer
         {
             CompanyId = CompanyId,
             Name      = req.Name.Trim(),
             Phone     = phone,
-            Cpf       = cpf,
+            Cpf       = _cpfSvc.Protect(cpf),
+            CpfHash   = cpfHash,
             Cep       = CleanCep(req.Cep),
             Address   = req.Address?.Trim(),
             Complement       = req.Complement?.Trim(),
@@ -217,9 +219,10 @@ public class CustomersController : ControllerBase
             await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Phone == phone && c.Id != id, ct))
             return Conflict(new { error = $"Já existe outro cliente com o telefone '{req.Phone}'." });
 
+        string? cpfHash = !string.IsNullOrWhiteSpace(cpf) ? _cpfSvc.Hash(cpf) : null;
         if (!string.IsNullOrWhiteSpace(cpf) &&
-            customer.Cpf != cpf &&
-            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.Cpf == cpf && c.Id != id, ct))
+            customer.CpfHash != cpfHash &&
+            await _db.Customers.AnyAsync(c => c.CompanyId == CompanyId && c.CpfHash == cpfHash && c.Id != id, ct))
             return Conflict(new { error = $"Já existe outro cliente com o CPF '{req.Cpf}'." });
 
         bool addressChanged =
@@ -228,7 +231,8 @@ public class CustomersController : ControllerBase
 
         customer.Name      = req.Name.Trim();
         customer.Phone     = phone;
-        customer.Cpf       = cpf;
+        customer.Cpf       = _cpfSvc.Protect(cpf);
+        customer.CpfHash   = cpfHash;
         customer.Cep       = CleanCep(req.Cep);
         customer.Address   = req.Address?.Trim();
         customer.Complement       = req.Complement?.Trim();
@@ -308,8 +312,8 @@ public class CustomersController : ControllerBase
     private static string? CleanCep(string? cep) =>
         string.IsNullOrWhiteSpace(cep) ? null : Regex.Replace(cep, @"\D", "");
 
-    private static CustomerDetailDto MapDetail(Customer c, List<CustomerOrderSummary>? orders) =>
-        new(c.Id, c.Name, c.Phone, c.Cpf,
+    private CustomerDetailDto MapDetail(Customer c, List<CustomerOrderSummary>? orders) =>
+        new(c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
             c.Cep, c.Address, c.Complement, c.Neighborhood,
             c.City, c.State, c.AddressReference, c.Notes,
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
@@ -392,21 +396,65 @@ public class CustomersController : ControllerBase
         if (string.IsNullOrWhiteSpace(q)) return BadRequest();
         var term = Regex.Replace(q, @"\D", "");
 
+        var termHash = _cpfSvc.Hash(term);
         var c = await _db.Customers.AsNoTracking()
             .Where(x => x.CompanyId == CompanyId)
-            .Where(x => (x.Cpf != null && x.Cpf == term) ||
+            .Where(x => (x.CpfHash != null && x.CpfHash == termHash) ||
                         (x.Phone != null && x.Phone == term))
-            .Select(x => new CustomerLookupResult(
-                x.Id, x.Name, x.Phone, x.Cpf,
-                x.PointsBalance, x.Email, x.BirthDate))
             .FirstOrDefaultAsync(ct);
 
-        return c is null ? NotFound() : Ok(c);
+        if (c is null) return NotFound();
+        return Ok(new CustomerLookupResult(
+            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+            c.PointsBalance, c.Email, c.BirthDate));
     }
 
     private static LoyaltyConfigDto MapConfig(LoyaltyConfig cfg) => new(
         cfg.IsEnabled, cfg.PointsPerReal, cfg.PointsPerReais,
         cfg.MinRedemptionPoints, cfg.MaxDiscountPercent, cfg.UpdatedAtUtc);
+
+    // ── LGPD: anonimização de cliente ─────────────────────────────────────────
+
+    /// <summary>
+    /// Anonimiza todos os dados pessoais do cliente conforme LGPD (Lei 13.709/2018).
+    /// Preserva o registro e o histórico de pedidos, mas remove dados identificáveis.
+    /// Requer role admin ou gerente.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> Anonymize(Guid id, CancellationToken ct)
+    {
+        var customer = await _db.Customers
+            .Where(c => c.Id == id && c.CompanyId == CompanyId)
+            .FirstOrDefaultAsync(ct);
+
+        if (customer is null) return NotFound();
+
+        customer.Name            = "Cliente Removido";
+        customer.Phone           = $"deleted_{id:N}";
+        customer.Cpf             = null;
+        customer.CpfHash         = null;
+        customer.Email           = null;
+        customer.BirthDate       = null;
+        customer.Cep             = null;
+        customer.Address         = null;
+        customer.Complement      = null;
+        customer.Neighborhood    = null;
+        customer.City            = null;
+        customer.State           = null;
+        customer.AddressReference = null;
+        customer.Notes           = null;
+        customer.Latitude        = null;
+        customer.Longitude       = null;
+        customer.GeocodedAtUtc   = null;
+        customer.UpdatedAtUtc    = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation("[LGPD] Cliente {Id} anonimizado pela empresa {CompanyId}", id, CompanyId);
+
+        return NoContent();
+    }
 }
 
 // -- DTOs ---------------------------------------------------------------------

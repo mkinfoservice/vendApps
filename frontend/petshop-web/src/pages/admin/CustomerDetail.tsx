@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchCustomer } from "@/features/admin/customers/api";
+import { fetchCustomer, anonymizeCustomer } from "@/features/admin/customers/api";
 import { getCustomerLoyalty, adjustPoints, type LoyaltyTxnDto } from "@/features/customers/customersApi";
-import { ArrowLeft, Pencil, Loader2, Phone, MapPin, FileText, ShoppingBag, Star, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Pencil, Loader2, Phone, MapPin, FileText, ShoppingBag, Star, Plus, Minus, Trash2 } from "lucide-react";
 
 function formatCents(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -72,7 +72,19 @@ function AdjustModal({ customerId, onClose }: { customerId: string; onClose: () 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [showAdjust, setShowAdjust] = useState(false);
+  const [showAnonymize, setShowAnonymize] = useState(false);
+
+  const anonymizeMut = useMutation({
+    mutationFn: () => anonymizeCustomer(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customer", id] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      setShowAnonymize(false);
+      navigate("/app/atendimento/clientes");
+    },
+  });
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ["customer", id],
@@ -112,6 +124,37 @@ export default function CustomerDetail() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--bg)" }}>
       {showAdjust && <AdjustModal customerId={id!} onClose={() => setShowAdjust(false)} />}
+      {showAnonymize && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 size={18} className="text-red-600" />
+              </div>
+              <div>
+                <h2 className="font-bold text-gray-900">Remover dados (LGPD)</h2>
+                <p className="text-xs text-gray-500">Esta ação não pode ser desfeita.</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-700">
+              Todos os dados pessoais de <strong>{customer?.name}</strong> serão anonimizados permanentemente: nome, telefone, CPF, e-mail, endereço e demais dados identificáveis. O histórico de pedidos e pontos de fidelidade será preservado.
+            </p>
+            {anonymizeMut.isError && (
+              <p className="text-xs text-red-600">{(anonymizeMut.error as Error).message}</p>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setShowAnonymize(false)} disabled={anonymizeMut.isPending}
+                className="px-4 py-2 text-sm border border-gray-200 rounded-xl bg-white text-gray-700 hover:bg-gray-100 transition disabled:opacity-50">
+                Cancelar
+              </button>
+              <button onClick={() => anonymizeMut.mutate()} disabled={anonymizeMut.isPending}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-semibold rounded-xl hover:bg-red-700 disabled:opacity-40 transition">
+                {anonymizeMut.isPending ? "Removendo..." : "Confirmar remoção"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}}
       <main className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
@@ -130,6 +173,14 @@ export default function CustomerDetail() {
               Desde {formatDate(customer.createdAtUtc)}
             </p>
           </div>
+          <button
+            onClick={() => setShowAnonymize(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition"
+            style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+            title="Remover dados pessoais (LGPD)"
+          >
+            <Trash2 size={14} />
+          </button>
           <button
             onClick={() => navigate(`/app/atendimento/clientes/${id}/editar`)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold hover:bg-[--surface-2] transition"

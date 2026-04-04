@@ -86,6 +86,33 @@ export async function identifyCustomer(
   return r.json();
 }
 
+export type ValidateCouponItem = { productId: string; totalCents: number };
+
+export type ValidateCouponResponse = {
+  valid: boolean;
+  message: string | null;
+  discountCents: number;
+  promotionName: string | null;
+};
+
+export async function validateCoupon(
+  companyId: string,
+  couponCode: string,
+  items: ValidateCouponItem[],
+  subtotalCents: number,
+): Promise<ValidateCouponResponse> {
+  const r = await fetch(`${API_URL}/orders/validate-coupon`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ companyId, couponCode, items, subtotalCents }),
+  });
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`Erro ao validar cupom: ${r.status} ${text}`);
+  }
+  return r.json();
+}
+
 export async function CreateOrder(payload: CreateOrderRequest): Promise<CreateOrderResponse> {
   const r = await fetch(`${API_URL}/orders`, {
     method: "POST",

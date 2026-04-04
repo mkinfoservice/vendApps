@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Petshop.Api.Contracts.Master;
 
@@ -27,6 +28,7 @@ public class MasterAuthController : ControllerBase
     /// Retorna JWT com role=master_admin (sem companyId).
     /// </summary>
     [HttpPost("auth/login")]
+    [EnableRateLimiting("auth_login")]
     public IActionResult Login([FromBody] MasterLoginRequest req)
     {
         var masterUser = _config["Master:User"];

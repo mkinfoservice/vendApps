@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Contracts.Orders;
 using Petshop.Api.Data;
@@ -12,6 +13,7 @@ using Petshop.Api.Services.Dav;
 using Petshop.Api.Services.Dav.Jobs;
 using Petshop.Api.Services.Geocoding;
 using Petshop.Api.Services.Print;
+using Petshop.Api.Services.Promotions;
 using Petshop.Api.Services.WhatsApp;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Entities.Dav;
@@ -33,8 +35,9 @@ public class OrdersController : ControllerBase
     private readonly PrintService _print;
     private readonly LoyaltyService _loyalty;
     private readonly PlanFeatureService _planFeatures;
+    private readonly PromotionEngine _promotionEngine;
 
-    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty, PlanFeatureService planFeatures)
+    public OrdersController(AppDbContext db, IGeocodingService geo, ViaCepService viaCep, IConfiguration config, ILogger<OrdersController> logger, IBackgroundJobClient jobs, PrintService print, LoyaltyService loyalty, PlanFeatureService planFeatures, PromotionEngine promotionEngine)
     {
         _db = db;
         _geo = geo;
@@ -45,6 +48,7 @@ public class OrdersController : ControllerBase
         _print = print;
         _loyalty = loyalty;
         _planFeatures = planFeatures;
+        _promotionEngine = promotionEngine;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -879,7 +883,37 @@ public class OrdersController : ControllerBase
 
         // Mesa: sem taxa de entrega
         order.DeliveryCents = isTableOrder ? 0 : 500;
-        order.TotalCents = order.SubtotalCents + order.DeliveryCents;
+
+        // Aplica cupom/promoção se fornecido
+        if (order.CompanyId.HasValue && !string.IsNullOrWhiteSpace(order.Coupon))
+        {
+            var cartItems = order.Items.Select(i =>
+            {
+                var p = _db.Products.AsNoTracking().FirstOrDefault(x => x.Id == i.ProductId);
+                return new CartItem(
+                    i.ProductId,
+                    p?.CategoryId ?? Guid.Empty,
+                    p?.BrandId,
+                    i.UnitPriceCentsSnapshot * i.Qty);
+            }).ToList();
+
+            var promoResults = await _promotionEngine.EvaluateAsync(
+                order.CompanyId.Value, cartItems,
+                order.SubtotalCents, order.Coupon, ct);
+
+            var bestDiscount = promoResults
+                .Where(r => !string.IsNullOrWhiteSpace(r.CouponCode))
+                .OrderByDescending(r => r.DiscountCents)
+                .FirstOrDefault();
+
+            order.DiscountCents = bestDiscount?.DiscountCents ?? 0;
+        }
+        else
+        {
+            order.DiscountCents = 0;
+        }
+
+        order.TotalCents = Math.Max(0, order.SubtotalCents + order.DeliveryCents - order.DiscountCents);
 
         var pm = isTableOrder
             ? "PAY_AT_COUNTER"
@@ -930,7 +964,7 @@ public class OrdersController : ControllerBase
                 CustomerDocument = string.IsNullOrWhiteSpace(req.CustomerCpf) ? null : new string(req.CustomerCpf.Where(char.IsDigit).ToArray()),
                 PaymentMethod = "PAY_AT_COUNTER",
                 SubtotalCents = order.SubtotalCents,
-                DiscountCents = 0,
+                DiscountCents = order.DiscountCents,
                 TotalCents = order.TotalCents,
                 Status = SalesQuoteStatus.Draft,
                 Notes = "Gerado automaticamente a partir de pedido de mesa.",
@@ -963,5 +997,56 @@ public class OrdersController : ControllerBase
             ChangeCents = order.ChangeCents,
             DavPublicId = tableQuote?.PublicId
         });
+    }
+
+    // ── Validate Coupon (público) ──────────────────────────────────────────────
+
+    public record ValidateCouponRequest(
+        Guid CompanyId,
+        string CouponCode,
+        List<ValidateCouponItem> Items,
+        int SubtotalCents
+    );
+
+    public record ValidateCouponItem(Guid ProductId, int TotalCents);
+
+    public record ValidateCouponResponse(
+        bool Valid,
+        string? Message,
+        int DiscountCents,
+        string? PromotionName
+    );
+
+    [HttpPost("validate-coupon")]
+    [AllowAnonymous]
+    [EnableRateLimiting("public_api")]
+    public async Task<IActionResult> ValidateCoupon([FromBody] ValidateCouponRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.CouponCode))
+            return Ok(new ValidateCouponResponse(false, "Informe o código do cupom.", 0, null));
+
+        // Resolve product category/brand for engine
+        var cartItems = new List<CartItem>();
+        foreach (var item in req.Items)
+        {
+            var p = await _db.Products.AsNoTracking()
+                .Where(x => x.Id == item.ProductId)
+                .Select(x => new { x.CategoryId, x.BrandId })
+                .FirstOrDefaultAsync(ct);
+            cartItems.Add(new CartItem(item.ProductId, p?.CategoryId ?? Guid.Empty, p?.BrandId, item.TotalCents));
+        }
+
+        var results = await _promotionEngine.EvaluateAsync(
+            req.CompanyId, cartItems, req.SubtotalCents, req.CouponCode.Trim().ToUpperInvariant(), ct);
+
+        var best = results
+            .Where(r => !string.IsNullOrWhiteSpace(r.CouponCode))
+            .OrderByDescending(r => r.DiscountCents)
+            .FirstOrDefault();
+
+        if (best == null || best.DiscountCents <= 0)
+            return Ok(new ValidateCouponResponse(false, "Cupom inválido ou não aplicável.", 0, null));
+
+        return Ok(new ValidateCouponResponse(true, null, best.DiscountCents, best.Name));
     }
 }

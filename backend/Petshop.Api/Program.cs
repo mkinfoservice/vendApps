@@ -9,6 +9,8 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using Petshop.Api.Services;
 using Microsoft.OpenApi.Models;
 using Petshop.Api.Services.Geocoding;
@@ -25,6 +27,7 @@ using Petshop.Api.Services.Fiscal.Jobs;
 using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Scale.Jobs;
 using Petshop.Api.Services.Tenancy;
+using Microsoft.AspNetCore.DataProtection;
 
 // QuestPDF Community license — deve ser configurado antes de qualquer uso
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
@@ -241,7 +244,9 @@ builder.Services.AddScoped<IProductImageMatcher, CosmosImageMatcher>();
 // ===============================
 // Services — Master Admin
 // ===============================
-builder.Services.AddDataProtection();
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<AppDbContext>()
+    .SetApplicationName("vendApps");
 builder.Services.AddScoped<Petshop.Api.Services.Master.MasterAuditService>();
 builder.Services.AddScoped<Petshop.Api.Services.Master.MasterCryptoService>();
 
@@ -276,6 +281,7 @@ builder.Services.AddScoped<Petshop.Api.Services.Purchases.PurchaseReceivingServi
 // Services — Clientes (Fase 9)
 // ===============================
 builder.Services.AddScoped<Petshop.Api.Services.Customers.LoyaltyService>();
+builder.Services.AddScoped<Petshop.Api.Services.Customers.CpfProtectionService>();
 
 // ===============================
 // Services — Promoções (Fase 10)
@@ -304,6 +310,7 @@ builder.Services.AddScoped<IFiscalEngine, MockFiscalEngine>();
 builder.Services.AddScoped<FiscalDecisionService>();
 builder.Services.AddScoped<NfceNumberService>();
 builder.Services.AddScoped<FiscalQueueProcessorJob>();
+builder.Services.AddScoped<FiscalCertProtectionService>();
 builder.Services.AddScoped<ContingencyReprocessJob>();
 
 // ===============================
@@ -371,6 +378,38 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials(); // Necessário para SignalR WebSockets
     });
+});
+
+// ===============================
+// Rate Limiting
+// ===============================
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Autenticação — 5 tentativas por minuto por IP
+    options.AddPolicy("auth_login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
+    // Endpoints públicos — 20 requisições por minuto por IP
+    options.AddPolicy("public_api", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
 });
 
 var app = builder.Build();
@@ -454,6 +493,43 @@ using (var scope = app.Services.CreateScope())
     await db.Database.ExecuteSqlRawAsync("""
         ALTER TABLE "Categories"
         ADD COLUMN IF NOT EXISTS "SortOrder" integer NOT NULL DEFAULT 0;
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Orders"
+        ADD COLUMN IF NOT EXISTS "DiscountCents" integer NOT NULL DEFAULT 0;
+        """);
+
+    // Tabela de chaves do Data Protection (LGPD / criptografia)
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
+            "Id"           serial  NOT NULL,
+            "FriendlyName" text,
+            "Xml"          text,
+            CONSTRAINT "PK_DataProtectionKeys" PRIMARY KEY ("Id")
+        );
+        """);
+
+    // Coluna CpfHash para busca de CPF criptografado
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Customers"
+        ADD COLUMN IF NOT EXISTS "CpfHash" character varying(64);
+        """);
+
+    // Alarga a coluna Cpf para acomodar ciphertext
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Customers"
+        ALTER COLUMN "Cpf" TYPE character varying(500);
+        """);
+
+    // Alarga CertificatePassword para acomodar ciphertext
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "FiscalConfigs"
+        ALTER COLUMN "CertificatePassword" TYPE character varying(1000);
+        """);
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "CashRegisterFiscalConfigs"
+        ALTER COLUMN "CertificatePassword" TYPE character varying(1000);
         """);
 
     // Cria tabela de config fiscal por caixa se ainda não existir (idempotente)
@@ -583,6 +659,32 @@ using (var scope = app.Services.CreateScope())
         """);
 
     await DbSeeder.SeedAsync(db);
+
+    // Migração LGPD: criptografa CPFs que ainda estão em plaintext
+    using var cpfScope = app.Services.CreateScope();
+    var cpfSvc = cpfScope.ServiceProvider.GetRequiredService<Petshop.Api.Services.Customers.CpfProtectionService>();
+    var dbForMigration = cpfScope.ServiceProvider.GetRequiredService<Petshop.Api.Data.AppDbContext>();
+    var customersToMigrate = await dbForMigration.Customers
+        .Where(c => c.Cpf != null && c.CpfHash == null)
+        .ToListAsync();
+    foreach (var customer in customersToMigrate)
+    {
+        if (string.IsNullOrWhiteSpace(customer.Cpf)) continue;
+        // Se já está criptografado (e CpfHash era null de outro motivo), apenas gera o hash
+        var plaintext = Petshop.Api.Services.Customers.CpfProtectionService.IsProtected(customer.Cpf)
+            ? cpfSvc.Unprotect(customer.Cpf)
+            : customer.Cpf;
+        if (plaintext is null) continue;
+        customer.Cpf     = cpfSvc.Protect(plaintext);
+        customer.CpfHash = cpfSvc.Hash(plaintext);
+        customer.UpdatedAtUtc = DateTime.UtcNow;
+    }
+    if (customersToMigrate.Count > 0)
+    {
+        await dbForMigration.SaveChangesAsync();
+        var logger = cpfScope.ServiceProvider.GetRequiredService<ILogger<Petshop.Api.Data.AppDbContext>>();
+        logger.LogInformation("[LGPD] CPF migration: {Count} clientes criptografados.", customersToMigrate.Count);
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -622,6 +724,9 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
+
+// Rate limiting após ForwardedHeaders para que o IP real seja lido corretamente
+app.UseRateLimiter();
 
 app.UseCors("Frontend");
 
@@ -682,7 +787,7 @@ app.MapControllers();
 // ===============================
 // SignalR Hubs
 // ===============================
-app.MapHub<PrintHub>("/hubs/print");
-app.MapHub<ScaleAgentHub>("/hubs/scale-agent");
+app.MapHub<PrintHub>("/hubs/print").DisableRateLimiting();
+app.MapHub<ScaleAgentHub>("/hubs/scale-agent").DisableRateLimiting();
 
 app.Run();
