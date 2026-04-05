@@ -1291,8 +1291,8 @@ function QuickProducts({
                           <Icon size={16} />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-sm font-extrabold truncate">{item.label}</span>
-                          <span className="block text-[11px] opacity-75 truncate">{item.description}</span>
+                          <span className="block text-sm font-extrabold whitespace-normal break-words leading-tight">{item.label}</span>
+                          <span className="block text-[11px] opacity-75 whitespace-normal break-words leading-tight mt-0.5">{item.description}</span>
                         </span>
                       </span>
                     </button>
@@ -1312,13 +1312,13 @@ function QuickProducts({
                       key={item.key ?? "__all__"}
                       type="button"
                       onClick={() => setActiveCategory(item.key)}
-                      className="shrink-0 rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold whitespace-nowrap"
+                      className="shrink-0 min-w-[150px] rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold"
                       style={active
                         ? { background: GC.caramel, color: "#fff", boxShadow: `0 4px 12px ${GC.caramel}44` }
                         : { background: "#fff", color: GC.brown, border: "1px solid rgba(107,79,58,0.12)" }}
                     >
                       <Icon size={15} />
-                      <span>{item.label}</span>
+                      <span className="text-left whitespace-normal break-words leading-tight">{item.label}</span>
                     </button>
                   );
                 })}

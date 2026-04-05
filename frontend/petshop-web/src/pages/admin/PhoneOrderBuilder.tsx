@@ -10,7 +10,7 @@ import { digitsOnly, formatCpf, isValidCpf } from "@/utils/cpf";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Coffee, Loader2, MapPin,
   Minus, Pencil, Phone, Plus, Search, ShoppingBag, Star,
-  Tag, Trash2, User, X,
+  Tag, Trash2, User, X, LayoutGrid, Snowflake, Sandwich, CupSoda, type LucideIcon,
 } from "lucide-react";
 
 const GC = { bg: "#FAF7F2", cream: "#F5EDE0", brown: "#6B4F3A", dark: "#1C1209", caramel: "#C8953A" };
@@ -137,6 +137,34 @@ export default function PhoneOrderBuilder() {
     products.forEach((p) => { if (p.categoryName) set.add(p.categoryName); });
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [products]);
+  const categoryItems = useMemo(() => {
+    const inferIcon = (name: string | null): LucideIcon => {
+      if (!name) return LayoutGrid;
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf") || n.includes("espresso") || n.includes("capuccino")) return Coffee;
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap") || n.includes("cold")) return Snowflake;
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche") || n.includes("toast")) return Sandwich;
+      if (n.includes("bebida") || n.includes("suco") || n.includes("shake")) return CupSoda;
+      return ShoppingBag;
+    };
+
+    const inferDescription = (name: string | null): string => {
+      if (!name) return "Ver todos os itens";
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf")) return "Cafes e bebidas quentes";
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap")) return "Refrescantes e gelados";
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche")) return "Lanches e salgados";
+      if (n.includes("doce") || n.includes("torta") || n.includes("brownie")) return "Sobremesas e doces";
+      return "Itens desta categoria";
+    };
+
+    return [null, ...categories].map((cat) => ({
+      key: cat,
+      label: cat ?? "Todos",
+      icon: inferIcon(cat),
+      description: inferDescription(cat),
+    }));
+  }, [categories]);
   const filteredProducts = useMemo(() => {
     let result = orderedProducts;
     if (activeCategory) result = result.filter((p) => p.categoryName === activeCategory);
@@ -594,31 +622,65 @@ export default function PhoneOrderBuilder() {
                 style={{ background: "#fff", border: `1.5px solid rgba(107,79,58,0.12)`, color: GC.dark, boxShadow: "0 2px 8px rgba(28,18,9,0.05)" }} />
             </div>
 
-            {/* Category pills */}
-            {categories.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                <button
-                  onClick={() => setActiveCategory(null)}
-                  className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap"
-                  style={!activeCategory
-                    ? { background: `linear-gradient(135deg, ${GC.dark}, #3D2314)`, color: "#fff" }
-                    : { background: GC.cream, color: GC.brown, border: `1.5px solid rgba(107,79,58,0.15)` }}>
-                  Todos
-                </button>
-                {categories.map((cat) => (
-                  <button key={cat}
-                    onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-                    className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap"
-                    style={activeCategory === cat
-                      ? { background: `linear-gradient(135deg, ${GC.caramel}, #A87830)`, color: "#fff" }
-                      : { background: GC.cream, color: GC.brown, border: `1.5px solid rgba(107,79,58,0.15)` }}>
-                    {cat}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="xl:grid xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-4">
+              {categories.length > 0 && (
+                <aside className="hidden xl:block">
+                  <div className="rounded-3xl p-2.5 space-y-1.5 border sticky top-24" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
+                    {categoryItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = item.key === activeCategory;
+                      return (
+                        <button
+                          key={item.key ?? "__all__"}
+                          type="button"
+                          onClick={() => setActiveCategory(item.key)}
+                          className="w-full text-left rounded-2xl px-3 py-2.5 transition-all"
+                          style={active
+                            ? { background: GC.caramel, color: "#fff", boxShadow: `0 10px 24px ${GC.caramel}44` }
+                            : { background: GC.cream, color: GC.dark, border: "1px solid rgba(107,79,58,0.1)" }}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span className="w-8 h-8 rounded-xl grid place-items-center"
+                              style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(200,149,58,0.18)", color: GC.caramel }}>
+                              <Icon size={16} />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-extrabold whitespace-normal break-words leading-tight">{item.label}</span>
+                              <span className="block text-[11px] opacity-75 whitespace-normal break-words leading-tight mt-0.5">{item.description}</span>
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </aside>
+              )}
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0">
+                {categories.length > 0 && (
+                  <div className="xl:hidden flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                    {categoryItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = item.key === activeCategory;
+                      return (
+                        <button
+                          key={item.key ?? "__all__"}
+                          type="button"
+                          onClick={() => setActiveCategory(item.key)}
+                          className="shrink-0 min-w-[150px] rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold"
+                          style={active
+                            ? { background: GC.caramel, color: "#fff", boxShadow: `0 4px 12px ${GC.caramel}44` }
+                            : { background: "#fff", color: GC.brown, border: "1px solid rgba(107,79,58,0.12)" }}
+                        >
+                          <Icon size={15} />
+                          <span className="text-left whitespace-normal break-words leading-tight">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] mt-2">
               {/* Product grid */}
               <div className="rounded-3xl p-4" style={{ background: "#fff", boxShadow: "0 4px 24px rgba(28,18,9,0.07)" }}>
                 <div className="flex items-center justify-between mb-3">
@@ -748,6 +810,8 @@ export default function PhoneOrderBuilder() {
                 </div>
               </div>
             </div>
+          </div>
+          </div>
           </div>
         )}
 

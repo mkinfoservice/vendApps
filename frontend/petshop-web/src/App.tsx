@@ -255,8 +255,8 @@ export default function App() {
                                 <Icon size={16} />
                               </span>
                               <span className="min-w-0">
-                                <span className="block text-sm font-extrabold truncate">{item.name}</span>
-                                <span className="block text-[11px] opacity-75 truncate">{item.hint}</span>
+                                <span className="block text-sm font-extrabold whitespace-normal break-words leading-tight">{item.name}</span>
+                                <span className="block text-[11px] opacity-75 whitespace-normal break-words leading-tight mt-0.5">{item.hint}</span>
                               </span>
                             </span>
                           </button>
@@ -277,13 +277,13 @@ export default function App() {
                             key={item.id}
                             type="button"
                             onClick={() => setCategorySlug(item.slug)}
-                            className="shrink-0 rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold whitespace-nowrap transition-all"
+                            className="shrink-0 min-w-[150px] rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold transition-all"
                             style={active
                               ? { background: "var(--brand)", color: "#fff" }
                               : { background: "var(--surface)", color: "var(--text-muted)", border: "1.5px solid var(--border)" }}
                           >
                             <Icon size={15} />
-                            <span>{item.name}</span>
+                            <span className="text-left whitespace-normal break-words leading-tight">{item.name}</span>
                           </button>
                         );
                       })}
