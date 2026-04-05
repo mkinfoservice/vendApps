@@ -77,7 +77,7 @@ public class PromotionController : ControllerBase
                 p.Type.ToString(), p.Scope.ToString(),
                 p.TargetId, p.TargetName,
                 p.Value, p.CouponCode,
-                p.MinOrderCents, p.MaxDiscountCents,
+                p.MinOrderCents, p.MaxDiscountCents, p.LoyaltyPointsCost,
                 p.StartsAtUtc, p.ExpiresAtUtc, p.CreatedAtUtc,
                 p.ExpiresAtUtc == null
                     ? "active"
@@ -188,6 +188,7 @@ public class PromotionController : ControllerBase
         p.CouponCode      = NormalizeCouponCode(req.CouponCode);
         p.MinOrderCents   = req.MinOrderCents;
         p.MaxDiscountCents = req.MaxDiscountCents;
+        p.LoyaltyPointsCost = req.LoyaltyPointsCost;
         p.StartsAtUtc     = req.StartsAtUtc;
         p.ExpiresAtUtc    = req.ExpiresAtUtc;
         return p;
@@ -256,6 +257,12 @@ public class PromotionController : ControllerBase
             return false;
         }
 
+        if (req.LoyaltyPointsCost is < 0)
+        {
+            error = "Custo em pontos não pode ser negativo.";
+            return false;
+        }
+
         if (req.StartsAtUtc.HasValue && req.ExpiresAtUtc.HasValue && req.StartsAtUtc > req.ExpiresAtUtc)
         {
             error = "A data de início deve ser menor ou igual à data de expiração.";
@@ -280,7 +287,7 @@ public class PromotionController : ControllerBase
             p.Type.ToString(), p.Scope.ToString(),
             p.TargetId, p.TargetName,
             p.Value, p.CouponCode,
-            p.MinOrderCents, p.MaxDiscountCents,
+            p.MinOrderCents, p.MaxDiscountCents, p.LoyaltyPointsCost,
             p.StartsAtUtc, p.ExpiresAtUtc, p.CreatedAtUtc,
             p.ExpiresAtUtc == null
                 ? "active"
@@ -382,6 +389,7 @@ public record PromotionDto(
     string?   CouponCode,
     int?      MinOrderCents,
     int?      MaxDiscountCents,
+    int?      LoyaltyPointsCost,
     DateTime? StartsAtUtc,
     DateTime? ExpiresAtUtc,
     DateTime  CreatedAtUtc,
@@ -400,6 +408,7 @@ public record UpsertPromotionRequest(
     string?   CouponCode      = null,
     int?      MinOrderCents   = null,
     int?      MaxDiscountCents = null,
+    int?      LoyaltyPointsCost = null,
     DateTime? StartsAtUtc     = null,
     DateTime? ExpiresAtUtc    = null
 );

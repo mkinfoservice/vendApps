@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.WhatsApp;
+using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Pdv;
 
 namespace Petshop.Api.Services.WhatsApp;
@@ -18,17 +19,23 @@ public class WhatsAppNotificationService
     private readonly AppDbContext _db;
     private readonly WhatsAppClient _wa;
     private readonly SaleReceiptPdfService _pdf;
+    private readonly CpfProtectionService _cpfProtection;
+    private readonly IConfiguration _config;
     private readonly ILogger<WhatsAppNotificationService> _logger;
 
     public WhatsAppNotificationService(
         AppDbContext db,
         WhatsAppClient wa,
         SaleReceiptPdfService pdf,
+        CpfProtectionService cpfProtection,
+        IConfiguration config,
         ILogger<WhatsAppNotificationService> logger)
     {
         _db = db;
         _wa = wa;
         _pdf = pdf;
+        _cpfProtection = cpfProtection;
+        _config = config;
         _logger = logger;
     }
 
@@ -134,6 +141,7 @@ public class WhatsAppNotificationService
 
         string? wamid;
         string sendMode;
+        var loyaltyCta = await TryBuildLoyaltyDeliveredCtaAsync(order, triggerStatus, ct);
 
         if (templateName is not null)
         {
@@ -148,12 +156,21 @@ public class WhatsAppNotificationService
             wamid = await _wa.SendTemplateAsync(
                 waId, templateName, langCode, bodyParams, companyId, ct);
             sendMode = $"template:{templateName}";
+
+            if (loyaltyCta is not null)
+            {
+                await _wa.SendTextAsync(
+                    waId,
+                    $"Voce tem {loyaltyCta.PointsBalance} pontos. Consultar seus pontos: {loyaltyCta.Url}",
+                    companyId,
+                    ct);
+            }
         }
         else
         {
             // Fallback texto livre — funciona somente dentro da janela de 24h
             // (após o cliente ter enviado mensagem). Não funciona para notificações cold.
-            var message = BuildMessage(order, triggerStatus);
+            var message = BuildMessage(order, triggerStatus, loyaltyCta);
             wamid = await _wa.SendTextAsync(waId, message, companyId, ct);
             sendMode = "text";
         }
@@ -257,7 +274,7 @@ public class WhatsAppNotificationService
 
     // ── Builder de mensagens por status ──────────────────────────────────────
 
-    private static string BuildMessage(Order order, OrderStatus status)
+    private static string BuildMessage(Order order, OrderStatus status, LoyaltyDeliveredCta? loyaltyCta)
     {
         var sb = new StringBuilder();
         var name = order.CustomerName.Split(' ')[0]; // Primeiro nome
@@ -300,6 +317,11 @@ public class WhatsAppNotificationService
 
             case OrderStatus.ENTREGUE:
                 sb.AppendLine($"*{name}*, seu pedido *{order.PublicId}* foi entregue! ✅");
+                if (loyaltyCta is not null)
+                {
+                    sb.AppendLine($"Você tem *{loyaltyCta.PointsBalance} pontos* no fidelidade.");
+                    sb.AppendLine($"Consultar seus pontos: {loyaltyCta.Url}");
+                }
                 sb.AppendLine("Obrigado pela preferência. Até a próxima! 🙏");
                 break;
 
@@ -315,6 +337,37 @@ public class WhatsAppNotificationService
         }
 
         return sb.ToString().TrimEnd();
+    }
+
+    private async Task<LoyaltyDeliveredCta?> TryBuildLoyaltyDeliveredCtaAsync(
+        Order order,
+        OrderStatus status,
+        CancellationToken ct)
+    {
+        if (status != OrderStatus.ENTREGUE) return null;
+        if (!order.CompanyId.HasValue || !order.CustomerId.HasValue) return null;
+        if (string.IsNullOrWhiteSpace(order.CustomerName) || string.IsNullOrWhiteSpace(order.Phone)) return null;
+
+        var customer = await _db.Customers
+            .AsNoTracking()
+            .Where(c => c.CompanyId == order.CompanyId.Value && c.Id == order.CustomerId.Value)
+            .FirstOrDefaultAsync(ct);
+        if (customer is null || string.IsNullOrWhiteSpace(customer.CpfHash)) return null;
+
+        var cpf = _cpfProtection.Unprotect(customer.Cpf);
+        if (!CpfValidator.IsValid(cpf)) return null;
+
+        var slug = await _db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == order.CompanyId.Value)
+            .Select(c => c.Slug)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+
+        var baseDomain = (_config["TENANT_BASE_DOMAIN"] ?? "vendapps.com.br").Trim().Trim('.');
+        var url = $"https://{slug}.{baseDomain}/loyalty";
+
+        return new LoyaltyDeliveredCta(customer.PointsBalance, url);
     }
 
     // ── Notificação de venda PDV (NFC-e por WhatsApp) ─────────────────────────
@@ -500,4 +553,6 @@ public class WhatsAppNotificationService
         "CASH" => "Dinheiro",
         _      => order.PaymentMethod
     };
+
+    private sealed record LoyaltyDeliveredCta(int PointsBalance, string Url);
 }

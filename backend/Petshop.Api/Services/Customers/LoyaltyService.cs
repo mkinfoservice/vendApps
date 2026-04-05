@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Customers;
+using Petshop.Api.Entities.Promotions;
 using CustomerEntity = Petshop.Api.Entities.Customer;
 
 namespace Petshop.Api.Services.Customers;
@@ -181,6 +182,111 @@ public class LoyaltyService
         return discountCents;
     }
 
+    /// <summary>
+    /// Resgata uma recompensa baseada em promocao com custo em pontos.
+    /// Opera em transacao com lock da linha do cliente para evitar saldo negativo em concorrencia.
+    /// </summary>
+    public async Task<RedeemPromotionResult> RedeemPromotionAsync(
+        Guid companyId,
+        Guid customerId,
+        Guid promotionId,
+        Guid requestId,
+        CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+
+        var promotion = await _db.Promotions
+            .AsNoTracking()
+            .Where(p => p.CompanyId == companyId && p.Id == promotionId && p.IsActive)
+            .FirstOrDefaultAsync(ct);
+
+        if (promotion is null)
+            throw new InvalidOperationException("Beneficio nao encontrado.");
+
+        if (!IsPromotionActiveNow(promotion, now))
+            throw new InvalidOperationException("Beneficio indisponivel no momento.");
+
+        if (promotion.LoyaltyPointsCost is null || promotion.LoyaltyPointsCost <= 0)
+            throw new InvalidOperationException("Beneficio nao configurado para resgate por pontos.");
+
+        if (string.IsNullOrWhiteSpace(promotion.CouponCode))
+            throw new InvalidOperationException("Beneficio sem cupom configurado.");
+
+        var existing = await _db.LoyaltyTransactions
+            .AsNoTracking()
+            .Where(t => t.CompanyId == companyId &&
+                        t.CustomerId == customerId &&
+                        t.Points < 0 &&
+                        t.SaleOrderId == requestId)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        if (existing is not null)
+        {
+            return new RedeemPromotionResult(
+                promotion.Id,
+                promotion.Name,
+                promotion.CouponCode!,
+                Math.Abs(existing.Points),
+                existing.BalanceAfter,
+                true);
+        }
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        var customer = await _db.Customers
+            .FromSqlInterpolated($@"SELECT * FROM ""Customers""
+                                    WHERE ""Id"" = {customerId}
+                                      AND ""CompanyId"" = {companyId}
+                                    FOR UPDATE")
+            .FirstOrDefaultAsync(ct);
+
+        if (customer is null)
+            throw new InvalidOperationException("Cliente nao encontrado.");
+
+        var cost = promotion.LoyaltyPointsCost.Value;
+        if (customer.PointsBalance < cost)
+            throw new InvalidOperationException("Saldo de pontos insuficiente.");
+
+        var before = customer.PointsBalance;
+        customer.PointsBalance -= cost;
+        customer.UpdatedAtUtc = now;
+
+        _db.LoyaltyTransactions.Add(new LoyaltyTransaction
+        {
+            CompanyId = companyId,
+            CustomerId = customerId,
+            SaleOrderId = requestId,
+            Points = -cost,
+            BalanceBefore = before,
+            BalanceAfter = customer.PointsBalance,
+            Description = $"Resgate beneficio [{promotion.Id}] cupom {promotion.CouponCode} ({promotion.Name})",
+            CreatedAtUtc = now
+        });
+
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        _logger.LogInformation(
+            "[Loyalty] Beneficio resgatado. Cliente={CustomerId} Promo={PromotionId} Custo={Cost} Saldo={Balance}",
+            customerId, promotionId, cost, customer.PointsBalance);
+
+        return new RedeemPromotionResult(
+            promotion.Id,
+            promotion.Name,
+            promotion.CouponCode!,
+            cost,
+            customer.PointsBalance,
+            false);
+    }
+
+    private static bool IsPromotionActiveNow(Promotion promotion, DateTime nowUtc)
+    {
+        if (promotion.StartsAtUtc.HasValue && promotion.StartsAtUtc.Value > nowUtc) return false;
+        if (promotion.ExpiresAtUtc.HasValue && promotion.ExpiresAtUtc.Value < nowUtc) return false;
+        return true;
+    }
+
     // ── Manual adjustment ─────────────────────────────────────────────────────
 
     public async Task AdjustAsync(Guid companyId, Guid customerId, int points, string reason, CancellationToken ct)
@@ -206,3 +312,11 @@ public class LoyaltyService
         await _db.SaveChangesAsync(ct);
     }
 }
+
+public record RedeemPromotionResult(
+    Guid PromotionId,
+    string PromotionName,
+    string CouponCode,
+    int PointsSpent,
+    int PointsBalance,
+    bool IsIdempotentReplay);

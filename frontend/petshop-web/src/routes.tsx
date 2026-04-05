@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./App";
 import Checkout from "./pages/Checkout";
 import ProductDetail from "./pages/ProductDetail";
+import LoyaltyPage from "./pages/LoyaltyPage";
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 import LoginPage from "./pages/Login";
@@ -101,6 +102,7 @@ export function AppRoutes() {
         <Route path="/mesa/:tableId" element={<MesaPage />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/produto/:id" element={<ProductDetail />} />
+        <Route path="/loyalty" element={<LoyaltyPage />} />
 
         {/* ── Login unificado ─────────────────────────────────────────── */}
         <Route path="/login" element={<LoginPage />} />

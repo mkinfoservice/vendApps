@@ -73,7 +73,7 @@ const EMPTY: Omit<PromotionDto, "id" | "createdAtUtc" | "status"> = {
   type: "PercentDiscount", scope: "All",
   targetId: null, targetName: null,
   value: 10, couponCode: null,
-  minOrderCents: null, maxDiscountCents: null,
+  minOrderCents: null, maxDiscountCents: null, loyaltyPointsCost: null,
   startsAtUtc: null, expiresAtUtc: null,
 };
 
@@ -89,7 +89,7 @@ function PromotionModal({
       ? { name: promo.name, description: promo.description, isActive: promo.isActive,
           type: promo.type, scope: promo.scope, targetId: promo.targetId,
           targetName: promo.targetName, value: promo.value, couponCode: promo.couponCode,
-          minOrderCents: promo.minOrderCents, maxDiscountCents: promo.maxDiscountCents,
+          minOrderCents: promo.minOrderCents, maxDiscountCents: promo.maxDiscountCents, loyaltyPointsCost: promo.loyaltyPointsCost,
           startsAtUtc: promo.startsAtUtc, expiresAtUtc: promo.expiresAtUtc }
       : { ...EMPTY }
   );
@@ -278,6 +278,24 @@ function PromotionModal({
             )}
           </div>
 
+          <div>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Custo em pontos (fidelidade)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              className={`mt-1 ${INPUT}`}
+              value={form.loyaltyPointsCost ?? ""}
+              placeholder="Opcional"
+              onChange={e => set("loyaltyPointsCost", e.target.value ? Math.max(0, parseInt(e.target.value, 10) || 0) : null)}
+            />
+            <p className="text-[11px] mt-1 text-gray-400">
+              Defina para exibir esta promoção no catálogo público de recompensas.
+            </p>
+          </div>
+
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -457,6 +475,12 @@ export default function PromotionsPage() {
                   {p.minOrderCents && (
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       Pedido mínimo: R${(p.minOrderCents / 100).toFixed(2)}
+                    </p>
+                  )}
+
+                  {p.loyaltyPointsCost && p.loyaltyPointsCost > 0 && (
+                    <p className="text-xs font-semibold" style={{ color: "#7c5cf8" }}>
+                      Resgate por {p.loyaltyPointsCost.toLocaleString("pt-BR")} pontos
                     </p>
                   )}
 

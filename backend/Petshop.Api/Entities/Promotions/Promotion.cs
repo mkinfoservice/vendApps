@@ -66,6 +66,12 @@ public class Promotion
     /// <summary>Teto máximo do desconto em centavos (só para PercentDiscount). Null = sem teto.</summary>
     public int? MaxDiscountCents { get; set; }
 
+    /// <summary>
+    /// Custo em pontos para disponibilizar esta promocao como recompensa no programa de fidelidade.
+    /// Null ou <= 0 = nao aparece no catalogo de recompensas.
+    /// </summary>
+    public int? LoyaltyPointsCost { get; set; }
+
     public DateTime? StartsAtUtc  { get; set; }
     public DateTime? ExpiresAtUtc { get; set; }
 

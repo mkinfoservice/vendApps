@@ -17,6 +17,7 @@ export interface PromotionDto {
   couponCode: string | null;
   minOrderCents: number | null;
   maxDiscountCents: number | null;
+  loyaltyPointsCost: number | null;
   startsAtUtc: string | null;
   expiresAtUtc: string | null;
   createdAtUtc: string;

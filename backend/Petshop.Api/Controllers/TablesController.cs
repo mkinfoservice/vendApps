@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Hangfire;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
 using Petshop.Api.Entities.Dav;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Services.Dav;
+using Petshop.Api.Services.WhatsApp;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -17,6 +19,7 @@ public class TablesController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IBackgroundJobClient _jobs;
     private static readonly OrderStatus[] ActiveTableOrderStatuses =
     [
         OrderStatus.RECEBIDO,
@@ -25,10 +28,11 @@ public class TablesController : ControllerBase
         OrderStatus.SAIU_PARA_ENTREGA,
     ];
 
-    public TablesController(AppDbContext db, IConfiguration config)
+    public TablesController(AppDbContext db, IConfiguration config, IBackgroundJobClient jobs)
     {
         _db     = db;
         _config = config;
+        _jobs = jobs;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -349,6 +353,12 @@ public class TablesController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+
+        foreach (var order in toFinalize)
+        {
+            _jobs.Enqueue<WhatsAppNotificationService>(
+                s => s.NotifyOrderStatusAsync(order.Id, OrderStatus.ENTREGUE, CancellationToken.None));
+        }
 
         return Ok(new
         {

@@ -500,6 +500,11 @@ using (var scope = app.Services.CreateScope())
         ADD COLUMN IF NOT EXISTS "DiscountCents" integer NOT NULL DEFAULT 0;
         """);
 
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Promotions"
+        ADD COLUMN IF NOT EXISTS "LoyaltyPointsCost" integer;
+        """);
+
     // Tabela de chaves do Data Protection (LGPD / criptografia)
     await db.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
