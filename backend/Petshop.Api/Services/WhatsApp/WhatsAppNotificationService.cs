@@ -3,9 +3,11 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities;
+using Petshop.Api.Entities.Master;
 using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Pdv;
+using Petshop.Api.Services.Tenancy;
 
 namespace Petshop.Api.Services.WhatsApp;
 
@@ -141,8 +143,6 @@ public class WhatsAppNotificationService
 
         string? wamid;
         string sendMode;
-        var loyaltyCta = await TryBuildLoyaltyDeliveredCtaAsync(order, triggerStatus, ct);
-
         if (templateName is not null)
         {
             // Usa template aprovado (obrigatório para mensagens business-initiated)
@@ -156,21 +156,12 @@ public class WhatsAppNotificationService
             wamid = await _wa.SendTemplateAsync(
                 waId, templateName, langCode, bodyParams, companyId, ct);
             sendMode = $"template:{templateName}";
-
-            if (loyaltyCta is not null)
-            {
-                await _wa.SendTextAsync(
-                    waId,
-                    $"Voce tem {loyaltyCta.PointsBalance} pontos. Consultar seus pontos: {loyaltyCta.Url}",
-                    companyId,
-                    ct);
-            }
         }
         else
         {
             // Fallback texto livre — funciona somente dentro da janela de 24h
             // (após o cliente ter enviado mensagem). Não funciona para notificações cold.
-            var message = BuildMessage(order, triggerStatus, loyaltyCta);
+            var message = BuildMessage(order, triggerStatus);
             wamid = await _wa.SendTextAsync(waId, message, companyId, ct);
             sendMode = "text";
         }
@@ -201,6 +192,15 @@ public class WhatsAppNotificationService
             _logger.LogInformation(
                 "WA_NOTIFY_OK | OrderId={OrderId} | OrderNumber={OrderNumber} | Status={Status} | WaId={WaId} | Wamid={Wamid}",
                 orderId, order.PublicId, triggerKey, waId, wamid);
+
+            await TrySendLoyaltyDeliveredComplementAsync(
+                order,
+                triggerStatus,
+                waId,
+                companyId,
+                integration,
+                wamid,
+                ct);
         }
         else
         {
@@ -274,7 +274,7 @@ public class WhatsAppNotificationService
 
     // ── Builder de mensagens por status ──────────────────────────────────────
 
-    private static string BuildMessage(Order order, OrderStatus status, LoyaltyDeliveredCta? loyaltyCta)
+    private static string BuildMessage(Order order, OrderStatus status)
     {
         var sb = new StringBuilder();
         var name = order.CustomerName.Split(' ')[0]; // Primeiro nome
@@ -317,11 +317,6 @@ public class WhatsAppNotificationService
 
             case OrderStatus.ENTREGUE:
                 sb.AppendLine($"*{name}*, seu pedido *{order.PublicId}* foi entregue! ✅");
-                if (loyaltyCta is not null)
-                {
-                    sb.AppendLine($"Você tem *{loyaltyCta.PointsBalance} pontos* no fidelidade.");
-                    sb.AppendLine($"Consultar seus pontos: {loyaltyCta.Url}");
-                }
                 sb.AppendLine("Obrigado pela preferência. Até a próxima! 🙏");
                 break;
 
@@ -339,36 +334,184 @@ public class WhatsAppNotificationService
         return sb.ToString().TrimEnd();
     }
 
-    private async Task<LoyaltyDeliveredCta?> TryBuildLoyaltyDeliveredCtaAsync(
+    private async Task TrySendLoyaltyDeliveredComplementAsync(
         Order order,
         OrderStatus status,
+        string waId,
+        Guid companyId,
+        CompanyIntegrationWhatsapp? integration,
+        string mainWamid,
+        CancellationToken ct)
+    {
+        try
+        {
+            var eligibility = await ResolveLoyaltyComplementEligibilityAsync(order, status, companyId, waId, integration, ct);
+            if (eligibility is null)
+                return;
+
+            var delaySeconds = GetLoyaltyComplementDelaySeconds();
+            if (delaySeconds > 0)
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
+
+            var text = BuildLoyaltyComplementMessage(eligibility.PointsBalance, eligibility.Url);
+            var complementWamid = await _wa.SendTextAsync(waId, text, companyId, ct);
+            if (complementWamid is null)
+            {
+                _logger.LogWarning(
+                    "WA_NOTIFY_LOYALTY_COMPLEMENT_FAIL | OrderId={OrderId} | OrderNumber={OrderNumber} | MainWamid={MainWamid} | WaId={WaId} | wamid null",
+                    order.Id, order.PublicId, mainWamid, waId);
+                return;
+            }
+
+            _db.WhatsAppMessageLogs.Add(new WhatsAppMessageLog
+            {
+                CompanyId = companyId,
+                Direction = "out",
+                Wamid = complementWamid,
+                WaId = waId,
+                OrderId = order.Id,
+                TriggerStatus = GetLoyaltyComplementTrigger(status),
+                PayloadJson = JsonSerializer.Serialize(new
+                {
+                    orderNumber = order.PublicId,
+                    status = status.ToString(),
+                    complement = "loyalty_balance",
+                    pointsBalance = eligibility.PointsBalance,
+                    loyaltyUrl = eligibility.Url,
+                    waId,
+                    mainWamid
+                })
+            });
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "WA_NOTIFY_LOYALTY_COMPLEMENT_OK | OrderId={OrderId} | OrderNumber={OrderNumber} | MainWamid={MainWamid} | ComplementWamid={ComplementWamid} | Points={Points}",
+                order.Id, order.PublicId, mainWamid, complementWamid, eligibility.PointsBalance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "WA_NOTIFY_LOYALTY_COMPLEMENT_WARN | OrderId={OrderId} | OrderNumber={OrderNumber} | Falha complementar (principal mantida)",
+                order.Id, order.PublicId);
+        }
+    }
+
+    private async Task<LoyaltyComplementEligibility?> ResolveLoyaltyComplementEligibilityAsync(
+        Order order,
+        OrderStatus status,
+        Guid companyId,
+        string waId,
+        CompanyIntegrationWhatsapp? integration,
         CancellationToken ct)
     {
         if (status != OrderStatus.ENTREGUE) return null;
         if (!order.CompanyId.HasValue || !order.CustomerId.HasValue) return null;
-        if (string.IsNullOrWhiteSpace(order.CustomerName) || string.IsNullOrWhiteSpace(order.Phone)) return null;
+        if (string.IsNullOrWhiteSpace(order.Phone) || string.IsNullOrWhiteSpace(waId)) return null;
+        if (!IsLoyaltyComplementEnabled()) return null;
+        if (!ShouldNotify(integration?.NotifyOnStatuses, status)) return null;
+
+        var loyaltyFeatureEnabled = await IsLoyaltyFeatureEnabledAsync(companyId, ct);
+        if (!loyaltyFeatureEnabled) return null;
+
+        var triggerKey = GetLoyaltyComplementTrigger(status);
+        var alreadySent = await _db.WhatsAppMessageLogs
+            .AsNoTracking()
+            .AnyAsync(l =>
+                l.OrderId == order.Id &&
+                l.TriggerStatus == triggerKey &&
+                l.Direction == "out", ct);
+        if (alreadySent)
+        {
+            _logger.LogDebug(
+                "WA_NOTIFY_LOYALTY_COMPLEMENT_DEDUPE | OrderId={OrderId} | Status={Status} | Ja enviado",
+                order.Id, triggerKey);
+            return null;
+        }
 
         var customer = await _db.Customers
             .AsNoTracking()
-            .Where(c => c.CompanyId == order.CompanyId.Value && c.Id == order.CustomerId.Value)
+            .Where(c => c.CompanyId == companyId && c.Id == order.CustomerId.Value)
+            .Select(c => new { c.Cpf, c.CpfHash, c.PointsBalance })
             .FirstOrDefaultAsync(ct);
         if (customer is null || string.IsNullOrWhiteSpace(customer.CpfHash)) return null;
 
         var cpf = _cpfProtection.Unprotect(customer.Cpf);
         if (!CpfValidator.IsValid(cpf)) return null;
 
+        if (customer.PointsBalance < 0) return null;
+        if (customer.PointsBalance == 0 && !ShouldSendWhenPointsIsZero()) return null;
+
+        var loyaltyUrl = await BuildLoyaltyUrlAsync(companyId, ct);
+        if (loyaltyUrl is null) return null;
+
+        return new LoyaltyComplementEligibility(customer.PointsBalance, loyaltyUrl);
+    }
+
+    private async Task<bool> IsLoyaltyFeatureEnabledAsync(Guid companyId, CancellationToken ct)
+    {
+        var companyPlan = await _db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == companyId)
+            .Select(c => c.Plan)
+            .FirstOrDefaultAsync(ct);
+
+        var enabled = PlanFeatureService.IsPlanAtLeast(companyPlan, "trial");
+        var featureOverride = await _db.CompanyFeatureOverrides
+            .AsNoTracking()
+            .Where(x => x.CompanyId == companyId && x.FeatureKey == AppFeatureKeys.LoyaltyProgram)
+            .Select(x => (bool?)x.IsEnabled)
+            .FirstOrDefaultAsync(ct);
+
+        if (featureOverride.HasValue)
+            enabled = featureOverride.Value;
+
+        return enabled;
+    }
+
+    private async Task<string?> BuildLoyaltyUrlAsync(Guid companyId, CancellationToken ct)
+    {
         var slug = await _db.Companies
             .AsNoTracking()
-            .Where(c => c.Id == order.CompanyId.Value)
+            .Where(c => c.Id == companyId)
             .Select(c => c.Slug)
             .FirstOrDefaultAsync(ct);
         if (string.IsNullOrWhiteSpace(slug)) return null;
 
         var baseDomain = (_config["TENANT_BASE_DOMAIN"] ?? "vendapps.com.br").Trim().Trim('.');
-        var url = $"https://{slug}.{baseDomain}/loyalty";
+        var rawUrl = $"https://{slug}.{baseDomain}/loyalty";
+        if (!Uri.TryCreate(rawUrl, UriKind.Absolute, out var uri)) return null;
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)) return null;
 
-        return new LoyaltyDeliveredCta(customer.PointsBalance, url);
+        return uri.ToString();
     }
+
+    private bool IsLoyaltyComplementEnabled()
+    {
+        return _config.GetValue("WhatsApp:LoyaltyComplement:Enabled", true);
+    }
+
+    private bool ShouldSendWhenPointsIsZero()
+    {
+        return _config.GetValue("WhatsApp:LoyaltyComplement:SendWhenPointsZero", false);
+    }
+
+    private int GetLoyaltyComplementDelaySeconds()
+    {
+        var configured = _config.GetValue<int?>("WhatsApp:LoyaltyComplement:DelaySeconds");
+        if (configured is null) return 2;
+        return Math.Clamp(configured.Value, 0, 10);
+    }
+
+    private static string BuildLoyaltyComplementMessage(int pointsBalance, string loyaltyUrl)
+    {
+        return
+            $"Seu saldo atual no programa de fidelidade é de {pointsBalance} ponto(s).\n" +
+            $"Consulte seus pontos em: {loyaltyUrl}";
+    }
+
+    private static string GetLoyaltyComplementTrigger(OrderStatus status)
+        => $"{status}_LOYALTY_COMPLEMENT";
 
     // ── Notificação de venda PDV (NFC-e por WhatsApp) ─────────────────────────
 
@@ -554,5 +697,5 @@ public class WhatsAppNotificationService
         _      => order.PaymentMethod
     };
 
-    private sealed record LoyaltyDeliveredCta(int PointsBalance, string Url);
+    private sealed record LoyaltyComplementEligibility(int PointsBalance, string Url);
 }
