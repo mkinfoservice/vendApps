@@ -1387,7 +1387,7 @@ function CartTable({
 // â”€â”€ Nav Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const NAV_ITEMS = [
-  { icon: LayoutGrid,  label: "Central",    desc: "VisÃ£o geral da operaÃ§Ã£o",    route: "/app"             },
+  { icon: LayoutGrid,  label: "Central",    desc: "Visão geral da operação",    route: "/app"             },
   { icon: ShoppingBag, label: "Pedidos",    desc: "Todos os pedidos em aberto", route: "/app/pedidos"     },
   { icon: Coffee,      label: "Mesas",      desc: "QR Code e comandas",         route: "/app/mesas"       },
   { icon: Headphones,  label: "Atendimento",desc: "Pedidos por telefone",       route: "/app/atendimento" },
@@ -1425,7 +1425,7 @@ function NavDrawer({ onClose }: { onClose: () => void }) {
               PDV
             </span>
             <span className="text-xs ml-2" style={{ color: "rgba(255,255,255,0.45)" }}>
-              NavegaÃ§Ã£o
+              Navegação
             </span>
           </div>
           <button

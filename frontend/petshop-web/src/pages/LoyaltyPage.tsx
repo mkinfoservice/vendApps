@@ -55,6 +55,12 @@ function discountLabel(reward: LoyaltyReward) {
   return `${brl(Math.round(reward.discount.value))} OFF`;
 }
 
+function sanitizeTxDescription(description: string) {
+  return description
+    .replace(/cupom\s+[A-Z0-9_-]+/gi, "cupom resgatado")
+    .replace(/\[[A-Fa-f0-9-]{36}\]/g, "[beneficio]");
+}
+
 function RedeemModal({
   reward,
   onClose,
@@ -77,7 +83,7 @@ function RedeemModal({
         <div className="mt-4 rounded-2xl p-3" style={{ background: "#f9f1e5", border: `1px solid ${THEME.border}` }}>
           <p className="text-sm font-bold" style={{ color: THEME.brown }}>Custo: {reward.pointsCost.toLocaleString("pt-BR")} pontos</p>
           {reward.couponCode ? (
-            <p className="text-xs mt-1" style={{ color: "#7b6249" }}>Cupom entregue apos confirmar: {reward.couponCode}</p>
+            <p className="text-xs mt-1" style={{ color: "#7b6249" }}>Codigo liberado somente apos confirmar o resgate.</p>
           ) : (
             <p className="text-xs mt-1" style={{ color: "#7b6249" }}>Resgate sem cupom automatico: atendimento no caixa.</p>
           )}
@@ -138,7 +144,7 @@ export default function LoyaltyPage() {
     mutationFn: (promotionId: string) => redeemLoyaltyReward(sessionToken, promotionId, crypto.randomUUID()),
     onSuccess: (res) => {
       setSelectedReward(null);
-      const codeInfo = res.couponCode ? ` Cupom: ${res.couponCode}` : " Resgate confirmado para uso no caixa.";
+      const codeInfo = res.couponCode ? " Cupom liberado para uso no checkout." : " Resgate confirmado para uso no caixa.";
       setRedeemSuccess(`Resgate concluido!${codeInfo}`);
       qc.invalidateQueries({ queryKey: ["public-loyalty-dashboard", sessionToken] });
     },
@@ -277,6 +283,14 @@ export default function LoyaltyPage() {
                     <div className="h-40 bg-gradient-to-br from-[#efe3d1] to-[#dbc2a3] relative">
                       {reward.imageUrl ? (
                         <img src={reward.imageUrl} alt={reward.name} className="w-full h-full object-cover" />
+                      ) : reward.couponCode ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-2"
+                          style={{ background: "linear-gradient(135deg,#3b220f,#8a5527)" }}>
+                          <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.13)" }}>
+                            <Ticket className="w-6 h-6 text-[#f8d29f]" />
+                          </div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#f8d29f]">Cupom Especial</p>
+                        </div>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs font-semibold" style={{ color: "#7a6247" }}>
                           Beneficio sem imagem
@@ -284,7 +298,7 @@ export default function LoyaltyPage() {
                       )}
                       {reward.couponCode && (
                         <span className="absolute top-2 right-2 px-2 py-1 rounded-lg text-[10px] font-black" style={{ background: "rgba(0,0,0,0.65)", color: "#fff" }}>
-                          {reward.couponCode}
+                          Codigo oculto
                         </span>
                       )}
                     </div>
@@ -322,7 +336,7 @@ export default function LoyaltyPage() {
             {data.transactions.map((tx) => (
               <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3 border-b last:border-b-0" style={{ borderColor: "#f0e5d7" }}>
                 <div className="min-w-0">
-                  <p className="text-sm truncate" style={{ color: THEME.brown }}>{tx.description}</p>
+                  <p className="text-sm truncate" style={{ color: THEME.brown }}>{sanitizeTxDescription(tx.description)}</p>
                   <p className="text-xs" style={{ color: "#8f7760" }}>{formatDate(tx.createdAtUtc)}</p>
                 </div>
                 <div className="text-right shrink-0">
