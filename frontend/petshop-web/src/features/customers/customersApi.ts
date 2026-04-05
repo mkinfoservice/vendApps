@@ -11,6 +11,9 @@ export interface CustomerListItem {
   neighborhood: string | null;
   city: string | null;
   state: string | null;
+  pointsBalance: number;
+  totalOrders: number;
+  lastOrderUtc: string | null;
   updatedAtUtc: string;
 }
 
@@ -63,9 +66,16 @@ export interface CustomerListResponse {
 }
 
 export async function listCustomers(
-  page = 1, search?: string, pageSize = 30
+  page = 1,
+  search?: string,
+  pageSize = 30,
+  includeSensitive = false,
 ): Promise<CustomerListResponse> {
-  const p = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  const p = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    includeSensitive: includeSensitive ? "true" : "false",
+  });
   if (search) p.set("search", search);
   return adminFetch<CustomerListResponse>(`/admin/customers?${p}`);
 }

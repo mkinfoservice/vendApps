@@ -45,8 +45,10 @@ public class CustomersController : ControllerBase
     /// <summary>Lista e busca clientes da empresa.</summary>
     [HttpGet]
     public async Task<IActionResult> List(
+        [FromQuery] string? search,
         [FromQuery] string? phone,
         [FromQuery] string? name,
+        [FromQuery] bool includeSensitive = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
@@ -58,6 +60,17 @@ public class CustomersController : ControllerBase
             .AsNoTracking()
             .Where(c => c.CompanyId == CompanyId);
 
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var trimmed = search.Trim();
+            var digits = Regex.Replace(trimmed, @"\D", "");
+            var cpfHash = digits.Length == 11 ? _cpfSvc.Hash(digits) : null;
+            q = q.Where(c =>
+                EF.Functions.ILike(c.Name, $"%{trimmed}%") ||
+                (c.Phone != null && c.Phone.Contains(digits)) ||
+                (cpfHash != null && c.CpfHash == cpfHash));
+        }
+
         if (!string.IsNullOrWhiteSpace(phone))
         {
             var cleaned = CleanPhone(phone);
@@ -68,6 +81,7 @@ public class CustomersController : ControllerBase
             q = q.Where(c => EF.Functions.ILike(c.Name, $"%{name.Trim()}%"));
 
         var total = await q.CountAsync(ct);
+        var canViewSensitive = includeSensitive && CanViewSensitiveCpf();
         var rawItems = await q
             .OrderBy(c => c.Name)
             .Skip((page - 1) * pageSize)
@@ -75,8 +89,9 @@ public class CustomersController : ControllerBase
             .ToListAsync(ct);
 
         var items = rawItems.Select(c => new CustomerListItem(
-            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+            c.Id, c.Name, c.Phone, canViewSensitive ? _cpfSvc.Unprotect(c.Cpf) : null,
             c.Address, c.Neighborhood, c.City, c.State,
+            c.PointsBalance, c.TotalOrders, c.LastOrderUtc,
             c.UpdatedAtUtc)).ToList();
 
         return Ok(new { page, pageSize, total, items });
@@ -94,7 +109,7 @@ public class CustomersController : ControllerBase
             .FirstOrDefaultAsync(ct);
 
         if (c2 is null) return NotFound();
-        return Ok(MapDetail(c2, null));
+        return Ok(MapDetail(c2, null, CanViewSensitiveCpf()));
     }
 
     // -- GET /admin/customers/{id} ---------------------------------------------
@@ -119,7 +134,7 @@ public class CustomersController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(new CustomerDetailDto(
-            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+            c.Id, c.Name, c.Phone, CanViewSensitiveCpf() ? _cpfSvc.Unprotect(c.Cpf) : null,
             c.Cep, c.Address, c.Complement, c.Neighborhood,
             c.City, c.State, c.AddressReference, c.Notes,
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
@@ -189,7 +204,7 @@ public class CustomersController : ControllerBase
             customer.Name, customer.Phone, CompanyId);
 
         return CreatedAtAction(nameof(GetById), new { id = customer.Id },
-            MapDetail(customer, null));
+            MapDetail(customer, null, CanViewSensitiveCpf()));
     }
 
     // -- PUT /admin/customers/{id} ---------------------------------------------
@@ -257,7 +272,7 @@ public class CustomersController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
-        return Ok(MapDetail(customer, null));
+        return Ok(MapDetail(customer, null, CanViewSensitiveCpf()));
     }
 
     // -- Helpers ---------------------------------------------------------------
@@ -312,8 +327,8 @@ public class CustomersController : ControllerBase
     private static string? CleanCep(string? cep) =>
         string.IsNullOrWhiteSpace(cep) ? null : Regex.Replace(cep, @"\D", "");
 
-    private CustomerDetailDto MapDetail(Customer c, List<CustomerOrderSummary>? orders) =>
-        new(c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+    private CustomerDetailDto MapDetail(Customer c, List<CustomerOrderSummary>? orders, bool includeSensitiveCpf) =>
+        new(c.Id, c.Name, c.Phone, includeSensitiveCpf ? _cpfSvc.Unprotect(c.Cpf) : null,
             c.Cep, c.Address, c.Complement, c.Neighborhood,
             c.City, c.State, c.AddressReference, c.Notes,
             c.Latitude, c.Longitude, c.CreatedAtUtc, c.UpdatedAtUtc,
@@ -405,8 +420,15 @@ public class CustomersController : ControllerBase
 
         if (c is null) return NotFound();
         return Ok(new CustomerLookupResult(
-            c.Id, c.Name, c.Phone, _cpfSvc.Unprotect(c.Cpf),
+            c.Id, c.Name, c.Phone, CanViewSensitiveCpf() ? _cpfSvc.Unprotect(c.Cpf) : null,
             c.PointsBalance, c.Email, c.BirthDate));
+    }
+
+    private bool CanViewSensitiveCpf()
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role");
+        return string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(role, "master_admin", StringComparison.OrdinalIgnoreCase);
     }
 
     private static LoyaltyConfigDto MapConfig(LoyaltyConfig cfg) => new(
@@ -480,6 +502,9 @@ public record CustomerListItem(
     string? Neighborhood,
     string? City,
     string? State,
+    int PointsBalance,
+    int TotalOrders,
+    DateTime? LastOrderUtc,
     DateTime UpdatedAtUtc);
 
 public record CustomerDetailDto(
