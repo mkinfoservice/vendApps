@@ -248,7 +248,7 @@ export default function Checkout() {
 
   async function handleApplyCoupon() {
     const code = couponInput.trim().toUpperCase();
-    if (!code || !storeFront?.id) return;
+    if (!code || !storeFront?.companyId) return;
     setCouponError("");
     setCouponLoading(true);
     try {
@@ -256,7 +256,7 @@ export default function Checkout() {
         productId: i.product.id.split("__")[0],
         totalCents: (i.product.priceCents ?? 0) * i.qty,
       }));
-      const result = await validateCoupon(storeFront.id, code, couponItems, cart.subtotalCents);
+      const result = await validateCoupon(storeFront.companyId, code, couponItems, cart.subtotalCents);
       if (result.valid) {
         setCouponApplied({ code, discountCents: result.discountCents, promotionName: result.promotionName ?? code });
         setCouponInput("");

@@ -81,6 +81,7 @@ export type BannerSlide = {
 
 export type StoreFrontConfig = {
   id: string;
+  companyId: string;
   primaryColor: string;
   bannerIntervalSecs: number;
   logoUrl: string | null;

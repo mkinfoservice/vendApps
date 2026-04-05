@@ -24,7 +24,8 @@ public record StoreFrontConfigResponse(
     string? StoreName,
     string? StoreSlogan,
     IReadOnlyList<string> Announcements,
-    IReadOnlyList<BannerSlideResponse> Slides);
+    IReadOnlyList<BannerSlideResponse> Slides,
+    Guid   CompanyId = default);
 
 // ── Requests — config geral ───────────────────────────────────────────────────
 

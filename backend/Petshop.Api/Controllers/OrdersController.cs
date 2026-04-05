@@ -1030,7 +1030,7 @@ public class OrdersController : ControllerBase
         foreach (var item in req.Items)
         {
             var p = await _db.Products.AsNoTracking()
-                .Where(x => x.Id == item.ProductId)
+                .Where(x => x.Id == item.ProductId && x.CompanyId == req.CompanyId)
                 .Select(x => new { x.CategoryId, x.BrandId })
                 .FirstOrDefaultAsync(ct);
             cartItems.Add(new CartItem(item.ProductId, p?.CategoryId ?? Guid.Empty, p?.BrandId, item.TotalCents));

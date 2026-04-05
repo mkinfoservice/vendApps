@@ -198,7 +198,8 @@ public class StoreFrontAdminController : ControllerBase
         c.BannerSlides
             .OrderBy(s => s.SortOrder)
             .Select(ToSlideResponse)
-            .ToList());
+            .ToList(),
+        c.CompanyId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -248,7 +249,8 @@ public class StoreFrontPublicController : ControllerBase
                 Guid.Empty, "#7c5cf8", 5,
                 null, null, null,
                 ["Frete Grátis acima de R$ 100"],
-                Array.Empty<BannerSlideResponse>()));
+                Array.Empty<BannerSlideResponse>(),
+                company.Id));
 
         var slides = config.BannerSlides
             .Where(s => s.IsActive)
@@ -266,6 +268,7 @@ public class StoreFrontPublicController : ControllerBase
             config.Id, config.PrimaryColor, config.BannerIntervalSecs,
             config.LogoUrl, config.StoreName, config.StoreSlogan,
             announcements,
-            slides));
+            slides,
+            company.Id));
     }
 }
