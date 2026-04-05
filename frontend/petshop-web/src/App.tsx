@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
-import { ShoppingCart, Search, X, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Search, X, AlertTriangle, LayoutGrid, Coffee, Snowflake, Sandwich, CupSoda, ShoppingBag, type LucideIcon } from "lucide-react";
 import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
 import { useCategories, useProducts, useStoreFront } from "./features/catalog/queries";
 import { useCart } from "./features/cart/cart";
 import { CartSheet } from "@/features/cart/CartSheet";
 import { CartSidebar } from "@/features/cart/CartSidebar";
-import { CategoryTile } from "@/features/catalog/CategoryTile";
 import { ProductCard } from "@/features/catalog/ProductCard";
 import { ProductSection } from "@/features/catalog/ProductSection";
 import { HeroBanner } from "@/components/HeroBanner";
@@ -18,7 +17,6 @@ import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal"
 import { TopBar } from "@/components/TopBar";
 import { ToastProvider } from "@/components/Toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { useDragScroll } from "@/hooks/useDragScroll";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -56,7 +54,6 @@ export default function App() {
 
   const navigate = useNavigate();
   const isDesktop = useMediaQuery("(min-width: 1280px)");
-  const categoryScroll = useDragScroll<HTMLDivElement>();
 
   // Lê config da loja (cor, logo, nome, slogan)
   const { data: storeFront } = useStoreFront();
@@ -81,6 +78,34 @@ export default function App() {
 
   const categories = categoriesQuery.data ?? [];
   const products = productsQuery.data ?? [];
+  const categoryItems = useMemo(() => {
+    const resolveIcon = (name: string): LucideIcon => {
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf") || n.includes("espresso") || n.includes("capuccino")) return Coffee;
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap") || n.includes("cold")) return Snowflake;
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche") || n.includes("toast")) return Sandwich;
+      if (n.includes("bebida") || n.includes("suco") || n.includes("shake")) return CupSoda;
+      return ShoppingBag;
+    };
+
+    const resolveHint = (name: string): string => {
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf")) return "Bebidas quentes";
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap")) return "Refrescantes";
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche")) return "Lanches";
+      if (n.includes("doce") || n.includes("torta") || n.includes("brownie")) return "Sobremesas";
+      return "Categoria";
+    };
+
+    return [
+      { id: "all", name: "Todos", slug: "", icon: LayoutGrid, hint: "Catalogo completo" },
+      ...categories.map((c) => ({
+        ...c,
+        icon: resolveIcon(c.name),
+        hint: resolveHint(c.name),
+      })),
+    ];
+  }, [categories]);
   const visibleProducts = products.slice(0, visibleCount);
   const hasMore = products.length > visibleCount;
   const isLoading = categoriesQuery.isLoading || productsQuery.isLoading;
@@ -202,32 +227,68 @@ export default function App() {
               </div>
 
               {/* Categorias — pills com fade nas bordas para indicar scroll */}
-              <div className="relative mt-4">
-                <div className="absolute left-0 top-0 bottom-1 w-6 bg-gradient-to-r from-[var(--bg)] to-transparent pointer-events-none z-10" />
-                <div className="absolute right-0 top-0 bottom-1 w-10 bg-gradient-to-l from-[var(--bg)] to-transparent pointer-events-none z-10" />
-              <div
-                ref={categoryScroll.ref}
-                onMouseDown={categoryScroll.onMouseDown}
-                onMouseMove={categoryScroll.onMouseMove}
-                onMouseUp={categoryScroll.onMouseUp}
-                onMouseLeave={categoryScroll.onMouseLeave}
-                className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide cursor-grab select-none"
-              >
-                <CategoryTile
-                  c={{ id: "all", name: "Todos", slug: "" }}
-                  active={!categorySlug}
-                  onClick={() => setCategorySlug("")}
-                />
-                {categories.map((c) => (
-                  <CategoryTile
-                    key={c.id}
-                    c={c}
-                    active={categorySlug === c.slug}
-                    onClick={() => setCategorySlug(c.slug)}
-                  />
-                ))}
-              </div>
-              </div>
+              <div className="mt-4 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-5">
+                {categories.length > 0 && (
+                  <aside className="hidden lg:block">
+                    <div
+                      className="rounded-3xl p-2.5 space-y-1.5 border sticky top-24"
+                      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                    >
+                      {categoryItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = categorySlug === item.slug;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setCategorySlug(item.slug)}
+                            className="w-full text-left rounded-2xl px-3 py-2.5 transition-all"
+                            style={active
+                              ? { background: "var(--brand)", color: "#fff", boxShadow: "0 10px 24px rgba(0,0,0,0.12)" }
+                              : { background: "var(--surface-2)", color: "var(--text)", border: "1px solid var(--border)" }}
+                          >
+                            <span className="flex items-center gap-2.5">
+                              <span
+                                className="w-8 h-8 rounded-xl grid place-items-center"
+                                style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(124,92,248,0.12)", color: "var(--brand)" }}
+                              >
+                                <Icon size={16} />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-sm font-extrabold truncate">{item.name}</span>
+                                <span className="block text-[11px] opacity-75 truncate">{item.hint}</span>
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </aside>
+                )}
+
+                <div className="min-w-0">
+                  {categories.length > 0 && (
+                    <div className="lg:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                      {categoryItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = categorySlug === item.slug;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setCategorySlug(item.slug)}
+                            className="shrink-0 rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold whitespace-nowrap transition-all"
+                            style={active
+                              ? { background: "var(--brand)", color: "#fff" }
+                              : { background: "var(--surface)", color: "var(--text-muted)", border: "1.5px solid var(--border)" }}
+                          >
+                            <Icon size={15} />
+                            <span>{item.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
               {/* Seções de destaque — só na homepage (sem filtro) */}
               {!isLoading && (
@@ -307,6 +368,8 @@ export default function App() {
                     )}
                   </>
                 )}
+                  </div>
+                </div>
               </div>
             </div>
 

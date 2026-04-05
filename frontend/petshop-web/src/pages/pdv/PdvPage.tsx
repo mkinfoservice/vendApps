@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight, Printer, Smartphone, Ban, CheckCircle2, ArrowRight, User } from "lucide-react";
+import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight, Printer, Smartphone, Ban, CheckCircle2, ArrowRight, User, Snowflake, Sandwich, CupSoda, type LucideIcon } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
 // â”€â”€ Design tokens (Go Coffee palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1127,7 +1127,6 @@ function QuickProducts({
   const [addonTarget, setAddonTarget] = useState<QuickProduct | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const categoryBarRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     let cancelled = false;
@@ -1195,6 +1194,35 @@ function QuickProducts({
     );
   }, [products, searchInput, activeCategory]);
 
+  const categoryItems = useMemo(() => {
+    const inferIcon = (name: string | null): LucideIcon => {
+      if (!name) return LayoutGrid;
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf") || n.includes("espresso") || n.includes("capuccino")) return Coffee;
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap") || n.includes("cold")) return Snowflake;
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche") || n.includes("toast")) return Sandwich;
+      if (n.includes("bebida") || n.includes("suco") || n.includes("shake")) return CupSoda;
+      return ShoppingBag;
+    };
+
+    const inferDescription = (name: string | null): string => {
+      if (!name) return "Ver todos os itens";
+      const n = name.toLocaleLowerCase();
+      if (n.includes("quente") || n.includes("cafe") || n.includes("caf")) return "Cafes e bebidas quentes";
+      if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap")) return "Refrescantes e gelados";
+      if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche")) return "Lanches e salgados";
+      if (n.includes("doce") || n.includes("torta") || n.includes("brownie")) return "Sobremesas e doces";
+      return "Itens desta categoria";
+    };
+
+    return [null, ...categories].map((cat) => ({
+      key: cat,
+      label: cat ?? "Todos",
+      icon: inferIcon(cat),
+      description: inferDescription(cat),
+    }));
+  }, [categories]);
+
 
   async function handleAdd(p: QuickProduct) {
     if (adding) return;
@@ -1240,34 +1268,68 @@ function QuickProducts({
           )}
         </div>
 
-        {/* Category pill tabs */}
-        {categories.length > 0 && (
-          <div ref={categoryBarRef} className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none"
-            style={{ scrollbarWidth: "none" }}>
-            {[null, ...categories].map((cat) => {
-              const active = cat === activeCategory;
-              return (
-                <button
-                  key={cat ?? "__all__"}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  className="shrink-0 px-3 py-1 rounded-full text-[11px] font-bold transition-all whitespace-nowrap"
-                  style={active
-                    ? { background: GC.caramel, color: "#fff", boxShadow: `0 2px 8px ${GC.caramel}55` }
-                    : { background: GC.cream, color: GC.brown, border: `1px solid rgba(107,79,58,0.15)` }}
-                >
-                  {cat ?? "Todos"}
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {filteredProducts.length === 0 && !loadingInitial ? (
-          <div className="h-full min-h-[220px] flex items-center justify-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
-            Nenhum produto encontrado
-          </div>
-        ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+        <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-3">
+          {categories.length > 0 && (
+            <aside className="hidden lg:block">
+              <div className="rounded-3xl p-2.5 space-y-1.5 border sticky top-0" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
+                {categoryItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.key === activeCategory;
+                  return (
+                    <button
+                      key={item.key ?? "__all__"}
+                      type="button"
+                      onClick={() => setActiveCategory(item.key)}
+                      className="w-full text-left rounded-2xl px-3 py-2.5 transition-all"
+                      style={active
+                        ? { background: GC.caramel, color: "#fff", boxShadow: `0 10px 24px ${GC.caramel}44` }
+                        : { background: GC.cream, color: GC.dark, border: "1px solid rgba(107,79,58,0.1)" }}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <span className="w-8 h-8 rounded-xl grid place-items-center"
+                          style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(200,149,58,0.18)", color: GC.caramel }}>
+                          <Icon size={16} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-extrabold truncate">{item.label}</span>
+                          <span className="block text-[11px] opacity-75 truncate">{item.description}</span>
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          )}
+          <div className="min-w-0">
+            {categories.length > 0 && (
+              <div className="lg:hidden flex gap-2 overflow-x-auto pb-0.5 scrollbar-none" style={{ scrollbarWidth: "none" }}>
+                {categoryItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = item.key === activeCategory;
+                  return (
+                    <button
+                      key={item.key ?? "__all__"}
+                      type="button"
+                      onClick={() => setActiveCategory(item.key)}
+                      className="shrink-0 rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold whitespace-nowrap"
+                      style={active
+                        ? { background: GC.caramel, color: "#fff", boxShadow: `0 4px 12px ${GC.caramel}44` }
+                        : { background: "#fff", color: GC.brown, border: "1px solid rgba(107,79,58,0.12)" }}
+                    >
+                      <Icon size={15} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {filteredProducts.length === 0 && !loadingInitial ? (
+              <div className="h-full min-h-[220px] flex items-center justify-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
+                Nenhum produto encontrado
+              </div>
+            ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
           {filteredProducts.map((p) => (
             <button
               key={p.id}
@@ -1318,6 +1380,8 @@ function QuickProducts({
           ))}
         </div>
         )}
+          </div>
+        </div>
       </div>
     </>
   );
