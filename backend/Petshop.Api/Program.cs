@@ -27,6 +27,8 @@ using Petshop.Api.Services.Fiscal.Jobs;
 using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Scale.Jobs;
 using Petshop.Api.Services.Tenancy;
+using Petshop.Api.Services.Accounting;
+using Petshop.Api.Services.Accounting.Jobs;
 using Microsoft.AspNetCore.DataProtection;
 
 // QuestPDF Community license — deve ser configurado antes de qualquer uso
@@ -284,6 +286,16 @@ builder.Services.AddScoped<Petshop.Api.Services.Customers.LoyaltyService>();
 builder.Services.AddScoped<Petshop.Api.Services.Customers.CpfProtectionService>();
 
 // ===============================
+// Services — Fechamento Contabil
+// ===============================
+builder.Services.Configure<AccountingMailSettings>(builder.Configuration.GetSection("AccountingDispatch:Smtp"));
+builder.Services.AddScoped<AccountingDataCollectorService>();
+builder.Services.AddScoped<AccountingExportService>();
+builder.Services.AddScoped<AccountingEmailService>();
+builder.Services.AddScoped<AccountingDispatchService>();
+builder.Services.AddScoped<AccountingDispatchSchedulerJob>();
+
+// ===============================
 // Services — Promoções (Fase 10)
 // ===============================
 builder.Services.AddScoped<Petshop.Api.Services.Promotions.PromotionEngine>();
@@ -505,6 +517,100 @@ using (var scope = app.Services.CreateScope())
         ADD COLUMN IF NOT EXISTS "LoyaltyPointsCost" integer;
         """);
 
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "AccountingDispatchConfigs" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "IsEnabled" boolean NOT NULL DEFAULT false,
+            "AccountantName" character varying(160),
+            "PrimaryEmail" character varying(200),
+            "CcEmails" character varying(1000),
+            "Frequency" character varying(20) NOT NULL DEFAULT 'Monthly',
+            "DayOfMonth" integer NOT NULL DEFAULT 5,
+            "DayOfWeek" integer NOT NULL DEFAULT 1,
+            "SendTimeLocal" character varying(5) NOT NULL DEFAULT '09:00',
+            "TimezoneId" character varying(80) NOT NULL DEFAULT 'America/Sao_Paulo',
+            "IncludeXmlIssued" boolean NOT NULL DEFAULT true,
+            "IncludeXmlCanceled" boolean NOT NULL DEFAULT false,
+            "IncludeSalesCsv" boolean NOT NULL DEFAULT true,
+            "IncludeSummaryPdf" boolean NOT NULL DEFAULT true,
+            "MaxRetryCount" integer NOT NULL DEFAULT 2,
+            "RetryDelayMinutes" integer NOT NULL DEFAULT 15,
+            "FixedEmailNote" character varying(1000),
+            "ProtectAttachments" boolean NOT NULL DEFAULT false,
+            "AttachmentPassword" character varying(300),
+            "MaxAttachmentSizeMb" integer NOT NULL DEFAULT 15,
+            "SendWhenNoMovement" character varying(20) NOT NULL DEFAULT 'Skip',
+            "LastSentAtUtc" timestamp with time zone,
+            "LastSuccessAtUtc" timestamp with time zone,
+            "UpdatedAtUtc" timestamp with time zone NOT NULL DEFAULT now(),
+            "UpdatedBy" character varying(120),
+            CONSTRAINT "PK_AccountingDispatchConfigs" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_AccountingDispatchConfigs_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies"("Id") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_AccountingDispatchConfigs_CompanyId"
+            ON "AccountingDispatchConfigs" ("CompanyId");
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "AccountingDispatchRuns" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "PeriodStartUtc" timestamp with time zone NOT NULL,
+            "PeriodEndUtc" timestamp with time zone NOT NULL,
+            "PeriodReference" character varying(20) NOT NULL,
+            "TriggerType" character varying(20) NOT NULL,
+            "Status" character varying(20) NOT NULL,
+            "CorrelationId" character varying(80) NOT NULL,
+            "IdempotencyKey" character varying(120) NOT NULL,
+            "PrimaryRecipient" character varying(200),
+            "CcRecipients" character varying(1000),
+            "XmlCountIssued" integer NOT NULL DEFAULT 0,
+            "XmlCountCanceled" integer NOT NULL DEFAULT 0,
+            "SalesCount" integer NOT NULL DEFAULT 0,
+            "GrossAmount" numeric(18,2) NOT NULL DEFAULT 0,
+            "DiscountAmount" numeric(18,2) NOT NULL DEFAULT 0,
+            "CanceledAmount" numeric(18,2) NOT NULL DEFAULT 0,
+            "NetAmount" numeric(18,2) NOT NULL DEFAULT 0,
+            "AverageTicket" numeric(18,2) NOT NULL DEFAULT 0,
+            "PaymentBreakdownJson" text NOT NULL DEFAULT '{}',
+            "ErrorCode" character varying(100),
+            "ErrorMessage" character varying(2000),
+            "StartedAtUtc" timestamp with time zone NOT NULL DEFAULT now(),
+            "FinishedAtUtc" timestamp with time zone,
+            "CreatedAtUtc" timestamp with time zone NOT NULL DEFAULT now(),
+            "CreatedBy" character varying(120),
+            CONSTRAINT "PK_AccountingDispatchRuns" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_AccountingDispatchRuns_Companies_CompanyId"
+                FOREIGN KEY ("CompanyId") REFERENCES "Companies"("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_AccountingDispatchRuns_CompanyId_PeriodReference"
+            ON "AccountingDispatchRuns" ("CompanyId", "PeriodReference");
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_AccountingDispatchRuns_CompanyId_IdempotencyKey"
+            ON "AccountingDispatchRuns" ("CompanyId", "IdempotencyKey");
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "AccountingDispatchAttachments" (
+            "Id" uuid NOT NULL,
+            "CompanyId" uuid NOT NULL,
+            "RunId" uuid NOT NULL,
+            "AttachmentType" character varying(30) NOT NULL,
+            "FileName" character varying(180) NOT NULL,
+            "SizeBytes" bigint NOT NULL,
+            "ChecksumSha256" character varying(64) NOT NULL,
+            "StorageMode" character varying(20) NOT NULL DEFAULT 'Temp',
+            "StoragePath" character varying(600),
+            "CreatedAtUtc" timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT "PK_AccountingDispatchAttachments" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_AccountingDispatchAttachments_AccountingDispatchRuns_RunId"
+                FOREIGN KEY ("RunId") REFERENCES "AccountingDispatchRuns"("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_AccountingDispatchAttachments_CompanyId_RunId"
+            ON "AccountingDispatchAttachments" ("CompanyId", "RunId");
+        """);
+
     // Tabela de chaves do Data Protection (LGPD / criptografia)
     await db.Database.ExecuteSqlRawAsync("""
         CREATE TABLE IF NOT EXISTS "DataProtectionKeys" (
@@ -712,6 +818,11 @@ using (var scope = app.Services.CreateScope())
         "fiscal-contingency-reprocess",
         j => j.RunAsync(CancellationToken.None),
         "*/5 * * * *");
+
+    jobManager.AddOrUpdate<AccountingDispatchSchedulerJob>(
+        "accounting-dispatch-scan",
+        j => j.RunAsync(CancellationToken.None),
+        "*/15 * * * *");
 }
 
 if (enableSwagger)

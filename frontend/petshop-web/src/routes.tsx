@@ -44,6 +44,7 @@ import PurchaseOrderDetail from "./pages/admin/PurchaseOrderDetail";
 import ReportsPage from "./pages/admin/ReportsPage";
 import StockPage from "./pages/admin/StockPage";
 import FiscalConfigPage from "./pages/admin/FiscalConfigPage";
+import AccountingDispatchPage from "./pages/admin/AccountingDispatchPage";
 import FinancialEntriesPage from "./pages/admin/FinancialEntriesPage";
 import CashRegistersPage from "./pages/admin/CashRegistersPage";
 import CashSessionsPage from "./pages/admin/CashSessionsPage";
@@ -164,6 +165,7 @@ export function AppRoutes() {
         {/* ── /app — Plataforma ───────────────────────────────────────── */}
         <Route path="/app/equipe" element={<AppPage roles={["admin"]}><StoreTeam /></AppPage>} />
         <Route path="/app/fiscal" element={<AppPage roles={["admin"]}><FiscalConfigPage /></AppPage>} />
+        <Route path="/app/configuracoes/contabilidade" element={<AppPage roles={["admin","gerente"]} featureKey="accounting_email_dispatch"><AccountingDispatchPage /></AppPage>} />
         <Route path="/app/balanca" element={<AppPage roles={["admin"]}><ScaleAgentsPage /></AppPage>} />
         <Route path="/app/enriquecimento" element={<AppPage roles={["admin","gerente"]}><CatalogEnrichmentPage /></AppPage>} />
         <Route path="/app/configuracao-loja" element={<AppPage roles={["admin","gerente"]}><StoreFrontConfigPage /></AppPage>} />
@@ -195,6 +197,7 @@ export function AppRoutes() {
         <Route path="/admin/reports" element={<Navigate to="/app/relatorios" replace />} />
         <Route path="/admin/equipe" element={<Navigate to="/app/equipe" replace />} />
         <Route path="/admin/fiscal" element={<Navigate to="/app/fiscal" replace />} />
+        <Route path="/admin/accounting-dispatch" element={<Navigate to="/app/configuracoes/contabilidade" replace />} />
         <Route path="/admin/scale" element={<Navigate to="/app/balanca" replace />} />
         <Route path="/admin/print" element={<Navigate to="/app/impressao" replace />} />
         <Route path="/admin/agenda" element={<Navigate to="/app/comissoes" replace />} />

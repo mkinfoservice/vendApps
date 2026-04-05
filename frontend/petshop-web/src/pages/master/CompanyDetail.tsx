@@ -1196,6 +1196,7 @@ const FEATURE_META: Record<string, { label: string; description: string }> = {
   dav_menu:       { label: "DAV / OrÃ§amento",   description: "Menu de DAV e orÃ§amentos." },
   financial_menu: { label: "Financeiro",        description: "Menu financeiro e lancamentos." },
   loyalty_program:{ label: "Fidelidade",        description: "Libera o programa de fidelidade, resgates e portal publico /loyalty." },
+  accounting_email_dispatch:{ label: "Contabilidade automatizada", description: "Habilita fechamento contabil automatico e envio para o contador por tenant." },
 };
 
 function FeaturesTab({ companyId }: { companyId: string }) {

@@ -20,6 +20,7 @@ using Petshop.Api.Entities.WhatsApp;
 using Petshop.Api.Entities.Marketplace;
 using Petshop.Api.Entities.StoreFront;
 using Petshop.Api.Entities.Commissions;
+using Petshop.Api.Entities.Accounting;
 using Petshop.Api.Models;
 using DeliveryRoute = Petshop.Api.Entities.Delivery.Route;
 using Petshop.Api.Entities.Delivery;
@@ -137,6 +138,11 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<EmployeeCommissionRate> EmployeeCommissionRates => Set<EmployeeCommissionRate>();
     public DbSet<TipPoolEntry> TipPoolEntries => Set<TipPoolEntry>();
     public DbSet<EmployeeCommissionAdjustment> EmployeeCommissionAdjustments => Set<EmployeeCommissionAdjustment>();
+
+    // ── Fechamento Contabil / Contador ────────────────────────
+    public DbSet<AccountingDispatchConfig> AccountingDispatchConfigs => Set<AccountingDispatchConfig>();
+    public DbSet<AccountingDispatchRun> AccountingDispatchRuns => Set<AccountingDispatchRun>();
+    public DbSet<AccountingDispatchAttachment> AccountingDispatchAttachments => Set<AccountingDispatchAttachment>();
 
     // ── Compras & Fornecedores ────────────────────────────────
     public DbSet<Supplier>          Suppliers          => Set<Supplier>();
@@ -1014,6 +1020,58 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
         modelBuilder.Entity<EmployeeCommissionAdjustment>()
             .HasIndex(a => new { a.CompanyId, a.ReferenceDateUtc, a.AdminUserId });
+
+        modelBuilder.Entity<AccountingDispatchConfig>()
+            .HasOne(c => c.Company)
+            .WithOne()
+            .HasForeignKey<AccountingDispatchConfig>(c => c.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AccountingDispatchConfig>()
+            .HasIndex(c => c.CompanyId)
+            .IsUnique();
+
+        modelBuilder.Entity<AccountingDispatchConfig>()
+            .Property(c => c.Frequency)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<AccountingDispatchConfig>()
+            .Property(c => c.SendWhenNoMovement)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<AccountingDispatchRun>()
+            .HasOne(r => r.Company)
+            .WithMany()
+            .HasForeignKey(r => r.CompanyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AccountingDispatchRun>()
+            .Property(r => r.TriggerType)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<AccountingDispatchRun>()
+            .Property(r => r.Status)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
+        modelBuilder.Entity<AccountingDispatchRun>()
+            .HasIndex(r => new { r.CompanyId, r.PeriodReference });
+
+        modelBuilder.Entity<AccountingDispatchRun>()
+            .HasIndex(r => new { r.CompanyId, r.IdempotencyKey })
+            .IsUnique();
+
+        modelBuilder.Entity<AccountingDispatchAttachment>()
+            .HasOne(a => a.Run)
+            .WithMany(r => r.Attachments)
+            .HasForeignKey(a => a.RunId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AccountingDispatchAttachment>()
+            .HasIndex(a => new { a.CompanyId, a.RunId });
 
         // ══════════════════════════════════════════════════════
         // ENRIQUECIMENTO DE CATÁLOGO

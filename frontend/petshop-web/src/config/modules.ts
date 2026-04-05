@@ -26,6 +26,7 @@ import {
   Coffee,
   HandCoins,
   Plug,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 
@@ -379,6 +380,19 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/fiscal",
     group: "PLATAFORMA",
     roles: ["admin"],
+    isActive: true,
+  },
+  {
+    id: "contabilidade",
+    label: "Contabilidade",
+    description: "Fechamento contábil automático e envio ao contador",
+    icon: Calculator,
+    iconColor: "#7C5CF8",
+    iconBg: "rgba(124,92,248,0.14)",
+    route: "/app/configuracoes/contabilidade",
+    group: "PLATAFORMA",
+    roles: ["admin", "gerente"],
+    featureKey: "accounting_email_dispatch",
     isActive: true,
   },
   {
