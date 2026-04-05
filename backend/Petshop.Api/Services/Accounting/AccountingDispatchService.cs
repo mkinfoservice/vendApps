@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Accounting;
 using Petshop.Api.Entities.Catalog;
@@ -342,19 +343,20 @@ public sealed class AccountingDispatchService
 
         if (!forceResend && triggerType == AccountingDispatchTriggerType.Automatic)
         {
-            var existingSuccess = await _db.AccountingDispatchRuns
+            var existing = await _db.AccountingDispatchRuns
                 .AsNoTracking()
                 .Where(r => r.CompanyId == companyId
-                            && r.IdempotencyKey == idempotencyKey
-                            && r.Status == AccountingDispatchRunStatus.Succeeded)
+                            && r.IdempotencyKey == idempotencyKey)
+                .OrderByDescending(r => r.CreatedAtUtc)
                 .FirstOrDefaultAsync(ct);
-            if (existingSuccess is not null)
+            if (existing is not null)
             {
                 _logger.LogInformation(
-                    "ACCOUNTING_DISPATCH_IDEMPOTENT_HIT | companyId={CompanyId} period={Period}",
+                    "ACCOUNTING_DISPATCH_IDEMPOTENT_HIT | companyId={CompanyId} period={Period} existingStatus={Status}",
                     companyId,
-                    periodReference);
-                return existingSuccess;
+                    periodReference,
+                    existing.Status);
+                return existing;
             }
         }
 
@@ -381,11 +383,9 @@ public sealed class AccountingDispatchService
         {
             await _db.SaveChangesAsync(ct);
         }
-        catch (DbUpdateException) when (!forceResend && triggerType == AccountingDispatchTriggerType.Automatic)
+        catch (DbUpdateException ex) when (!forceResend && IsUniqueIdempotencyViolation(ex))
         {
-            var existing = await _db.AccountingDispatchRuns
-                .AsNoTracking()
-                .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.IdempotencyKey == idempotencyKey, ct);
+            var existing = await TryGetExistingRunByIdempotencyWithRetryAsync(companyId, idempotencyKey, ct);
 
             if (existing is not null)
                 return existing;
@@ -621,7 +621,38 @@ public sealed class AccountingDispatchService
 
         return triggerType == AccountingDispatchTriggerType.Automatic
             ? $"auto:{companyId:N}:{periodReference}"
-            : $"manual:{triggerType}:{companyId:N}:{periodReference}:{DateTime.UtcNow:yyyyMMddHHmmss}";
+            : $"manual:{triggerType}:{companyId:N}:{periodReference}:{DateTime.UtcNow:yyyyMMddHHmmssfffffff}";
+    }
+
+    private static bool IsUniqueIdempotencyViolation(DbUpdateException ex)
+    {
+        if (ex.InnerException is not PostgresException pg)
+            return false;
+
+        return pg.SqlState == "23505"
+               && string.Equals(pg.ConstraintName, "IX_AccountingDispatchRuns_CompanyId_IdempotencyKey", StringComparison.Ordinal);
+    }
+
+    private async Task<AccountingDispatchRun?> TryGetExistingRunByIdempotencyWithRetryAsync(
+        Guid companyId,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            var run = await _db.AccountingDispatchRuns
+                .AsNoTracking()
+                .Where(r => r.CompanyId == companyId && r.IdempotencyKey == idempotencyKey)
+                .OrderByDescending(r => r.CreatedAtUtc)
+                .FirstOrDefaultAsync(ct);
+
+            if (run is not null)
+                return run;
+
+            await Task.Delay(120, ct);
+        }
+
+        return null;
     }
 
     private static string NormalizeCcEmails(string? raw)
