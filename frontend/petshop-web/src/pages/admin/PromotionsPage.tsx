@@ -6,7 +6,7 @@ import {
   type PromotionDto, type PromotionType, type PromotionScope,
 } from "@/features/promotions/promotionsApi";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
-import { Tag, Plus, Pencil, Power, Trash2, Search } from "lucide-react";
+import { Tag, Plus, Pencil, Power, Trash2, Search, Gift } from "lucide-react";
 
 const INPUT = "bg-white text-gray-900 border border-gray-200 rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[#7c5cf8]/30";
 
@@ -278,21 +278,26 @@ function PromotionModal({
             )}
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              Custo em pontos (fidelidade)
-            </label>
+          <div className="rounded-xl p-3 space-y-2" style={{ background: "#f5f3ff", border: "1px solid #d9d3f8" }}>
+            <div className="flex items-center gap-2">
+              <Gift className="w-4 h-4" style={{ color: "#7c5cf8" }} />
+              <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#7c5cf8" }}>
+                Programa de Fidelidade
+              </label>
+            </div>
             <input
               type="number"
               min="0"
               step="1"
-              className={`mt-1 ${INPUT}`}
+              className={INPUT}
               value={form.loyaltyPointsCost ?? ""}
-              placeholder="Opcional"
+              placeholder="Custo em pontos (ex: 500)"
               onChange={e => set("loyaltyPointsCost", e.target.value ? Math.max(0, parseInt(e.target.value, 10) || 0) : null)}
             />
-            <p className="text-[11px] mt-1 text-gray-400">
-              Defina para exibir esta promoção no catálogo público de recompensas.
+            <p className="text-[11px]" style={{ color: "#7c5cf8", opacity: 0.7 }}>
+              {form.loyaltyPointsCost && form.loyaltyPointsCost > 0
+                ? `Clientes com ≥ ${form.loyaltyPointsCost.toLocaleString("pt-BR")} pts poderão resgatar no /loyalty.`
+                : "Preencha para exibir como recompensa resgatável no portal de fidelidade."}
             </p>
           </div>
 
@@ -478,11 +483,18 @@ export default function PromotionsPage() {
                     </p>
                   )}
 
-                  {p.loyaltyPointsCost && p.loyaltyPointsCost > 0 && (
-                    <p className="text-xs font-semibold" style={{ color: "#7c5cf8" }}>
-                      Resgate por {p.loyaltyPointsCost.toLocaleString("pt-BR")} pontos
-                    </p>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Gift className="w-3.5 h-3.5 shrink-0" style={{ color: p.loyaltyPointsCost ? "#7c5cf8" : "var(--text-muted)" }} />
+                    {p.loyaltyPointsCost && p.loyaltyPointsCost > 0 ? (
+                      <span className="text-xs font-semibold" style={{ color: "#7c5cf8" }}>
+                        {p.loyaltyPointsCost.toLocaleString("pt-BR")} pts para resgatar
+                      </span>
+                    ) : (
+                      <span className="text-xs italic" style={{ color: "var(--text-muted)" }}>
+                        Não disponível na fidelidade
+                      </span>
+                    )}
+                  </div>
 
                   {(p.startsAtUtc || p.expiresAtUtc) && (
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>

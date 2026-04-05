@@ -1550,6 +1550,164 @@ function NavDrawer({ onClose }: { onClose: () => void }) {
 //
 
 // â”€â”€ CustomerSearchModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LoyaltyRewardItem ─────────────────────────────────────────────────────────
+interface LoyaltyRewardItem {
+  id: string;
+  name: string;
+  description: string | null;
+  couponCode: string | null;
+  loyaltyPointsCost: number;
+  type: string;
+  value: number;
+}
+
+// ── LoyaltyRewardsModal ───────────────────────────────────────────────────────
+function LoyaltyRewardsModal({
+  customer,
+  rewards,
+  onApply,
+  onClose,
+}: {
+  customer: PdvCustomer;
+  rewards: LoyaltyRewardItem[];
+  onApply: (reward: LoyaltyRewardItem) => void;
+  onClose: () => void;
+}) {
+  const fmtDiscount = (r: LoyaltyRewardItem) =>
+    r.type === "PercentDiscount"
+      ? `${r.value}% OFF`
+      : `R$ ${(r.value / 100).toFixed(2)} OFF`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl" style={{ background: GC.bg }}>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: GC.caramel }}>
+            Programa de Fidelidade
+          </p>
+          <p className="text-lg font-black mt-0.5" style={{ color: GC.dark }}>{customer.name}</p>
+          <p className="text-3xl font-black leading-none mt-1" style={{ color: GC.caramel }}>
+            {customer.pointsBalance.toLocaleString("pt-BR")}
+            <span className="text-base font-semibold ml-1" style={{ color: GC.brown }}>pontos</span>
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs font-bold mb-2 uppercase tracking-wide" style={{ color: GC.brown }}>
+            {rewards.length} recompensa{rewards.length !== 1 ? "s" : ""} disponível{rewards.length !== 1 ? "is" : ""}
+          </p>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {rewards.map(r => (
+              <div key={r.id} className="rounded-xl px-3 py-2.5 flex items-center gap-3"
+                style={{ background: GC.cream, border: `1px solid rgba(200,149,58,0.3)` }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: GC.dark }}>{r.name}</p>
+                  <p className="text-xs" style={{ color: GC.brown }}>
+                    {fmtDiscount(r)}
+                    {r.couponCode && <span className="ml-1.5 font-mono font-bold">[{r.couponCode}]</span>}
+                  </p>
+                  <p className="text-[11px]" style={{ color: GC.caramel }}>
+                    Custo: {r.loyaltyPointsCost.toLocaleString("pt-BR")} pts
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onApply(r)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-white shrink-0 transition active:scale-95"
+                  style={{ background: `linear-gradient(135deg, ${GC.caramel}, #b9822d)` }}
+                >
+                  Usar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold transition hover:bg-black/5"
+          style={{ color: GC.brown, border: `1px solid rgba(107,79,58,0.2)` }}
+        >
+          Fechar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── CouponRevealModal ─────────────────────────────────────────────────────────
+function CouponRevealModal({
+  couponCode,
+  promotionName,
+  onApplyNow,
+  onClose,
+}: {
+  couponCode: string;
+  promotionName: string;
+  onApplyNow: (code: string) => void;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(couponCode).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-xs rounded-3xl p-5 space-y-4 shadow-2xl text-center" style={{ background: GC.bg }}>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: GC.caramel }}>
+            Cupom Resgatado
+          </p>
+          <p className="text-base font-bold mt-0.5" style={{ color: GC.dark }}>{promotionName}</p>
+        </div>
+
+        <div className="rounded-2xl px-4 py-4 space-y-3" style={{ background: GC.cream, border: `1px solid rgba(200,149,58,0.3)` }}>
+          <p className="text-3xl font-black tracking-widest font-mono" style={{ color: GC.caramel }}>
+            {couponCode}
+          </p>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="w-full py-2 rounded-xl text-sm font-bold transition active:scale-95"
+            style={{
+              background: copied ? "#d1fae5" : "white",
+              color: copied ? "#065f46" : GC.brown,
+              border: `1px solid rgba(107,79,58,0.2)`,
+            }}
+          >
+            {copied ? "✓ Copiado!" : "Copiar código"}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="py-2.5 rounded-xl text-sm font-semibold transition hover:bg-black/5"
+            style={{ color: GC.brown, border: `1px solid rgba(107,79,58,0.2)` }}
+          >
+            Fechar
+          </button>
+          <button
+            type="button"
+            onClick={() => onApplyNow(couponCode)}
+            className="py-2.5 rounded-xl text-sm font-bold text-white transition active:scale-95"
+            style={{ background: `linear-gradient(135deg, ${GC.caramel}, #b9822d)` }}
+          >
+            Aplicar agora
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── CustomerSearchModal ───────────────────────────────────────────────────────
 function CustomerSearchModal({
   onSelect, onSkip, onClose,
 }: {
@@ -1668,6 +1826,14 @@ export default function PdvPage() {
   const [appliedCoupon, setAppliedCoupon]   = useState<{
     code: string;
     discountCents: number;
+    promotionName: string;
+  } | null>(null);
+  const [loyaltyRewardsModal, setLoyaltyRewardsModal] = useState<{
+    customer: PdvCustomer;
+    rewards: LoyaltyRewardItem[];
+  } | null>(null);
+  const [couponRevealModal, setCouponRevealModal] = useState<{
+    couponCode: string;
     promotionName: string;
   } | null>(null);
   const autoDavHandledRef = useRef(false);
@@ -1924,6 +2090,31 @@ export default function PdvPage() {
         />
       )}
 
+      {loyaltyRewardsModal && (
+        <LoyaltyRewardsModal
+          customer={loyaltyRewardsModal.customer}
+          rewards={loyaltyRewardsModal.rewards}
+          onApply={(reward) => {
+            setLoyaltyRewardsModal(null);
+            if (reward.couponCode) {
+              setCouponRevealModal({ couponCode: reward.couponCode, promotionName: reward.name });
+            }
+          }}
+          onClose={() => setLoyaltyRewardsModal(null)}
+        />
+      )}
+      {couponRevealModal && (
+        <CouponRevealModal
+          couponCode={couponRevealModal.couponCode}
+          promotionName={couponRevealModal.promotionName}
+          onApplyNow={async (code) => {
+            setCouponRevealModal(null);
+            await handleApplyCoupon(code);
+          }}
+          onClose={() => setCouponRevealModal(null)}
+        />
+      )}
+
       {/* Nav Drawer */}
       {navOpen && <NavDrawer onClose={() => setNavOpen(false)} />}
 
@@ -1989,9 +2180,26 @@ export default function PdvPage() {
 
       {showCustomerSearch && (
         <CustomerSearchModal
-          onSelect={(c) => {
+          onSelect={async (c) => {
             setPendingCustomer(c);
             setShowCustomerSearch(false);
+            if (c.pointsBalance > 0) {
+              try {
+                const all = await adminFetch<Array<{
+                  id: string; name: string; description: string | null;
+                  couponCode: string | null; loyaltyPointsCost: number | null;
+                  type: string; value: number;
+                }>>("/admin/promotions?active=true");
+                const available = all.filter(
+                  p => p.loyaltyPointsCost != null &&
+                       p.loyaltyPointsCost > 0 &&
+                       p.loyaltyPointsCost <= c.pointsBalance
+                ).map(p => ({ ...p, loyaltyPointsCost: p.loyaltyPointsCost! }));
+                if (available.length > 0) {
+                  setLoyaltyRewardsModal({ customer: c, rewards: available });
+                }
+              } catch { /* silencioso */ }
+            }
           }}
           onSkip={() => {
             setPendingCustomer(null);
