@@ -1250,7 +1250,7 @@ function QuickProducts({
           onClose={() => setAddonTarget(null)}
         />
       )}
-      <div className="h-full overflow-y-auto p-3 space-y-2" style={{ background: GC.bg }}>
+      <div className="h-full flex flex-col p-3 gap-2 overflow-hidden" style={{ background: GC.bg }}>
         {/* Search bar */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: GC.brown, opacity: 0.5 }} />
@@ -1268,10 +1268,10 @@ function QuickProducts({
           )}
         </div>
 
-        <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-3">
+        <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-3 flex-1 min-h-0">
           {categories.length > 0 && (
-            <aside className="hidden lg:block">
-              <div className="rounded-3xl p-2.5 space-y-1.5 border sticky top-0" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
+            <aside className="hidden lg:flex lg:flex-col lg:min-h-0">
+              <div className="rounded-3xl p-2 border h-full overflow-y-auto grid grid-cols-2 gap-1.5 content-start" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
                 {categoryItems.map((item) => {
                   const Icon = item.icon;
                   const active = item.key === activeCategory;
@@ -1280,20 +1280,17 @@ function QuickProducts({
                       key={item.key ?? "__all__"}
                       type="button"
                       onClick={() => setActiveCategory(item.key)}
-                      className="w-full text-left rounded-2xl px-3 py-2.5 transition-all"
+                      className="w-full rounded-2xl px-1.5 py-2.5 transition-all"
                       style={active
                         ? { background: GC.caramel, color: "#fff", boxShadow: `0 10px 24px ${GC.caramel}44` }
                         : { background: GC.cream, color: GC.dark, border: "1px solid rgba(107,79,58,0.1)" }}
                     >
-                      <span className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl grid place-items-center"
+                      <span className="flex flex-col items-center gap-1">
+                        <span className="w-7 h-7 rounded-xl grid place-items-center"
                           style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(200,149,58,0.18)", color: GC.caramel }}>
-                          <Icon size={16} />
+                          <Icon size={15} />
                         </span>
-                        <span className="min-w-0">
-                          <span className="block text-sm font-extrabold whitespace-normal break-words leading-tight">{item.label}</span>
-                          <span className="block text-[11px] opacity-75 whitespace-normal break-words leading-tight mt-0.5">{item.description}</span>
-                        </span>
+                        <span className="text-[10px] font-extrabold leading-tight text-center line-clamp-2 w-full px-0.5">{item.label}</span>
                       </span>
                     </button>
                   );
@@ -1301,7 +1298,7 @@ function QuickProducts({
               </div>
             </aside>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex flex-col min-h-0">
             {categories.length > 0 && (
               <div className="lg:hidden flex gap-2 overflow-x-auto pb-0.5 scrollbar-none" style={{ scrollbarWidth: "none" }}>
                 {categoryItems.map((item) => {
@@ -1324,62 +1321,64 @@ function QuickProducts({
                 })}
               </div>
             )}
+            <div className="flex-1 overflow-y-auto min-h-0">
             {filteredProducts.length === 0 && !loadingInitial ? (
               <div className="h-full min-h-[220px] flex items-center justify-center text-sm" style={{ color: GC.brown, opacity: 0.4 }}>
                 Nenhum produto encontrado
               </div>
             ) : (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
-          {filteredProducts.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              disabled={adding === p.id || !saleId}
-              onClick={() => handleAdd(p)}
-              className="flex flex-col items-center gap-1 p-2 rounded-2xl transition active:scale-95 text-left disabled:opacity-50 relative hover:shadow-md"
-              style={{
-                background: "#fff",
-                border: `1.5px solid ${p.isBestSeller ? `${GC.caramel}55` : "rgba(107,79,58,0.1)"}`,
-              }}
-            >
-              {p.isBestSeller && (
-                <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none"
-                  style={{ background: GC.caramel }}>
-                  Top
-                </span>
-              )}
-              {p.hasAddons && (
-                <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none"
-                  style={{ background: GC.brown }}>+</span>
-              )}
-              <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center"
-                style={{ background: GC.cream }}>
-                {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[9px] font-bold" style={{ color: GC.brown, opacity: 0.35 }}>SEM IMAGEM</span>
-                )}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+                {filteredProducts.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={adding === p.id || !saleId}
+                    onClick={() => handleAdd(p)}
+                    className="flex flex-col items-center gap-1 p-2 rounded-2xl transition active:scale-95 text-left disabled:opacity-50 relative hover:shadow-md"
+                    style={{
+                      background: "#fff",
+                      border: `1.5px solid ${p.isBestSeller ? `${GC.caramel}55` : "rgba(107,79,58,0.1)"}`,
+                    }}
+                  >
+                    {p.isBestSeller && (
+                      <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none"
+                        style={{ background: GC.caramel }}>
+                        Top
+                      </span>
+                    )}
+                    {p.hasAddons && (
+                      <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none"
+                        style={{ background: GC.brown }}>+</span>
+                    )}
+                    <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center"
+                      style={{ background: GC.cream }}>
+                      {p.imageUrl ? (
+                        <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-[9px] font-bold" style={{ color: GC.brown, opacity: 0.35 }}>SEM IMAGEM</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: GC.dark }}>
+                      {p.name}
+                    </span>
+                    {p.promotionPriceCents != null ? (
+                      <span className="flex flex-col items-center leading-tight">
+                        <span className="text-[9px] line-through opacity-50" style={{ color: GC.brown }}>{brl(p.priceCents)}</span>
+                        <span className="text-[11px] font-black" style={{ color: "#059669" }}>{brl(p.promotionPriceCents)}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-black" style={{ color: GC.caramel }}>{brl(p.priceCents)}</span>
+                    )}
+                    {(p.internalCode || p.barcode) && (
+                      <span className="text-[10px] leading-tight text-center" style={{ color: GC.brown, opacity: 0.5 }}>
+                        {p.internalCode || p.barcode}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
-              <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: GC.dark }}>
-                {p.name}
-              </span>
-              {p.promotionPriceCents != null ? (
-                <span className="flex flex-col items-center leading-tight">
-                  <span className="text-[9px] line-through opacity-50" style={{ color: GC.brown }}>{brl(p.priceCents)}</span>
-                  <span className="text-[11px] font-black" style={{ color: "#059669" }}>{brl(p.promotionPriceCents)}</span>
-                </span>
-              ) : (
-                <span className="text-[11px] font-black" style={{ color: GC.caramel }}>{brl(p.priceCents)}</span>
-              )}
-              {(p.internalCode || p.barcode) && (
-                <span className="text-[10px] leading-tight text-center" style={{ color: GC.brown, opacity: 0.5 }}>
-                  {p.internalCode || p.barcode}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        )}
+            )}
+            </div>
           </div>
         </div>
       </div>
