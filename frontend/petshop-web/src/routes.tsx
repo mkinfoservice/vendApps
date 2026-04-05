@@ -135,7 +135,7 @@ export function AppRoutes() {
         <Route path="/app/produtos/:id" element={<AppPage><ProductForm /></AppPage>} />
 
         <Route path="/app/clientes" element={<AppPage><CustomersPage /></AppPage>} />
-        <Route path="/app/fidelidade" element={<AppPage roles={["admin","gerente"]}><LoyaltyConfigPage /></AppPage>} />
+        <Route path="/app/fidelidade" element={<AppPage roles={["admin","gerente"]} featureKey="loyalty_program"><LoyaltyConfigPage /></AppPage>} />
         <Route path="/app/promocoes" element={<AppPage roles={["admin","gerente"]}><PromotionsPage /></AppPage>} />
 
         {/* ── /app — Logística ────────────────────────────────────────── */}

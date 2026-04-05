@@ -209,9 +209,6 @@ public class LoyaltyService
         if (promotion.LoyaltyPointsCost is null || promotion.LoyaltyPointsCost <= 0)
             throw new InvalidOperationException("Beneficio nao configurado para resgate por pontos.");
 
-        if (string.IsNullOrWhiteSpace(promotion.CouponCode))
-            throw new InvalidOperationException("Beneficio sem cupom configurado.");
-
         var existing = await _db.LoyaltyTransactions
             .AsNoTracking()
             .Where(t => t.CompanyId == companyId &&
@@ -226,7 +223,7 @@ public class LoyaltyService
             return new RedeemPromotionResult(
                 promotion.Id,
                 promotion.Name,
-                promotion.CouponCode!,
+                promotion.CouponCode,
                 Math.Abs(existing.Points),
                 existing.BalanceAfter,
                 true);
@@ -274,7 +271,7 @@ public class LoyaltyService
         return new RedeemPromotionResult(
             promotion.Id,
             promotion.Name,
-            promotion.CouponCode!,
+            promotion.CouponCode,
             cost,
             customer.PointsBalance,
             false);
@@ -316,7 +313,7 @@ public class LoyaltyService
 public record RedeemPromotionResult(
     Guid PromotionId,
     string PromotionName,
-    string CouponCode,
+    string? CouponCode,
     int PointsSpent,
     int PointsBalance,
     bool IsIdempotentReplay);

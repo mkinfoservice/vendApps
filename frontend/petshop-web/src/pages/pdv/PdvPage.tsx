@@ -14,7 +14,7 @@ const GC = {
 import {
   createSale, scanBarcode, removeItem, paySale, cancelSale,
   closeSession, getSessionReport, addMovement, importDav, addItem,
-  evaluateSalePromotions, searchCustomerByPhone,
+  evaluateSalePromotions, searchCustomer,
   type Sale, type CupomData, type SessionReport, type PdvCustomer,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
@@ -611,7 +611,7 @@ interface PayPanelProps {
   appliedCoupon: { code: string; discountCents: number; promotionName: string } | null;
   onApplyCoupon: (couponCode: string) => Promise<void>;
   onRemoveCoupon: () => void;
-  onPay: (method: string, amountCents: number, customerDocument?: string) => void;
+  onPay: (method: string, amountCents: number, customerDocument?: string, customerCpfForLoyalty?: string) => void;
   onCancel: () => void;
   paying: boolean;
   defaultMethod?: string | null;
@@ -667,7 +667,8 @@ function PayPanel({
       return;
     }
     const customerDocument = docType === "none" ? undefined : digits;
-    onPay(pendingPayment.method, pendingPayment.amountCents, customerDocument);
+    const customerCpfForLoyalty = docType === "cpf" ? digits : undefined;
+    onPay(pendingPayment.method, pendingPayment.amountCents, customerDocument, customerCpfForLoyalty);
     closeDocPrompt();
   };
 
@@ -863,6 +864,11 @@ function PayPanel({
               className="w-full rounded-xl px-3 py-2.5 text-sm focus:outline-none"
               style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
             />
+          )}
+          {docType === "cpf" && (
+            <p className="text-[11px]" style={{ color: GC.brown, opacity: 0.75 }}>
+              Este CPF tambem confirma o acumulo de pontos de fidelidade para cliente identificado.
+            </p>
           )}
           {docError && <p className="text-xs text-red-500">{docError}</p>}
           <div className="flex gap-2">
@@ -1505,7 +1511,7 @@ function CustomerSearchModal({
     if (digits.length < 10) return;
     setLoading(true);
     try {
-      const found = await searchCustomerByPhone(digits);
+      const found = await searchCustomer(phone);
       setResult(found ?? "notfound");
     } finally {
       setLoading(false);
@@ -1527,7 +1533,7 @@ function CustomerSearchModal({
             autoFocus
             value={phone}
             onChange={(e) => setPhone(applyMask(e.target.value))}
-            placeholder="(DDD) Telefone"
+            placeholder="Telefone ou CPF"
             className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
             style={{ border: "1.5px solid rgba(107,79,58,0.2)", background: "#fff", color: "#1C1209" }}
           />
@@ -1539,7 +1545,7 @@ function CustomerSearchModal({
         </form>
 
         {result === "notfound" && (
-          <p className="text-sm text-red-500">Nenhum cliente encontrado para este telefone.</p>
+          <p className="text-sm text-red-500">Nenhum cliente encontrado para o termo informado.</p>
         )}
 
         {result && result !== "notfound" && (
@@ -1643,7 +1649,7 @@ export default function PdvPage() {
       const c = customer ?? pendingCustomer;
       const created = await createSale({
         cashSessionId: session.id,
-        ...(c ? { customerName: c.name, customerPhone: c.phone } : {}),
+        ...(c ? { customerId: c.id, customerName: c.name, customerPhone: c.phone ?? undefined } : {}),
       });
       await refreshSale(created.id);
     } catch (e: unknown) {
@@ -1764,7 +1770,7 @@ export default function PdvPage() {
     setAppliedCoupon(null);
   }
 
-  async function handlePay(method: string, amountCents: number, customerDocument?: string) {
+  async function handlePay(method: string, amountCents: number, customerDocument?: string, customerCpfForLoyalty?: string) {
     if (!sale) return;
     const discountCents = Math.max(sale.discountCents, appliedCoupon?.discountCents ?? 0);
     const totalToPayCents = Math.max(0, sale.subtotalCents - discountCents);
@@ -1781,6 +1787,7 @@ export default function PdvPage() {
         payments: [{ paymentMethod: method, amountCents }],
         discountCents,
         customerDocument,
+        customerCpfForLoyalty,
       });
       setShowPay(false);
       setDavPayMethod(null);
@@ -2147,5 +2154,6 @@ export default function PdvPage() {
     </div>
   );
 }
+
 
 

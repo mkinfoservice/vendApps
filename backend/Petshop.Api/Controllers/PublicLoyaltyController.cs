@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.DataProtection;
@@ -6,9 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
+using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.Promotions;
 using Petshop.Api.Services;
 using Petshop.Api.Services.Customers;
+using Petshop.Api.Services.Tenancy;
 
 namespace Petshop.Api.Controllers;
 
@@ -20,6 +22,7 @@ public class PublicLoyaltyController : ControllerBase
     private readonly TenantResolverService _tenantResolver;
     private readonly CpfProtectionService _cpfProtection;
     private readonly LoyaltyService _loyalty;
+    private readonly PlanFeatureService _features;
     private readonly IDataProtector _sessionProtector;
 
     public PublicLoyaltyController(
@@ -27,12 +30,14 @@ public class PublicLoyaltyController : ControllerBase
         TenantResolverService tenantResolver,
         CpfProtectionService cpfProtection,
         LoyaltyService loyalty,
+        PlanFeatureService features,
         IDataProtectionProvider dataProtectionProvider)
     {
         _db = db;
         _tenantResolver = tenantResolver;
         _cpfProtection = cpfProtection;
         _loyalty = loyalty;
+        _features = features;
         _sessionProtector = dataProtectionProvider.CreateProtector("public:loyalty:session:v1");
     }
 
@@ -43,19 +48,26 @@ public class PublicLoyaltyController : ControllerBase
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.Phone))
-            return BadRequest(new { error = "Telefone obrigatório." });
+            return BadRequest(new { error = "Telefone obrigatorio." });
 
         var cpf = CpfValidator.Normalize(req.Cpf);
         if (!CpfValidator.IsValid(cpf))
-            return BadRequest(new { error = "CPF inválido." });
+            return BadRequest(new { error = "CPF invalido." });
 
         var company = await ResolveCompanyAsync(req.Slug, ct);
         if (company is null)
-            return NotFound(new { error = "Empresa não encontrada." });
+            return NotFound(new { error = "Empresa nao encontrada." });
+
+        if (!await IsLoyaltyEnabledForCompanyAsync(company, ct))
+            return StatusCode(403, new { error = "Programa de fidelidade indisponivel para esta loja." });
+
+        var config = await _loyalty.GetOrCreateConfigAsync(company.Id, ct);
+        if (!config.IsEnabled)
+            return StatusCode(403, new { error = "Programa de fidelidade desativado no momento." });
 
         var phone = NormalizePhoneDigits(req.Phone);
         if (phone.Length < 10)
-            return BadRequest(new { error = "Telefone inválido." });
+            return BadRequest(new { error = "Telefone invalido." });
 
         var customer = await _db.Customers
             .AsNoTracking()
@@ -63,14 +75,14 @@ public class PublicLoyaltyController : ControllerBase
             .FirstOrDefaultAsync(ct);
 
         if (customer is null)
-            return NotFound(new { error = "Cliente não encontrado." });
+            return NotFound(new { error = "Cliente nao encontrado." });
 
         if (string.IsNullOrWhiteSpace(customer.CpfHash))
-            return Unauthorized(new { error = "Cliente não habilitado para fidelidade digital." });
+            return Unauthorized(new { error = "Cliente nao habilitado para fidelidade digital." });
 
         var cpfHash = _cpfProtection.Hash(cpf!);
         if (!string.Equals(customer.CpfHash, cpfHash, StringComparison.Ordinal))
-            return Unauthorized(new { error = "Dados de identificação inválidos." });
+            return Unauthorized(new { error = "Dados de identificacao invalidos." });
 
         var expiresAt = DateTime.UtcNow.AddMinutes(30);
         var payload = $"{company.Id:N}|{customer.Id:N}|{expiresAt.Ticks}";
@@ -96,28 +108,37 @@ public class PublicLoyaltyController : ControllerBase
         CancellationToken ct)
     {
         var session = ParseSession(sessionToken);
-        if (session is null) return Unauthorized(new { error = "Sessão inválida ou expirada." });
+        if (session is null) return Unauthorized(new { error = "Sessao invalida ou expirada." });
+
+        var company = await _db.Companies
+            .AsNoTracking()
+            .Where(c => c.Id == session.CompanyId && c.IsActive && !c.IsDeleted)
+            .FirstOrDefaultAsync(ct);
+        if (company is null) return Unauthorized(new { error = "Empresa nao encontrada." });
+
+        if (!await IsLoyaltyEnabledForCompanyAsync(company, ct))
+            return StatusCode(403, new { error = "Programa de fidelidade indisponivel para esta loja." });
 
         var customer = await _db.Customers
             .AsNoTracking()
             .Where(c => c.CompanyId == session.CompanyId && c.Id == session.CustomerId)
             .FirstOrDefaultAsync(ct);
-        if (customer is null) return Unauthorized(new { error = "Cliente não encontrado." });
+        if (customer is null) return Unauthorized(new { error = "Cliente nao encontrado." });
 
         var config = await _loyalty.GetOrCreateConfigAsync(session.CompanyId, ct);
+        if (!config.IsEnabled)
+            return StatusCode(403, new { error = "Programa de fidelidade desativado no momento." });
+
         var now = DateTime.UtcNow;
 
-        var rewardsQuery = _db.Promotions
+        var rewardsRaw = await _db.Promotions
             .AsNoTracking()
             .Where(p => p.CompanyId == session.CompanyId &&
                         p.IsActive &&
-                        p.CouponCode != null &&
                         p.LoyaltyPointsCost != null &&
                         p.LoyaltyPointsCost > 0 &&
                         (p.StartsAtUtc == null || p.StartsAtUtc <= now) &&
-                        (p.ExpiresAtUtc == null || p.ExpiresAtUtc >= now));
-
-        var rewardsRaw = await rewardsQuery
+                        (p.ExpiresAtUtc == null || p.ExpiresAtUtc >= now))
             .OrderBy(p => p.LoyaltyPointsCost)
             .ThenBy(p => p.Name)
             .Select(p => new
@@ -128,7 +149,10 @@ public class PublicLoyaltyController : ControllerBase
                 p.CouponCode,
                 p.LoyaltyPointsCost,
                 p.Scope,
-                p.TargetId
+                p.TargetId,
+                p.TargetName,
+                p.Type,
+                p.Value
             })
             .ToListAsync(ct);
 
@@ -138,15 +162,37 @@ public class PublicLoyaltyController : ControllerBase
             .Distinct()
             .ToList();
 
-        var imageMap = productTargetIds.Count == 0
-            ? new Dictionary<Guid, string?>()
+        var productMap = productTargetIds.Count == 0
+            ? new Dictionary<Guid, (string Name, int PriceCents, string? ImageUrl)>()
             : await _db.Products
                 .AsNoTracking()
                 .Where(p => p.CompanyId == session.CompanyId && productTargetIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.ImageUrl })
-                .ToDictionaryAsync(x => x.Id, x => x.ImageUrl, ct);
+                .Select(p => new { p.Id, p.Name, p.PriceCents, p.ImageUrl })
+                .ToDictionaryAsync(x => x.Id, x => (x.Name, x.PriceCents, x.ImageUrl), ct);
 
-        var redeemedPromotionIds = await _db.LoyaltyTransactions
+        List<(Guid ProductId, string Url)> productImageRows;
+        if (productTargetIds.Count == 0)
+        {
+            productImageRows = [];
+        }
+        else
+        {
+            var rows = await _db.ProductImages
+                .AsNoTracking()
+                .Where(i => productTargetIds.Contains(i.ProductId))
+                .OrderByDescending(i => i.IsPrimary)
+                .ThenBy(i => i.SortOrder)
+                .Select(i => new { i.ProductId, i.Url })
+                .ToListAsync(ct);
+
+            productImageRows = rows.Select(r => (r.ProductId, r.Url)).ToList();
+        }
+
+        var primaryImageMap = productImageRows
+            .GroupBy(i => i.ProductId)
+            .ToDictionary(g => g.Key, g => g.First().Url);
+
+        var redeemedDescriptions = await _db.LoyaltyTransactions
             .AsNoTracking()
             .Where(t => t.CompanyId == session.CompanyId &&
                         t.CustomerId == session.CustomerId &&
@@ -156,7 +202,7 @@ public class PublicLoyaltyController : ControllerBase
             .ToListAsync(ct);
 
         var redeemedSet = new HashSet<Guid>();
-        foreach (var description in redeemedPromotionIds)
+        foreach (var description in redeemedDescriptions)
         {
             var id = ExtractPromotionId(description);
             if (id.HasValue) redeemedSet.Add(id.Value);
@@ -178,22 +224,53 @@ public class PublicLoyaltyController : ControllerBase
             })
             .ToListAsync(ct);
 
-        var rewards = rewardsRaw.Select(r => new
+        var rewards = rewardsRaw.Select(r =>
         {
-            id = r.Id,
-            name = r.Name,
-            description = r.Description,
-            couponCode = r.CouponCode,
-            pointsCost = r.LoyaltyPointsCost,
-            imageUrl = r.Scope == PromotionScope.Product && r.TargetId.HasValue
-                ? imageMap.GetValueOrDefault(r.TargetId.Value)
-                : null,
-            isRedeemed = redeemedSet.Contains(r.Id),
-            isAvailable = customer.PointsBalance >= (r.LoyaltyPointsCost ?? int.MaxValue)
+            var hasProduct = false;
+            (string Name, int PriceCents, string? ImageUrl) product = default;
+            if (r.Scope == PromotionScope.Product && r.TargetId.HasValue)
+            {
+                hasProduct = productMap.TryGetValue(r.TargetId.Value, out product);
+            }
+            var imageUrl = hasProduct
+                ? (primaryImageMap.GetValueOrDefault(r.TargetId!.Value) ?? product.ImageUrl)
+                : null;
+
+            return new
+            {
+                id = r.Id,
+                name = r.Name,
+                description = r.Description,
+                couponCode = r.CouponCode,
+                pointsCost = r.LoyaltyPointsCost ?? 0,
+                imageUrl,
+                product = hasProduct
+                    ? new
+                    {
+                        id = r.TargetId!.Value,
+                        name = product.Name,
+                        priceCents = product.PriceCents
+                    }
+                    : null,
+                discount = new
+                {
+                    type = r.Type.ToString(),
+                    value = r.Value
+                },
+                targetName = r.TargetName,
+                isRedeemed = redeemedSet.Contains(r.Id),
+                isAvailable = customer.PointsBalance >= (r.LoyaltyPointsCost ?? int.MaxValue)
+            };
         });
 
         return Ok(new
         {
+            company = new
+            {
+                companyId = company.Id,
+                companyName = company.Name,
+                companySlug = company.Slug
+            },
             customer = new
             {
                 customerId = customer.Id,
@@ -220,8 +297,11 @@ public class PublicLoyaltyController : ControllerBase
         CancellationToken ct)
     {
         var session = ParseSession(sessionToken);
-        if (session is null) return Unauthorized(new { error = "Sessão inválida ou expirada." });
-        if (req.PromotionId == Guid.Empty) return BadRequest(new { error = "Benefício inválido." });
+        if (session is null) return Unauthorized(new { error = "Sessao invalida ou expirada." });
+        if (req.PromotionId == Guid.Empty) return BadRequest(new { error = "Beneficio invalido." });
+
+        if (!await IsLoyaltyEnabledForCompanyAsync(session.CompanyId, null, ct))
+            return StatusCode(403, new { error = "Programa de fidelidade indisponivel para esta loja." });
 
         var requestId = ParseOrCreateRequestId(req.IdempotencyKey);
         try
@@ -249,7 +329,7 @@ public class PublicLoyaltyController : ControllerBase
         }
     }
 
-    private async Task<Entities.Catalog.Company?> ResolveCompanyAsync(string? slugFromRequest, CancellationToken ct)
+    private async Task<Company?> ResolveCompanyAsync(string? slugFromRequest, CancellationToken ct)
     {
         var slug = slugFromRequest?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(slug))
@@ -262,6 +342,31 @@ public class PublicLoyaltyController : ControllerBase
             .AsNoTracking()
             .Where(c => c.Slug == slug && c.IsActive && !c.IsDeleted)
             .FirstOrDefaultAsync(ct);
+    }
+
+    private async Task<bool> IsLoyaltyEnabledForCompanyAsync(Company company, CancellationToken ct)
+        => await IsLoyaltyEnabledForCompanyAsync(company.Id, company.Plan, ct);
+
+    private async Task<bool> IsLoyaltyEnabledForCompanyAsync(Guid companyId, string? companyPlan, CancellationToken ct)
+    {
+        var effectivePlan = companyPlan;
+        if (effectivePlan is null)
+        {
+            effectivePlan = await _db.Companies
+                .AsNoTracking()
+                .Where(c => c.Id == companyId)
+                .Select(c => c.Plan)
+                .FirstOrDefaultAsync(ct);
+        }
+
+        var company = new Company
+        {
+            Id = companyId,
+            Plan = effectivePlan ?? "trial"
+        };
+
+        var features = await _features.ResolveFeaturesAsync(company, ct);
+        return features.GetValueOrDefault(AppFeatureKeys.LoyaltyProgram, true);
     }
 
     private LoyaltySessionPayload? ParseSession(string? token)

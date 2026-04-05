@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
@@ -17,7 +17,7 @@ using System.Security.Claims;
 namespace Petshop.Api.Controllers;
 
 /// <summary>
-/// PDV — sessão de caixa e ciclo de venda.
+/// PDV â€” sessÃ£o de caixa e ciclo de venda.
 /// Todos os endpoints exigem JWT de admin/gerente/atendente.
 /// </summary>
 [ApiController]
@@ -31,9 +31,10 @@ public class PdvController : ControllerBase
     private readonly IBackgroundJobClient        _jobs;
     private readonly StockService                _stock;
     private readonly LoyaltyService              _loyalty;
+    private readonly CpfProtectionService        _cpfProtection;
     private readonly ILogger<PdvController>      _logger;
 
-    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty, ILogger<PdvController> logger)
+    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty, CpfProtectionService cpfProtection, ILogger<PdvController> logger)
     {
         _db      = db;
         _scale   = scale;
@@ -41,6 +42,7 @@ public class PdvController : ControllerBase
         _jobs    = jobs;
         _stock   = stock;
         _loyalty = loyalty;
+        _cpfProtection = cpfProtection;
         _logger  = logger;
     }
 
@@ -59,12 +61,12 @@ public class PdvController : ControllerBase
     }
     private string UserName => User.FindFirstValue(ClaimTypes.Name) ?? "Operador";
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // SESSÃO DE CAIXA
-    // ══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // SESSÃƒO DE CAIXA
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ── GET /pdv/session/current ──────────────────────────────────────────────
-    /// <summary>Retorna a sessão aberta da empresa (uma por vez), ou null.</summary>
+    // â”€â”€ GET /pdv/session/current â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /// <summary>Retorna a sessÃ£o aberta da empresa (uma por vez), ou null.</summary>
     [HttpGet("session/current")]
     public async Task<IActionResult> GetCurrentSession(CancellationToken ct)
     {
@@ -80,7 +82,7 @@ public class PdvController : ControllerBase
         return Ok(MapSession(session));
     }
 
-    // ── POST /pdv/session/open ────────────────────────────────────────────────
+    // â”€â”€ POST /pdv/session/open â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("session/open")]
     public async Task<IActionResult> OpenSession(
         [FromBody] OpenSessionRequest req,
@@ -90,14 +92,14 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(r => r.Id == req.CashRegisterId &&
                                       r.CompanyId == CompanyId && r.IsActive, ct);
 
-        if (register is null) return BadRequest("Terminal não encontrado ou inativo.");
+        if (register is null) return BadRequest("Terminal nÃ£o encontrado ou inativo.");
 
         var existingOpen = await _db.CashSessions
             .AnyAsync(s => s.CashRegisterId == req.CashRegisterId &&
                            s.Status == CashSessionStatus.Open, ct);
 
         if (existingOpen)
-            return Conflict("Este terminal já possui uma sessão aberta.");
+            return Conflict("Este terminal jÃ¡ possui uma sessÃ£o aberta.");
 
         var session = new CashSession
         {
@@ -116,7 +118,7 @@ public class PdvController : ControllerBase
         return Ok(new { session.Id, session.OpenedAtUtc, RegisterName = register.Name });
     }
 
-    // ── POST /pdv/session/{sessionId}/close ───────────────────────────────────
+    // â”€â”€ POST /pdv/session/{sessionId}/close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("session/{sessionId:guid}/close")]
     public async Task<IActionResult> CloseSession(
         Guid sessionId,
@@ -129,9 +131,9 @@ public class PdvController : ControllerBase
                                       s.CompanyId == CompanyId &&
                                       s.Status == CashSessionStatus.Open, ct);
 
-        if (session is null) return NotFound("Sessão não encontrada ou já fechada.");
+        if (session is null) return NotFound("SessÃ£o nÃ£o encontrada ou jÃ¡ fechada.");
 
-        // Não permite fechar com vendas abertas
+        // NÃ£o permite fechar com vendas abertas
         var openSalesCount = session.Sales.Count(s => s.Status == SaleOrderStatus.Open);
         if (openSalesCount > 0)
             return Conflict($"Existem {openSalesCount} venda(s) em aberto. Finalize ou cancele antes de fechar o caixa.");
@@ -164,7 +166,7 @@ public class PdvController : ControllerBase
         });
     }
 
-    // ── GET /pdv/session/{sessionId}/report ───────────────────────────────────
+    // â”€â”€ GET /pdv/session/{sessionId}/report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpGet("session/{sessionId:guid}/report")]
     public async Task<IActionResult> SessionReport(Guid sessionId, CancellationToken ct)
     {
@@ -176,7 +178,7 @@ public class PdvController : ControllerBase
             .Include(s => s.Movements)
             .FirstOrDefaultAsync(s => s.Id == sessionId && s.CompanyId == CompanyId, ct);
 
-        if (session is null) return NotFound("Sessão não encontrada.");
+        if (session is null) return NotFound("SessÃ£o nÃ£o encontrada.");
 
         var completedSales = session.Sales.Where(s => s.Status == SaleOrderStatus.Completed).ToList();
 
@@ -224,13 +226,13 @@ public class PdvController : ControllerBase
         });
     }
 
-    // ── GET /pdv/session/{sessionId}/movements ────────────────────────────────
+    // â”€â”€ GET /pdv/session/{sessionId}/movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpGet("session/{sessionId:guid}/movements")]
     public async Task<IActionResult> ListMovements(Guid sessionId, CancellationToken ct)
     {
         var exists = await _db.CashSessions
             .AnyAsync(s => s.Id == sessionId && s.CompanyId == CompanyId, ct);
-        if (!exists) return NotFound("Sessão não encontrada.");
+        if (!exists) return NotFound("SessÃ£o nÃ£o encontrada.");
 
         var movements = await _db.CashMovements
             .AsNoTracking()
@@ -245,7 +247,7 @@ public class PdvController : ControllerBase
         return Ok(movements);
     }
 
-    // ── POST /pdv/session/{sessionId}/movements ───────────────────────────────
+    // â”€â”€ POST /pdv/session/{sessionId}/movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("session/{sessionId:guid}/movements")]
     public async Task<IActionResult> AddMovement(
         Guid sessionId,
@@ -256,7 +258,7 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(s => s.Id == sessionId &&
                                       s.CompanyId == CompanyId &&
                                       s.Status == CashSessionStatus.Open, ct);
-        if (session is null) return NotFound("Sessão não encontrada ou já fechada.");
+        if (session is null) return NotFound("SessÃ£o nÃ£o encontrada ou jÃ¡ fechada.");
 
         if (req.AmountCents <= 0) return BadRequest("Valor deve ser positivo.");
 
@@ -279,11 +281,11 @@ public class PdvController : ControllerBase
         });
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // VENDA
-    // ══════════════════════════════════════════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // ── POST /pdv/sale ────────────────────────────────────────────────────────
+    // â”€â”€ POST /pdv/sale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("sale")]
     public async Task<IActionResult> CreateSale(
         [FromBody] CreateSaleRequest req,
@@ -296,7 +298,18 @@ public class PdvController : ControllerBase
                                       s.Status == CashSessionStatus.Open, ct);
 
         if (session is null)
-            return BadRequest("Sessão não encontrada ou já fechada.");
+            return BadRequest("SessÃ£o nÃ£o encontrada ou jÃ¡ fechada.");
+
+        Entities.Customer? customer = null;
+        if (req.CustomerId.HasValue)
+        {
+            customer = await _db.Customers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == req.CustomerId.Value && c.CompanyId == CompanyId, ct);
+
+            if (customer is null)
+                return BadRequest("Cliente informado nao encontrado.");
+        }
 
         var sale = new SaleOrder
         {
@@ -304,8 +317,9 @@ public class PdvController : ControllerBase
             PublicId       = $"PDV-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(0, 999999):D6}",
             CashSessionId  = session.Id,
             CashRegisterId = session.CashRegisterId,
-            CustomerName   = req.CustomerName ?? "",
-            CustomerPhone  = req.CustomerPhone,
+            CustomerId     = customer?.Id,
+            CustomerName   = req.CustomerName ?? customer?.Name ?? "",
+            CustomerPhone  = req.CustomerPhone ?? customer?.Phone,
             Status         = SaleOrderStatus.Open
         };
 
@@ -320,7 +334,7 @@ public class PdvController : ControllerBase
                                           q.Status != SalesQuoteStatus.Cancelled, ct);
 
             if (dav is null)
-                return BadRequest("DAV não encontrado ou não pode ser importado.");
+                return BadRequest("DAV nÃ£o encontrado ou nÃ£o pode ser importado.");
 
             sale.SalesQuoteId  = dav.Id;
             sale.CustomerName  = string.IsNullOrWhiteSpace(req.CustomerName)
@@ -351,7 +365,7 @@ public class PdvController : ControllerBase
         return Ok(new { sale.Id, sale.PublicId });
     }
 
-    // ── GET /pdv/sale/{id} ────────────────────────────────────────────────────
+    // â”€â”€ GET /pdv/sale/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpGet("sale/{id:guid}")]
     public async Task<IActionResult> GetSale(Guid id, CancellationToken ct)
     {
@@ -361,13 +375,13 @@ public class PdvController : ControllerBase
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada.");
 
         return Ok(MapSale(sale));
     }
 
-    // ── GET /pdv/sales ────────────────────────────────────────────────────────
-    /// <summary>Lista todas as vendas PDV da empresa com paginação e filtros.</summary>
+    // â”€â”€ GET /pdv/sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /// <summary>Lista todas as vendas PDV da empresa com paginaÃ§Ã£o e filtros.</summary>
     [HttpGet("sales")]
     public async Task<IActionResult> ListSales(
         [FromQuery] int page = 1,
@@ -413,10 +427,10 @@ public class PdvController : ControllerBase
         return Ok(new { page, pageSize, total, items });
     }
 
-    // ── POST /pdv/sale/{id}/scan ──────────────────────────────────────────────
+    // â”€â”€ POST /pdv/sale/{id}/scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
-    /// Lê um código de barras: detecta balança automaticamente,
-    /// depois tenta lookup por EAN normal, e adiciona o item à venda.
+    /// LÃª um cÃ³digo de barras: detecta balanÃ§a automaticamente,
+    /// depois tenta lookup por EAN normal, e adiciona o item Ã  venda.
     /// </summary>
     [HttpPost("sale/{id:guid}/scan")]
     public async Task<IActionResult> ScanBarcode(
@@ -429,12 +443,12 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         if (string.IsNullOrWhiteSpace(req.Barcode))
-            return BadRequest("Barcode não informado.");
+            return BadRequest("Barcode nÃ£o informado.");
 
-        // ── 1. Tentar como balança ───────────────────────────
+        // â”€â”€ 1. Tentar como balanÃ§a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if (ScaleBarcodeParser.IsScaleBarcode(req.Barcode))
         {
             var scaleResult = await _scale.ParseAsync(req.Barcode, CompanyId, ct);
@@ -462,14 +476,14 @@ public class PdvController : ControllerBase
                             item.TotalCents, IsScaleBarcode = true });
         }
 
-        // ── 2. EAN convencional ──────────────────────────────
+        // â”€â”€ 2. EAN convencional â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         var product = await _db.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Barcode == req.Barcode &&
                                       p.CompanyId == CompanyId && p.IsActive && !p.IsSupply, ct);
 
         if (product is null)
-            return NotFound(new { error = "Produto não encontrado para este barcode.", Barcode = req.Barcode });
+            return NotFound(new { error = "Produto nÃ£o encontrado para este barcode.", Barcode = req.Barcode });
 
         var newItem = new SaleOrderItem
         {
@@ -489,7 +503,7 @@ public class PdvController : ControllerBase
                         newItem.TotalCents, IsScaleBarcode = false });
     }
 
-    // ── POST /pdv/sale/{id}/items ─────────────────────────────────────────────
+    // â”€â”€ POST /pdv/sale/{id}/items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("sale/{id:guid}/items")]
     public async Task<IActionResult> AddItem(
         Guid id,
@@ -501,13 +515,13 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         var product = await _db.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == req.ProductId && p.CompanyId == CompanyId && p.IsActive && !p.IsSupply, ct);
 
-        if (product is null) return BadRequest("Produto não encontrado.");
+        if (product is null) return BadRequest("Produto nÃ£o encontrado.");
 
         // Resolve addons selecionados
         var addons = new List<Petshop.Api.Entities.Catalog.ProductAddon>();
@@ -527,7 +541,7 @@ public class PdvController : ControllerBase
         if (product.IsSoldByWeight)
         {
             if (req.WeightKg is null or <= 0)
-                return BadRequest("WeightKg é obrigatório para produtos por peso.");
+                return BadRequest("WeightKg Ã© obrigatÃ³rio para produtos por peso.");
             total = (int)Math.Round(req.WeightKg.Value * unitPriceCents);
         }
         else
@@ -560,7 +574,7 @@ public class PdvController : ControllerBase
         return Ok(new { item.Id, item.TotalCents });
     }
 
-    // ── DELETE /pdv/sale/{id}/items/{itemId} ──────────────────────────────────
+    // â”€â”€ DELETE /pdv/sale/{id}/items/{itemId} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpDelete("sale/{id:guid}/items/{itemId:guid}")]
     public async Task<IActionResult> RemoveItem(Guid id, Guid itemId, CancellationToken ct)
     {
@@ -569,10 +583,10 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         var item = sale.Items.FirstOrDefault(i => i.Id == itemId);
-        if (item is null) return NotFound("Item não encontrado.");
+        if (item is null) return NotFound("Item nÃ£o encontrado.");
 
         sale.Items.Remove(item);
         RecalcSaleTotals(sale);
@@ -581,10 +595,10 @@ public class PdvController : ControllerBase
         return NoContent();
     }
 
-    // ── POST /pdv/sale/{id}/pay ───────────────────────────────────────────────
+    // â”€â”€ POST /pdv/sale/{id}/pay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
     /// Finaliza a venda com um ou mais pagamentos.
-    /// Calcula a decisão fiscal para cada pagamento e persiste.
+    /// Calcula a decisÃ£o fiscal para cada pagamento e persiste.
     /// </summary>
     [HttpPost("sale/{id:guid}/pay")]
     public async Task<IActionResult> Pay(
@@ -600,10 +614,10 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         if (!sale.Items.Any())
-            return BadRequest("Não é possível finalizar uma venda sem itens.");
+            return BadRequest("NÃ£o Ã© possÃ­vel finalizar uma venda sem itens.");
 
         if (req.Payments is null || !req.Payments.Any())
             return BadRequest("Informe ao menos uma forma de pagamento.");
@@ -615,9 +629,9 @@ public class PdvController : ControllerBase
 
         var totalPaid = req.Payments.Sum(p => p.AmountCents);
         if (totalPaid < totalCents)
-            return BadRequest($"Valor pago ({totalPaid}¢) é inferior ao total da venda ({totalCents}¢).");
+            return BadRequest($"Valor pago ({totalPaid}Â¢) Ã© inferior ao total da venda ({totalCents}Â¢).");
 
-        // Decisão fiscal
+        // DecisÃ£o fiscal
         var register = sale.CashSession.CashRegister;
         var fiscalSettings = new CashRegisterFiscalSettings
         {
@@ -632,9 +646,9 @@ public class PdvController : ControllerBase
         var finalNotes     = req.Notes ?? sale.Notes;
         var customerDocument = NormalizeCustomerDocument(req.CustomerDocument);
         if (!string.IsNullOrWhiteSpace(req.CustomerDocument) && customerDocument is null)
-            return BadRequest("Documento inválido. Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).");
+            return BadRequest("Documento invÃ¡lido. Informe um CPF (11 dÃ­gitos) ou CNPJ (14 dÃ­gitos).");
 
-        // Montar pagamentos com FK explícito (sem tocar na navigação do sale rastreado)
+        // Montar pagamentos com FK explÃ­cito (sem tocar na navigaÃ§Ã£o do sale rastreado)
         var saleId   = sale.Id;
         var payments = req.Payments.Select(p =>
         {
@@ -650,8 +664,8 @@ public class PdvController : ControllerBase
             };
         }).ToList();
 
-        // Transação explícita — DecrementOnSaleAsync usa ExecuteSqlAsync (sem EF tracking).
-        // SaleOrder também é atualizado via SQL direto para evitar DbUpdateConcurrencyException.
+        // TransaÃ§Ã£o explÃ­cita â€” DecrementOnSaleAsync usa ExecuteSqlAsync (sem EF tracking).
+        // SaleOrder tambÃ©m Ã© atualizado via SQL direto para evitar DbUpdateConcurrencyException.
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
 
         // Debita estoque via SQL direto (sem EF tracking, sem concurrency check)
@@ -676,14 +690,14 @@ public class PdvController : ControllerBase
             WHERE  "Id" = {saleId}
             """, ct);
 
-        // Desanexa o sale do tracker para o EF não gerar UPDATE duplicado
+        // Desanexa o sale do tracker para o EF nÃ£o gerar UPDATE duplicado
         _db.Entry(sale).State = EntityState.Detached;
 
-        // INSERT pagamentos com FK explícito
+        // INSERT pagamentos com FK explÃ­cito
         foreach (var payment in payments)
             _db.SalePayments.Add(payment);
 
-        // Enfileira emissão fiscal (exceto contingência permanente)
+        // Enfileira emissÃ£o fiscal (exceto contingÃªncia permanente)
         if (fiscalDecision != "PermanentContingency")
         {
             var priority = fiscalDecision == "AutoIssue"
@@ -703,20 +717,34 @@ public class PdvController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
-        // Dispara processamento assíncrono da fila fiscal
+        // Dispara processamento assÃ­ncrono da fila fiscal
         if (fiscalDecision != "PermanentContingency")
             _jobs.Enqueue<FiscalQueueProcessorJob>(j => j.ProcessAsync(CompanyId, CancellationToken.None));
 
-        // Acumula pontos de fidelidade (fire-and-forget — não bloqueia o PDV)
+        // Acumula pontos de fidelidade com confirmacao de CPF por hash.
         int earnedPoints = 0;
-        if (sale.CustomerId.HasValue)
+        var loyaltyCpf = CpfValidator.Normalize(req.CustomerCpfForLoyalty);
+        if (sale.CustomerId.HasValue && CpfValidator.IsValid(loyaltyCpf))
         {
-            try
+            var customerCpfHash = await _db.Customers
+                .AsNoTracking()
+                .Where(c => c.Id == sale.CustomerId.Value && c.CompanyId == CompanyId)
+                .Select(c => c.CpfHash)
+                .FirstOrDefaultAsync(ct);
+
+            var inputHash = _cpfProtection.Hash(loyaltyCpf!);
+            var isCpfConfirmed = !string.IsNullOrWhiteSpace(customerCpfHash) &&
+                                 string.Equals(customerCpfHash, inputHash, StringComparison.Ordinal);
+
+            if (isCpfConfirmed)
             {
-                earnedPoints = await _loyalty.EarnAsync(
-                    CompanyId, sale.CustomerId.Value, saleId, totalCents, ct);
+                try
+                {
+                    earnedPoints = await _loyalty.EarnAsync(
+                        CompanyId, sale.CustomerId.Value, saleId, totalCents, ct);
+                }
+                catch { /* fidelidade nao pode derrubar a venda */ }
             }
-            catch { /* fidelidade não pode derrubar a venda */ }
         }
 
         return Ok(new
@@ -730,11 +758,11 @@ public class PdvController : ControllerBase
         });
     }
 
-    // ── PATCH /pdv/sale/{id}/customer-phone ──────────────────────────────────
+    // â”€â”€ PATCH /pdv/sale/{id}/customer-phone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
-    /// Atualiza o telefone do cliente em uma venda já finalizada,
+    /// Atualiza o telefone do cliente em uma venda jÃ¡ finalizada,
     /// permitindo que o job fiscal envie o comprovante por WhatsApp.
-    /// Chamado pelo PDV após o modal pós-venda.
+    /// Chamado pelo PDV apÃ³s o modal pÃ³s-venda.
     /// </summary>
     [HttpPatch("sale/{id:guid}/customer-phone")]
     public async Task<IActionResult> UpdateCustomerPhone(
@@ -752,15 +780,15 @@ public class PdvController : ControllerBase
 
         if (affected == 0) return NotFound();
 
-        // Dispara envio do comprovante agora que o telefone está salvo.
-        // Idempotência no job impede duplo envio se fiscal já tiver disparado antes.
+        // Dispara envio do comprovante agora que o telefone estÃ¡ salvo.
+        // IdempotÃªncia no job impede duplo envio se fiscal jÃ¡ tiver disparado antes.
         _jobs.Enqueue<WhatsAppNotificationService>(
             s => s.NotifySaleCompletedAsync(id, CancellationToken.None));
 
         return NoContent();
     }
 
-    // ── POST /pdv/sale/{id}/cancel ────────────────────────────────────────────
+    // â”€â”€ POST /pdv/sale/{id}/cancel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpPost("sale/{id:guid}/cancel")]
     public async Task<IActionResult> CancelSale(Guid id, CancellationToken ct)
     {
@@ -768,7 +796,7 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         sale.Status        = SaleOrderStatus.Cancelled;
         sale.CancelledAtUtc = DateTime.UtcNow;
@@ -777,10 +805,10 @@ public class PdvController : ControllerBase
         return Ok(new { sale.Id, sale.Status });
     }
 
-    // ── POST /pdv/sale/{id}/import-dav ───────────────────────────────────────
+    // â”€â”€ POST /pdv/sale/{id}/import-dav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
     /// Importa itens de um DAV (por PublicId) para uma venda aberta.
-    /// O caixa escaneia o código de barras do orçamento impresso.
+    /// O caixa escaneia o cÃ³digo de barras do orÃ§amento impresso.
     /// Usa raw SQL para todos os UPDATEs (evita DbUpdateConcurrencyException).
     /// </summary>
     [HttpPost("sale/{id:guid}/import-dav")]
@@ -798,7 +826,7 @@ public class PdvController : ControllerBase
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
                                       o.Status == SaleOrderStatus.Open, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada ou já finalizada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada ou jÃ¡ finalizada.");
 
         var dav = await _db.SalesQuotes
             .AsNoTracking()
@@ -808,14 +836,14 @@ public class PdvController : ControllerBase
                                       q.Status != SalesQuoteStatus.Converted &&
                                       q.Status != SalesQuoteStatus.Cancelled, ct);
 
-        if (dav is null) return BadRequest("Orçamento não encontrado ou já utilizado.");
+        if (dav is null) return BadRequest("OrÃ§amento nÃ£o encontrado ou jÃ¡ utilizado.");
 
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
         try
         {
             int itemsAdded = 0;
 
-            // Merge DAV items → sale (INSERT novos / UPDATE qty existentes — via SQL)
+            // Merge DAV items â†’ sale (INSERT novos / UPDATE qty existentes â€” via SQL)
             foreach (var davItem in dav.Items)
             {
                 var existing = sale.Items.FirstOrDefault(i =>
@@ -943,9 +971,9 @@ public class PdvController : ControllerBase
         }
     }
 
-    // ── GET /pdv/sale/{id}/cupom ──────────────────────────────────────────────
+    // â”€â”€ GET /pdv/sale/{id}/cupom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
-    /// Retorna os dados do cupom em JSON para renderização no frontend.
+    /// Retorna os dados do cupom em JSON para renderizaÃ§Ã£o no frontend.
     /// O frontend imprime via window.print() com CSS 80mm.
     /// </summary>
     [HttpGet("sale/{id:guid}/cupom")]
@@ -959,7 +987,7 @@ public class PdvController : ControllerBase
                 .ThenInclude(s => s.CashRegister)
             .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
 
-        if (sale is null) return NotFound("Venda não encontrada.");
+        if (sale is null) return NotFound("Venda nÃ£o encontrada.");
 
         var company = await _db.Companies
             .AsNoTracking()
@@ -1001,14 +1029,14 @@ public class PdvController : ControllerBase
         });
     }
 
-    // ── GET /pdv/session/{sessionId}/sales ────────────────────────────────────
+    // â”€â”€ GET /pdv/session/{sessionId}/sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     [HttpGet("session/{sessionId:guid}/sales")]
     public async Task<IActionResult> ListSessionSales(Guid sessionId, CancellationToken ct)
     {
         var sessionExists = await _db.CashSessions
             .AnyAsync(s => s.Id == sessionId && s.CompanyId == CompanyId, ct);
 
-        if (!sessionExists) return NotFound("Sessão não encontrada.");
+        if (!sessionExists) return NotFound("SessÃ£o nÃ£o encontrada.");
 
         var sales = await _db.SaleOrders
             .AsNoTracking()
@@ -1032,7 +1060,7 @@ public class PdvController : ControllerBase
         return Ok(sales);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private static void RecalcSaleTotals(SaleOrder sale)
     {
@@ -1040,9 +1068,9 @@ public class PdvController : ControllerBase
         sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
     }
 
-    // ── DELETE /pdv/sales/all ─────────────────────────────────────────────────
+    // â”€â”€ DELETE /pdv/sales/all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>
-    /// Apaga TODAS as vendas (SaleOrders), sessões de caixa e documentos fiscais
+    /// Apaga TODAS as vendas (SaleOrders), sessÃµes de caixa e documentos fiscais
     /// da empresa. Use apenas para ambiente de testes.
     /// Requer role "admin".
     /// </summary>
@@ -1182,7 +1210,7 @@ WHERE s.""Id"" = {saleId};", ct);
     };
 }
 
-// ── Requests ──────────────────────────────────────────────────────────────────
+// â”€â”€ Requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 public record OpenSessionRequest(
     Guid CashRegisterId,
@@ -1199,6 +1227,7 @@ public record CreateSaleRequest(
     Guid CashSessionId,
     string? CustomerName = null,
     string? CustomerPhone = null,
+    Guid? CustomerId = null,
     Guid? SalesQuoteId = null
 );
 
@@ -1209,7 +1238,7 @@ public record AddSaleItemRequest(
     decimal Qty = 1,
     decimal? WeightKg = null,
     List<Guid>? AddonIds = null,
-    /// <summary>Preço unitário com desconto/promoção calculado pelo frontend. Quando informado, substitui product.PriceCents.</summary>
+    /// <summary>PreÃ§o unitÃ¡rio com desconto/promoÃ§Ã£o calculado pelo frontend. Quando informado, substitui product.PriceCents.</summary>
     int? UnitPriceCentsOverride = null
 );
 
@@ -1220,7 +1249,8 @@ public record PaySaleRequest(
     int? DiscountCents = null,
     string? Notes = null,
     string? CustomerDocument = null,
-    string? CustomerPhone = null
+    string? CustomerPhone = null,
+    string? CustomerCpfForLoyalty = null
 );
 
 public record AddMovementRequest(
@@ -1232,3 +1262,7 @@ public record AddMovementRequest(
 public record ImportDavRequest(string QuoteCode);
 
 public record UpdateCustomerPhoneRequest(string CustomerPhone);
+
+
+
+

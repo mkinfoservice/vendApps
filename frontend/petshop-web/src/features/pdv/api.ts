@@ -5,18 +5,26 @@ import { adminFetch } from "@/features/admin/auth/adminFetch";
 export interface PdvCustomer {
   id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   cpf: string | null;
   pointsBalance: number;
 }
 
-export async function searchCustomerByPhone(phone: string): Promise<PdvCustomer | null> {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 10) return null;
+export async function searchCustomer(query: string): Promise<PdvCustomer | null> {
+  const normalized = query.trim();
+  const digits = normalized.replace(/\D/g, "");
+  if (!normalized || digits.length < 10) return null;
   try {
-    return await adminFetch<PdvCustomer>(`/admin/customers/by-phone/${encodeURIComponent(digits)}`);
+    return await adminFetch<PdvCustomer>(`/admin/customers/lookup?q=${encodeURIComponent(normalized)}`);
   } catch {
-    return null;
+    try {
+      if (digits.length >= 10) {
+        return await adminFetch<PdvCustomer>(`/admin/customers/by-phone/${encodeURIComponent(digits)}`);
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -167,6 +175,7 @@ export async function createSale(payload: {
   cashSessionId: string;
   customerName?: string;
   customerPhone?: string;
+  customerId?: string;
   salesQuoteId?: string;
 }): Promise<{ id: string; publicId: string }> {
   return adminFetch("/pdv/sale", {
@@ -217,6 +226,7 @@ export async function paySale(
     notes?: string;
     customerDocument?: string;
     customerPhone?: string;
+    customerCpfForLoyalty?: string;
   }
 ): Promise<{ id: string; publicId: string; totalCents: number; fiscalDecision: string; changeCents: number }> {
   return adminFetch(`/pdv/sale/${saleId}/pay`, {

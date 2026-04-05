@@ -225,6 +225,7 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/fidelidade",
     group: "COMERCIAL",
     roles: ["admin", "gerente"],
+    featureKey: "loyalty_program",
     isActive: true,
   },
   {

@@ -11,6 +11,7 @@ public static class AppFeatureKeys
     public const string Tips = "tips";
     public const string DavMenu = "dav_menu";
     public const string FinancialMenu = "financial_menu";
+    public const string LoyaltyProgram = "loyalty_program";
     /// <summary>Exibe módulos de entrega própria (Rotas, Entregadores). false = entrega somente via marketplace.</summary>
     public const string OwnDelivery = "own_delivery";
 }
@@ -31,6 +32,7 @@ public class PlanFeatureService
         AppFeatureKeys.Tips,
         AppFeatureKeys.DavMenu,
         AppFeatureKeys.FinancialMenu,
+        AppFeatureKeys.LoyaltyProgram,
         AppFeatureKeys.OwnDelivery
     ];
 
@@ -60,6 +62,7 @@ public class PlanFeatureService
             [AppFeatureKeys.Tips] = IsPlanAtLeast(plan, "trial"),
             [AppFeatureKeys.DavMenu] = true,
             [AppFeatureKeys.FinancialMenu] = IsPlanAtLeast(plan, "trial"),
+            [AppFeatureKeys.LoyaltyProgram] = IsPlanAtLeast(plan, "trial"),
             [AppFeatureKeys.OwnDelivery] = true,
         };
     }

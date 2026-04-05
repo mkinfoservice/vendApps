@@ -28,11 +28,26 @@ export interface LoyaltyReward {
   couponCode: string | null;
   pointsCost: number;
   imageUrl: string | null;
+  product: {
+    id: string;
+    name: string;
+    priceCents: number;
+  } | null;
+  discount: {
+    type: "PercentDiscount" | "FixedAmount";
+    value: number;
+  };
+  targetName: string | null;
   isRedeemed: boolean;
   isAvailable: boolean;
 }
 
 export interface LoyaltyDashboard {
+  company: {
+    companyId: string;
+    companyName: string;
+    companySlug: string;
+  };
   customer: {
     customerId: string;
     name: string;
@@ -51,7 +66,7 @@ export interface LoyaltyDashboard {
 export interface RedeemRewardResponse {
   promotionId: string;
   promotionName: string;
-  couponCode: string;
+  couponCode: string | null;
   pointsSpent: number;
   pointsBalance: number;
   isReplay: boolean;
