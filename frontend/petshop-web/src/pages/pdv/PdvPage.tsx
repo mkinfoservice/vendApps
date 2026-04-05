@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
-// ── Design tokens (Go Coffee palette) ─────────────────────────────────────────
+// â”€â”€ Design tokens (Go Coffee palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const GC = {
   bg:      "#FAF7F2",
   cream:   "#F5EDE0",
@@ -384,7 +384,7 @@ const PAY_METHODS: PayMethod[] = [
   { method: "CARTAO_DEBITO",  label: "Debito",         color: GC.brown },
 ];
 
-// ── SaleCompleteModal ─────────────────────────────────────────────────────────
+// â”€â”€ SaleCompleteModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type SaleCompleteAction = "print" | "skip" | "whatsapp";
 
@@ -426,7 +426,7 @@ function SaleCompleteModal({
   async function handleWhatsApp(phoneOverride?: string) {
     const raw    = phoneOverride ?? phone;
     const digits = raw.replace(/\D/g, "");
-    if (digits.length < 10) { setPhoneErr("Informe um número válido com DDD."); return; }
+    if (digits.length < 10) { setPhoneErr("Informe um nÃºmero vÃ¡lido com DDD."); return; }
     setPhoneErr("");
     setWaStatus("saving");
     try {
@@ -444,7 +444,7 @@ function SaleCompleteModal({
   const CARDS: { key: SaleCompleteAction; icon: string; title: string; desc: string; accent: string; highlighted?: boolean }[] = [
     {
       key: "print",
-      icon: "🖨️",
+      icon: "ðŸ–¨ï¸",
       title: "Imprimir comprovante",
       desc: "Imprime o cupom fiscal na impressora configurada",
       accent: GC.caramel,
@@ -452,15 +452,15 @@ function SaleCompleteModal({
     },
     {
       key: "whatsapp",
-      icon: "📲",
+      icon: "ðŸ“²",
       title: "Receber no WhatsApp",
       desc: hasPhone ? `Enviar para ${maskPhone(initialPhone!)}` : "Informe o telefone para enviar o PDF",
       accent: "#16a34a",
     },
     {
       key: "skip",
-      icon: "✕",
-      title: "Não imprimir",
+      icon: "âœ•",
+      title: "NÃ£o imprimir",
       desc: "Fechar sem imprimir",
       accent: "#6b7280",
     },
@@ -477,9 +477,9 @@ function SaleCompleteModal({
           style={{ background: `linear-gradient(160deg, ${GC.dark} 0%, #2A1A0E 100%)` }}>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg"
             style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A07230)` }}>
-            ✓
+            âœ“
           </div>
-          <p className="text-lg font-black text-white tracking-tight">Venda concluída!</p>
+          <p className="text-lg font-black text-white tracking-tight">Venda concluÃ­da!</p>
           <p className="text-xs mt-0.5" style={{ color: "rgba(245,237,224,0.6)" }}>#{publicId}</p>
           <p className="text-3xl font-black mt-2" style={{ color: GC.caramel }}>{brl(totalCents)}</p>
           {changeCents > 0 && (
@@ -506,7 +506,7 @@ function SaleCompleteModal({
                   onClick={() => {
                     if (card.key === "print")     { handlePrint(); return; }
                     if (card.key === "skip")      { onClose(); return; }
-                    // WhatsApp: se já tem telefone, dispara direto; senão abre step
+                    // WhatsApp: se jÃ¡ tem telefone, dispara direto; senÃ£o abre step
                     if (hasPhone) { handleWhatsApp(initialPhone!); return; }
                     setChosen("whatsapp");
                   }}
@@ -527,41 +527,41 @@ function SaleCompleteModal({
                     </span>
                   </span>
                   {card.highlighted && (
-                    <span className="text-xs font-black text-white/80 shrink-0">→</span>
+                    <span className="text-xs font-black text-white/80 shrink-0">â†’</span>
                   )}
                 </button>
               ))}
 
               {/* Inline sending feedback when dispatching directly */}
               {waStatus === "saving" && (
-                <p className="text-center text-xs" style={{ color: GC.brown }}>Registrando número…</p>
+                <p className="text-center text-xs" style={{ color: GC.brown }}>Registrando nÃºmeroâ€¦</p>
               )}
               {waStatus === "ok" && (
                 <div className="rounded-2xl p-3 text-center" style={{ background: "#dcfce7" }}>
-                  <p className="text-sm font-bold text-green-700">✓ PDF será enviado no WhatsApp!</p>
+                  <p className="text-sm font-bold text-green-700">âœ“ PDF serÃ¡ enviado no WhatsApp!</p>
                 </div>
               )}
             </>
           ) : (
-            /* WhatsApp step — só aparece quando não há telefone cadastrado */
+            /* WhatsApp step â€” sÃ³ aparece quando nÃ£o hÃ¡ telefone cadastrado */
             <div className="space-y-3">
               <button type="button" onClick={() => setChosen(null)}
                 className="flex items-center gap-1 text-xs font-medium transition hover:opacity-70"
                 style={{ color: GC.brown }}>
-                ← Voltar
+                â† Voltar
               </button>
 
               <p className="text-sm font-bold" style={{ color: GC.dark }}>
-                📲 Enviar NFC-e por WhatsApp
+                ðŸ“² Enviar NFC-e por WhatsApp
               </p>
               <p className="text-xs" style={{ color: GC.brown }}>
-                O comprovante em PDF será enviado após autorização da nota fiscal.
+                O comprovante em PDF serÃ¡ enviado apÃ³s autorizaÃ§Ã£o da nota fiscal.
               </p>
 
               {waStatus === "ok" ? (
                 <div className="rounded-2xl p-4 text-center" style={{ background: "#dcfce7" }}>
-                  <p className="text-sm font-bold text-green-700">✓ Número registrado!</p>
-                  <p className="text-xs text-green-600 mt-0.5">O PDF chegará no WhatsApp em instantes.</p>
+                  <p className="text-sm font-bold text-green-700">âœ“ NÃºmero registrado!</p>
+                  <p className="text-xs text-green-600 mt-0.5">O PDF chegarÃ¡ no WhatsApp em instantes.</p>
                 </div>
               ) : (
                 <>
@@ -589,7 +589,7 @@ function SaleCompleteModal({
                     className="w-full h-12 rounded-2xl text-white text-sm font-bold transition active:scale-[0.98] disabled:opacity-60"
                     style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 14px #16a34a44" }}
                   >
-                    {waStatus === "saving" ? "Salvando…" : "Confirmar envio"}
+                    {waStatus === "saving" ? "Salvandoâ€¦" : "Confirmar envio"}
                   </button>
                 </>
               )}
@@ -601,7 +601,7 @@ function SaleCompleteModal({
   );
 }
 
-// ── PayPanel ──────────────────────────────────────────────────────────────────
+// â”€â”€ PayPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface PayPanelProps {
   saleId: string;
@@ -615,6 +615,7 @@ interface PayPanelProps {
   onCancel: () => void;
   paying: boolean;
   defaultMethod?: string | null;
+  defaultAmountCents?: number | null;
 }
 
 function PayPanel({
@@ -629,6 +630,7 @@ function PayPanel({
   onCancel,
   paying,
   defaultMethod,
+  defaultAmountCents,
 }: PayPanelProps) {
   const [cash, setCash] = useState("");
   const [pendingPayment, setPendingPayment] = useState<{ method: string; amountCents: number } | null>(null);
@@ -679,7 +681,7 @@ function PayPanel({
     if (!saleId) return;
     const code = normalizeCoupon(couponInput.trim());
     if (code.length < 4) {
-      setCouponError("Use um código com ao menos 4 caracteres.");
+      setCouponError("Use um cÃ³digo com ao menos 4 caracteres.");
       return;
     }
 
@@ -689,13 +691,21 @@ function PayPanel({
       await onApplyCoupon(code);
       setCouponInput(code);
     } catch (e: unknown) {
-      setCouponError(e instanceof Error ? e.message : "Não foi possível aplicar o cupom.");
+      setCouponError(e instanceof Error ? e.message : "NÃ£o foi possÃ­vel aplicar o cupom.");
     } finally {
       setCouponLoading(false);
     }
   };
 
   const totalDiscountCents = Math.max(baseDiscountCents, appliedCoupon?.discountCents ?? 0);
+  const suggestedMethod = defaultMethod ?? null;
+  const suggestedAmountCents = defaultAmountCents ?? totalCents;
+
+  useEffect(() => {
+    if (suggestedMethod === "DINHEIRO" && suggestedAmountCents > 0) {
+      setCash((suggestedAmountCents / 100).toFixed(2));
+    }
+  }, [suggestedMethod, suggestedAmountCents]);
 
   return (
     <div className="space-y-4">
@@ -734,7 +744,7 @@ function PayPanel({
             <div className="min-w-0">
               <p className="text-xs font-black truncate">Cupom {appliedCoupon.code}</p>
               <p className="text-[11px] truncate opacity-75">
-                {appliedCoupon.promotionName} · -{brl(appliedCoupon.discountCents)}
+                {appliedCoupon.promotionName} Â· -{brl(appliedCoupon.discountCents)}
               </p>
             </div>
             <button
@@ -766,17 +776,27 @@ function PayPanel({
 
       <p className="text-center text-2xl font-black" style={{ color: GC.dark }}>{brl(totalCents)}</p>
 
-      {defaultMethod && (
+      {suggestedMethod && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
           style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
-          <span className="opacity-70">Sugestão do atendimento:</span>
-          <span className="font-black">{PAY_METHODS.find((p) => p.method === defaultMethod)?.label ?? defaultMethod}</span>
+          <span className="opacity-70">SugestÃ£o do atendimento:</span>
+          <span className="font-black">{PAY_METHODS.find((p) => p.method === suggestedMethod)?.label ?? suggestedMethod}</span>
         </div>
+      )}
+
+      {suggestedMethod && suggestedAmountCents > 0 && (
+        <button
+          disabled={paying}
+          onClick={() => openDocPrompt(suggestedMethod, suggestedAmountCents)}
+          className="w-full py-2.5 rounded-xl text-white text-sm font-black transition hover:opacity-90 disabled:opacity-50"
+          style={{ background: "linear-gradient(135deg, #047857, #065f46)" }}>
+          Confirmar pagamento sugerido {suggestedMethod === "DINHEIRO" ? `(recebido ${brl(suggestedAmountCents)})` : ""}
+        </button>
       )}
 
       <div className="grid grid-cols-2 gap-3">
         {PAY_METHODS.map((pm) => {
-          const isSuggested = defaultMethod === pm.method;
+          const isSuggested = suggestedMethod === pm.method;
           return (
             <button
               key={pm.method}
@@ -788,7 +808,7 @@ function PayPanel({
               {isSuggested && (
                 <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-black bg-white rounded-full px-2 py-0.5 leading-none"
                   style={{ color: pm.color }}>
-                  ✓ sugerido
+                  âœ“ sugerido
                 </span>
               )}
               {pm.label}
@@ -929,7 +949,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
               <div>
                 <p className="text-sm font-bold" style={{ color: GC.caramel }}>{d.publicId}</p>
                 <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>
-                  {d.customerName || "-"} · {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}
+                  {d.customerName || "-"} Â· {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}
                 </p>
               </div>
               <p className="text-sm font-black" style={{ color: GC.dark }}>{fmt(d.totalCents)}</p>
@@ -1043,7 +1063,7 @@ function AddonModal({
                       borderColor: selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.3)",
                       background: selected.has(a.id) ? GC.caramel : "transparent",
                     }}>
-                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">✓</span>}
+                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">âœ“</span>}
                   </div>
                   <span className="flex-1 text-sm font-medium" style={{ color: GC.dark }}>{a.name}</span>
                   <span className="text-sm font-bold" style={{ color: GC.caramel }}>+{brl(a.priceCents)}</span>
@@ -1328,7 +1348,7 @@ function CartTable({
               <td className="px-4 py-2.5 font-medium align-top" style={{ color: GC.dark }}>
                 <span className="block break-words leading-tight">{item.productNameSnapshot}</span>
                 <span className="sm:hidden text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>
-                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
+                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} Â· {brl(item.unitPriceCentsSnapshot)}
                 </span>
                 {item.addons && item.addons.length > 0 && (
                   <span className="block mt-0.5 text-[11px]" style={{ color: GC.caramel }}>
@@ -1358,10 +1378,10 @@ function CartTable({
   );
 }
 
-// ── Nav Drawer ─────────────────────────────────────────────────────────────────
+// â”€â”€ Nav Drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const NAV_ITEMS = [
-  { icon: LayoutGrid,  label: "Central",    desc: "Visão geral da operação",    route: "/app"             },
+  { icon: LayoutGrid,  label: "Central",    desc: "VisÃ£o geral da operaÃ§Ã£o",    route: "/app"             },
   { icon: ShoppingBag, label: "Pedidos",    desc: "Todos os pedidos em aberto", route: "/app/pedidos"     },
   { icon: Coffee,      label: "Mesas",      desc: "QR Code e comandas",         route: "/app/mesas"       },
   { icon: Headphones,  label: "Atendimento",desc: "Pedidos por telefone",       route: "/app/atendimento" },
@@ -1399,7 +1419,7 @@ function NavDrawer({ onClose }: { onClose: () => void }) {
               PDV
             </span>
             <span className="text-xs ml-2" style={{ color: "rgba(255,255,255,0.45)" }}>
-              Navegação
+              NavegaÃ§Ã£o
             </span>
           </div>
           <button
@@ -1459,7 +1479,7 @@ function NavDrawer({ onClose }: { onClose: () => void }) {
 
 //
 
-// ── CustomerSearchModal ───────────────────────────────────────────────────────
+// â”€â”€ CustomerSearchModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CustomerSearchModal({
   onSelect, onSkip, onClose,
 }: {
@@ -1499,7 +1519,7 @@ function CustomerSearchModal({
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <p className="font-bold text-base" style={{ color: "#1C1209" }}>Identificar Cliente</p>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">âœ•</button>
         </div>
 
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -1544,7 +1564,7 @@ function CustomerSearchModal({
           onClick={onSkip}
           className="w-full py-2 rounded-xl text-sm transition hover:bg-black/5"
           style={{ color: "#6B4F3A" }}>
-          Pular identificação
+          Pular identificaÃ§Ã£o
         </button>
       </div>
     </div>
@@ -1574,6 +1594,7 @@ export default function PdvPage() {
   const [movementType, setMovementType]     = useState<"Sangria" | "Suprimento" | null>(null);
   const [navOpen, setNavOpen]               = useState(false);
   const [davPayMethod, setDavPayMethod]     = useState<string | null>(null);
+  const [davSuggestedAmountCents, setDavSuggestedAmountCents] = useState<number | null>(null);
   const [appliedCoupon, setAppliedCoupon]   = useState<{
     code: string;
     discountCents: number;
@@ -1617,6 +1638,8 @@ export default function PdvPage() {
   async function handleNewSale(customer?: PdvCustomer | null) {
     if (!session) return;
     try {
+      setDavPayMethod(null);
+      setDavSuggestedAmountCents(null);
       const c = customer ?? pendingCustomer;
       const created = await createSale({
         cashSessionId: session.id,
@@ -1660,6 +1683,7 @@ export default function PdvPage() {
       const res = await importDav(sale.id, code);
       await refreshSale(sale.id);
       if (res.paymentMethod) setDavPayMethod(mapDavPayMethod(res.paymentMethod));
+      if (res.suggestedAmountCents > 0) setDavSuggestedAmountCents(res.suggestedAmountCents);
       flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
       setDavCode("");
     } catch (e: unknown) {
@@ -1681,6 +1705,7 @@ export default function PdvPage() {
         const res = await importDav(sale.id, code);
         await refreshSale(sale.id);
         if (res.paymentMethod) setDavPayMethod(mapDavPayMethod(res.paymentMethod));
+        if (res.suggestedAmountCents > 0) setDavSuggestedAmountCents(res.suggestedAmountCents);
         flash(`DAV ${res.publicId} importado (${res.itemsAdded} item${res.itemsAdded !== 1 ? "s" : ""})`, true);
         setDavCode("");
       } catch (e: unknown) {
@@ -1721,7 +1746,7 @@ export default function PdvPage() {
       (r) => (r.couponCode ?? "").toUpperCase() === normalized
     );
     if (couponResults.length === 0) {
-      throw new Error("Cupom inválido, expirado ou não aplicável aos itens da venda.");
+      throw new Error("Cupom invÃ¡lido, expirado ou nÃ£o aplicÃ¡vel aos itens da venda.");
     }
 
     const best = couponResults.sort((a, b) => b.discountCents - a.discountCents)[0];
@@ -1759,6 +1784,7 @@ export default function PdvPage() {
       });
       setShowPay(false);
       setDavPayMethod(null);
+      setDavSuggestedAmountCents(null);
       setAppliedCoupon(null);
       setSaleComplete({
         saleId,
@@ -1846,7 +1872,7 @@ export default function PdvPage() {
           <span className="font-black text-base tracking-tight" style={{ color: GC.caramel }}>PDV</span>
           <span className="text-sm ml-2 font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>{session.registerName}</span>
           <span className="hidden sm:inline text-xs ml-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-            · {session.openedByUserName}
+            Â· {session.openedByUserName}
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
@@ -1937,6 +1963,8 @@ export default function PdvPage() {
               onPay={handlePay}
               onCancel={handleCancelSale}
               paying={paying}
+              defaultMethod={davPayMethod}
+              defaultAmountCents={davSuggestedAmountCents}
             />
           </div>
         </div>
@@ -1949,7 +1977,7 @@ export default function PdvPage() {
           {pendingCustomer && (
             <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
               style={{ background: "rgba(107,79,58,0.08)", border: `1px solid rgba(107,79,58,0.15)` }}>
-              <span className="text-lg">👤</span>
+              <span className="text-lg">ðŸ‘¤</span>
               <span className="flex-1 font-medium truncate" style={{ color: GC.dark }}>
                 {pendingCustomer.name}
                 {pendingCustomer.pointsBalance > 0 && (
@@ -1991,7 +2019,7 @@ export default function PdvPage() {
               className="px-3 py-2.5 rounded-xl text-sm font-bold transition active:scale-95"
               style={{ background: "rgba(107,79,58,0.1)", color: GC.brown }}
             >
-              👤
+              ðŸ‘¤
             </button>
           </form>
 
@@ -2102,6 +2130,7 @@ export default function PdvPage() {
                 onCancel={handleCancelSale}
                 paying={paying}
                 defaultMethod={davPayMethod}
+                defaultAmountCents={davSuggestedAmountCents}
               />
             )}
             {currentSale?.publicId && (
@@ -2118,3 +2147,4 @@ export default function PdvPage() {
     </div>
   );
 }
+

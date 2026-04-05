@@ -906,12 +906,27 @@ public class PdvController : ControllerBase
                 .Select(o => new { o.Id, o.SubtotalCents, o.TotalCents })
                 .FirstOrDefaultAsync(o => o.Id == id, ct);
 
+            var suggestedAmountCents = updated?.TotalCents ?? 0;
+            var davMethodUpper = (dav.PaymentMethod ?? "").Trim().ToUpperInvariant();
+            if ((davMethodUpper == "CASH" || davMethodUpper == "DINHEIRO") && dav.OriginOrderId.HasValue)
+            {
+                var sourceOrderCash = await _db.Orders
+                    .AsNoTracking()
+                    .Where(o => o.CompanyId == CompanyId && o.Id == dav.OriginOrderId.Value)
+                    .Select(o => o.CashGivenCents)
+                    .FirstOrDefaultAsync(ct);
+
+                if (sourceOrderCash.HasValue && sourceOrderCash.Value > 0)
+                    suggestedAmountCents = sourceOrderCash.Value;
+            }
+
             return Ok(new
             {
                 sale.Id,
                 ItemsAdded    = itemsAdded,
                 dav.PublicId,
                 dav.PaymentMethod,
+                SuggestedAmountCents = suggestedAmountCents,
                 SubtotalCents = updated?.SubtotalCents ?? 0,
                 TotalCents    = updated?.TotalCents ?? 0,
             });
