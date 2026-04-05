@@ -97,12 +97,16 @@ public class AdminProductsController : ControllerBase
             int? promoPriceCents = null;
             foreach (var promo in promos)
             {
+                // Promoções "Toda a compra" se aplicam ao total do carrinho — não ao preço
+                // individual do produto. Promoções com código de cupom exigem entrada manual.
+                if (promo.Scope == PromotionScope.All) continue;
+                if (!string.IsNullOrWhiteSpace(promo.CouponCode)) continue;
+
                 bool applies = promo.Scope switch
                 {
                     PromotionScope.Product  => promo.TargetId == p.Id,
                     PromotionScope.Category => promo.TargetId == p.CategoryId,
                     PromotionScope.Brand    => p.BrandId.HasValue && promo.TargetId == p.BrandId,
-                    PromotionScope.All      => true,
                     _                       => false,
                 };
                 if (!applies) continue;
