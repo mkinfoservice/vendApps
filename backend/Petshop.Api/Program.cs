@@ -574,7 +574,7 @@ using (var scope = app.Services.CreateScope())
             "CanceledAmount" numeric(18,2) NOT NULL DEFAULT 0,
             "NetAmount" numeric(18,2) NOT NULL DEFAULT 0,
             "AverageTicket" numeric(18,2) NOT NULL DEFAULT 0,
-            "PaymentBreakdownJson" text NOT NULL DEFAULT '{}',
+            "PaymentBreakdownJson" text NOT NULL DEFAULT '{{}}',
             "ErrorCode" character varying(100),
             "ErrorMessage" character varying(2000),
             "StartedAtUtc" timestamp with time zone NOT NULL DEFAULT now(),
