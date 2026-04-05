@@ -862,6 +862,10 @@ public class PdvController : ControllerBase
                     "CustomerName"  = CASE WHEN s."CustomerName" = '' OR s."CustomerName" IS NULL
                                           THEN {dav.CustomerName ?? ""}
                                           ELSE s."CustomerName"
+                                     END,
+                    "CustomerPhone" = CASE WHEN s."CustomerPhone" = '' OR s."CustomerPhone" IS NULL
+                                          THEN {dav.CustomerPhone}
+                                          ELSE s."CustomerPhone"
                                      END
                 FROM (
                     SELECT "SaleOrderId", SUM("TotalCents")::int AS "Subtotal"

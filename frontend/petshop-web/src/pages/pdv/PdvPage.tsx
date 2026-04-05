@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight } from "lucide-react";
+import { Search, X, Menu, LayoutGrid, ShoppingBag, Coffee, Headphones, ChevronRight, Printer, Smartphone, Ban, CheckCircle2, ArrowRight, User } from "lucide-react";
 import { usePdv } from "@/features/pdv/PdvContext";
 
 // â”€â”€ Design tokens (Go Coffee palette) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -426,7 +426,7 @@ function SaleCompleteModal({
   async function handleWhatsApp(phoneOverride?: string) {
     const raw    = phoneOverride ?? phone;
     const digits = raw.replace(/\D/g, "");
-    if (digits.length < 10) { setPhoneErr("Informe um nÃºmero vÃ¡lido com DDD."); return; }
+    if (digits.length < 10) { setPhoneErr("Informe um numero valido com DDD."); return; }
     setPhoneErr("");
     setWaStatus("saving");
     try {
@@ -441,10 +441,10 @@ function SaleCompleteModal({
     }
   }
 
-  const CARDS: { key: SaleCompleteAction; icon: string; title: string; desc: string; accent: string; highlighted?: boolean }[] = [
+  const CARDS: { key: SaleCompleteAction; icon: ReactNode; title: string; desc: string; accent: string; highlighted?: boolean }[] = [
     {
       key: "print",
-      icon: "ðŸ–¨ï¸",
+      icon: <Printer size={22} />,
       title: "Imprimir comprovante",
       desc: "Imprime o cupom fiscal na impressora configurada",
       accent: GC.caramel,
@@ -452,15 +452,15 @@ function SaleCompleteModal({
     },
     {
       key: "whatsapp",
-      icon: "ðŸ“²",
+      icon: <Smartphone size={22} />,
       title: "Receber no WhatsApp",
       desc: hasPhone ? `Enviar para ${maskPhone(initialPhone!)}` : "Informe o telefone para enviar o PDF",
       accent: "#16a34a",
     },
     {
       key: "skip",
-      icon: "âœ•",
-      title: "NÃ£o imprimir",
+      icon: <Ban size={22} />,
+      title: "Nao imprimir",
       desc: "Fechar sem imprimir",
       accent: "#6b7280",
     },
@@ -475,11 +475,11 @@ function SaleCompleteModal({
         {/* Header */}
         <div className="px-6 pt-6 pb-4 text-center"
           style={{ background: `linear-gradient(160deg, ${GC.dark} 0%, #2A1A0E 100%)` }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg"
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg"
             style={{ background: `linear-gradient(135deg, ${GC.caramel}, #A07230)` }}>
-            âœ“
+            <CheckCircle2 size={28} className="text-[#1C1209]" />
           </div>
-          <p className="text-lg font-black text-white tracking-tight">Venda concluÃ­da!</p>
+          <p className="text-lg font-black text-white tracking-tight">Venda concluida!</p>
           <p className="text-xs mt-0.5" style={{ color: "rgba(245,237,224,0.6)" }}>#{publicId}</p>
           <p className="text-3xl font-black mt-2" style={{ color: GC.caramel }}>{brl(totalCents)}</p>
           {changeCents > 0 && (
@@ -506,7 +506,7 @@ function SaleCompleteModal({
                   onClick={() => {
                     if (card.key === "print")     { handlePrint(); return; }
                     if (card.key === "skip")      { onClose(); return; }
-                    // WhatsApp: se jÃ¡ tem telefone, dispara direto; senÃ£o abre step
+                    // WhatsApp: se ja tem telefone, dispara direto; senao abre step
                     if (hasPhone) { handleWhatsApp(initialPhone!); return; }
                     setChosen("whatsapp");
                   }}
@@ -527,41 +527,41 @@ function SaleCompleteModal({
                     </span>
                   </span>
                   {card.highlighted && (
-                    <span className="text-xs font-black text-white/80 shrink-0">â†’</span>
+                    <span className="text-xs font-black text-white/80 shrink-0"><ArrowRight size={14} /></span>
                   )}
                 </button>
               ))}
 
               {/* Inline sending feedback when dispatching directly */}
               {waStatus === "saving" && (
-                <p className="text-center text-xs" style={{ color: GC.brown }}>Registrando nÃºmeroâ€¦</p>
+                <p className="text-center text-xs" style={{ color: GC.brown }}>Registrando numero...</p>
               )}
               {waStatus === "ok" && (
                 <div className="rounded-2xl p-3 text-center" style={{ background: "#dcfce7" }}>
-                  <p className="text-sm font-bold text-green-700">âœ“ PDF serÃ¡ enviado no WhatsApp!</p>
+                  <p className="text-sm font-bold text-green-700">PDF sera enviado no WhatsApp!</p>
                 </div>
               )}
             </>
           ) : (
-            /* WhatsApp step â€” sÃ³ aparece quando nÃ£o hÃ¡ telefone cadastrado */
+            /* WhatsApp step - so aparece quando nao ha telefone cadastrado */
             <div className="space-y-3">
               <button type="button" onClick={() => setChosen(null)}
                 className="flex items-center gap-1 text-xs font-medium transition hover:opacity-70"
                 style={{ color: GC.brown }}>
-                â† Voltar
+                Voltar
               </button>
 
               <p className="text-sm font-bold" style={{ color: GC.dark }}>
-                ðŸ“² Enviar NFC-e por WhatsApp
+                Enviar NFC-e por WhatsApp
               </p>
               <p className="text-xs" style={{ color: GC.brown }}>
-                O comprovante em PDF serÃ¡ enviado apÃ³s autorizaÃ§Ã£o da nota fiscal.
+                O comprovante em PDF sera enviado apos autorizacao da nota fiscal.
               </p>
 
               {waStatus === "ok" ? (
                 <div className="rounded-2xl p-4 text-center" style={{ background: "#dcfce7" }}>
-                  <p className="text-sm font-bold text-green-700">âœ“ NÃºmero registrado!</p>
-                  <p className="text-xs text-green-600 mt-0.5">O PDF chegarÃ¡ no WhatsApp em instantes.</p>
+                  <p className="text-sm font-bold text-green-700">Numero registrado!</p>
+                  <p className="text-xs text-green-600 mt-0.5">O PDF chegara no WhatsApp em instantes.</p>
                 </div>
               ) : (
                 <>
@@ -582,15 +582,15 @@ function SaleCompleteModal({
                     {waStatus === "err" && <p className="text-xs text-red-500">Erro ao salvar. Tente novamente.</p>}
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={waStatus === "saving"}
-                    onClick={() => handleWhatsApp()}
+                    <button
+                      type="button"
+                      disabled={waStatus === "saving"}
+                      onClick={() => handleWhatsApp()}
                     className="w-full h-12 rounded-2xl text-white text-sm font-bold transition active:scale-[0.98] disabled:opacity-60"
                     style={{ background: "linear-gradient(135deg, #16a34a, #15803d)", boxShadow: "0 4px 14px #16a34a44" }}
-                  >
-                    {waStatus === "saving" ? "Salvandoâ€¦" : "Confirmar envio"}
-                  </button>
+                    >
+                      {waStatus === "saving" ? "Salvando..." : "Confirmar envio"}
+                    </button>
                 </>
               )}
             </div>
@@ -691,7 +691,7 @@ function PayPanel({
       await onApplyCoupon(code);
       setCouponInput(code);
     } catch (e: unknown) {
-      setCouponError(e instanceof Error ? e.message : "NÃ£o foi possÃ­vel aplicar o cupom.");
+      setCouponError(e instanceof Error ? e.message : "Nao foi possivel aplicar o cupom.");
     } finally {
       setCouponLoading(false);
     }
@@ -779,7 +779,7 @@ function PayPanel({
       {suggestedMethod && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
           style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
-          <span className="opacity-70">SugestÃ£o do atendimento:</span>
+          <span className="opacity-70">Sugestao do atendimento:</span>
           <span className="font-black">{PAY_METHODS.find((p) => p.method === suggestedMethod)?.label ?? suggestedMethod}</span>
         </div>
       )}
@@ -808,7 +808,7 @@ function PayPanel({
               {isSuggested && (
                 <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-black bg-white rounded-full px-2 py-0.5 leading-none"
                   style={{ color: pm.color }}>
-                  âœ“ sugerido
+                  sugerido
                 </span>
               )}
               {pm.label}
@@ -1063,7 +1063,7 @@ function AddonModal({
                       borderColor: selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.3)",
                       background: selected.has(a.id) ? GC.caramel : "transparent",
                     }}>
-                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">âœ“</span>}
+                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">OK</span>}
                   </div>
                   <span className="flex-1 text-sm font-medium" style={{ color: GC.dark }}>{a.name}</span>
                   <span className="text-sm font-bold" style={{ color: GC.caramel }}>+{brl(a.priceCents)}</span>
@@ -1519,7 +1519,7 @@ function CustomerSearchModal({
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <p className="font-bold text-base" style={{ color: "#1C1209" }}>Identificar Cliente</p>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">âœ•</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
         </div>
 
         <form onSubmit={handleSearch} className="flex gap-2">
@@ -1564,7 +1564,7 @@ function CustomerSearchModal({
           onClick={onSkip}
           className="w-full py-2 rounded-xl text-sm transition hover:bg-black/5"
           style={{ color: "#6B4F3A" }}>
-          Pular identificaÃ§Ã£o
+          Pular identificacao
         </button>
       </div>
     </div>
@@ -1977,7 +1977,7 @@ export default function PdvPage() {
           {pendingCustomer && (
             <div className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm"
               style={{ background: "rgba(107,79,58,0.08)", border: `1px solid rgba(107,79,58,0.15)` }}>
-              <span className="text-lg">ðŸ‘¤</span>
+              <span className="text-lg"><User size={16} /></span>
               <span className="flex-1 font-medium truncate" style={{ color: GC.dark }}>
                 {pendingCustomer.name}
                 {pendingCustomer.pointsBalance > 0 && (
@@ -2019,7 +2019,7 @@ export default function PdvPage() {
               className="px-3 py-2.5 rounded-xl text-sm font-bold transition active:scale-95"
               style={{ background: "rgba(107,79,58,0.1)", color: GC.brown }}
             >
-              ðŸ‘¤
+              <User size={15} />
             </button>
           </form>
 
@@ -2147,4 +2147,5 @@ export default function PdvPage() {
     </div>
   );
 }
+
 
