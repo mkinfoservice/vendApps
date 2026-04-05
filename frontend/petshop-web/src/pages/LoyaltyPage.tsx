@@ -121,7 +121,8 @@ export default function LoyaltyPage() {
   const [sessionToken, setSessionToken] = useState(() => sessionStorage.getItem(SESSION_KEY) ?? "");
   const [authError, setAuthError] = useState<string | null>(null);
   const [selectedReward, setSelectedReward] = useState<LoyaltyReward | null>(null);
-  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<{ message: string; couponCode: string | null } | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const sessionMut = useMutation({
     mutationFn: () => createLoyaltySession(phone, cpf, slug),
@@ -144,8 +145,11 @@ export default function LoyaltyPage() {
     mutationFn: (promotionId: string) => redeemLoyaltyReward(sessionToken, promotionId, crypto.randomUUID()),
     onSuccess: (res) => {
       setSelectedReward(null);
-      const codeInfo = res.couponCode ? " Cupom liberado para uso no checkout." : " Resgate confirmado para uso no caixa.";
-      setRedeemSuccess(`Resgate concluido!${codeInfo}`);
+      setCodeCopied(false);
+      setRedeemSuccess({
+        message: res.couponCode ? "Resgate concluido! Use o código abaixo no checkout." : "Resgate concluido! Apresente ao atendente no caixa.",
+        couponCode: res.couponCode ?? null,
+      });
       qc.invalidateQueries({ queryKey: ["public-loyalty-dashboard", sessionToken] });
     },
   });
@@ -258,9 +262,32 @@ export default function LoyaltyPage() {
         </section>
 
         {redeemSuccess && (
-          <div className="rounded-2xl border px-4 py-3 text-sm font-semibold flex items-center gap-2" style={{ background: "#effaf4", borderColor: "#b8e8cc", color: THEME.green }}>
-            <CheckCircle2 className="w-4 h-4" />
-            {redeemSuccess}
+          <div className="rounded-2xl border px-4 py-3 space-y-3" style={{ background: "#effaf4", borderColor: "#b8e8cc" }}>
+            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: THEME.green }}>
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              {redeemSuccess.message}
+            </div>
+            {redeemSuccess.couponCode && (
+              <div className="rounded-xl px-3 py-2 text-center space-y-2" style={{ background: "#fff", border: "1px solid #b8e8cc" }}>
+                <p className="text-2xl font-black tracking-widest font-mono" style={{ color: THEME.brown }}>
+                  {redeemSuccess.couponCode}
+                </p>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(redeemSuccess.couponCode!).catch(() => {});
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 2000);
+                  }}
+                  className="w-full py-2 rounded-lg text-sm font-bold transition"
+                  style={{
+                    background: codeCopied ? "#d1fae5" : THEME.caramel,
+                    color: codeCopied ? "#065f46" : "#fff",
+                  }}
+                >
+                  {codeCopied ? "✓ Copiado!" : "Copiar código"}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
