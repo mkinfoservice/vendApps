@@ -12,127 +12,74 @@ namespace Petshop.Api.Migrations
         {
             // ── SaleOrders: rastreabilidade de operador e terminal ───────────────
 
-            migrationBuilder.AddColumn<string>(
-                name: "CashRegisterNameSnapshot",
-                table: "SaleOrders",
-                type: "character varying(80)",
-                maxLength: 80,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "OperatorName",
-                table: "SaleOrders",
-                type: "character varying(100)",
-                maxLength: 100,
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "OperatorUserId",
-                table: "SaleOrders",
-                type: "uuid",
-                nullable: true);
+            migrationBuilder.Sql("""
+                ALTER TABLE "SaleOrders"
+                    ADD COLUMN IF NOT EXISTS "CashRegisterNameSnapshot" character varying(80),
+                    ADD COLUMN IF NOT EXISTS "OperatorUserId"           uuid,
+                    ADD COLUMN IF NOT EXISTS "OperatorName"             character varying(100);
+                """);
 
             // ── Orders: rastreabilidade de canal de origem ───────────────────────
 
-            migrationBuilder.AddColumn<string>(
-                name: "OriginChannel",
-                table: "Orders",
-                type: "character varying(30)",
-                maxLength: 30,
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "OriginSaleOrderId",
-                table: "Orders",
-                type: "uuid",
-                nullable: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Orders_CompanyId_OriginChannel",
-                table: "Orders",
-                columns: new[] { "CompanyId", "OriginChannel" });
-
-            // ── FiscalDocuments: índice para lookup por venda ────────────────────
-            // Permite JOIN eficiente FiscalDocuments → SaleOrders sem full-scan
-
-            migrationBuilder.CreateIndex(
-                name: "IX_FiscalDocuments_CompanyId_SaleOrderId",
-                table: "FiscalDocuments",
-                columns: new[] { "CompanyId", "SaleOrderId" });
+            migrationBuilder.Sql("""
+                ALTER TABLE "Orders"
+                    ADD COLUMN IF NOT EXISTS "OriginChannel"      character varying(30),
+                    ADD COLUMN IF NOT EXISTS "OriginSaleOrderId"  uuid;
+                """);
 
             // ── SalesQuotes: ciclo de vida e expiração ───────────────────────────
 
-            migrationBuilder.AddColumn<bool>(
-                name: "IsArchived",
-                table: "SalesQuotes",
-                type: "boolean",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql("""
+                ALTER TABLE "SalesQuotes"
+                    ADD COLUMN IF NOT EXISTS "IsArchived"    boolean NOT NULL DEFAULT false,
+                    ADD COLUMN IF NOT EXISTS "ArchivedAtUtc" timestamp with time zone,
+                    ADD COLUMN IF NOT EXISTS "ExpiresAtUtc"  timestamp with time zone;
+                """);
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ArchivedAtUtc",
-                table: "SalesQuotes",
-                type: "timestamp with time zone",
-                nullable: true);
+            // ── Índices de consulta (CREATE INDEX IF NOT EXISTS) ─────────────────
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "ExpiresAtUtc",
-                table: "SalesQuotes",
-                type: "timestamp with time zone",
-                nullable: true);
+            migrationBuilder.Sql("""
+                CREATE INDEX IF NOT EXISTS "IX_Orders_CompanyId_OriginChannel"
+                    ON "Orders" ("CompanyId", "OriginChannel");
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_SalesQuotes_CompanyId_IsArchived_Status",
-                table: "SalesQuotes",
-                columns: new[] { "CompanyId", "IsArchived", "Status" });
+            migrationBuilder.Sql("""
+                CREATE INDEX IF NOT EXISTS "IX_FiscalDocuments_CompanyId_SaleOrderId"
+                    ON "FiscalDocuments" ("CompanyId", "SaleOrderId");
+                """);
+
+            migrationBuilder.Sql("""
+                CREATE INDEX IF NOT EXISTS "IX_SalesQuotes_CompanyId_IsArchived_Status"
+                    ON "SalesQuotes" ("CompanyId", "IsArchived", "Status");
+                """);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_SalesQuotes_CompanyId_IsArchived_Status",
-                table: "SalesQuotes");
+            migrationBuilder.Sql("""DROP INDEX IF EXISTS "IX_SalesQuotes_CompanyId_IsArchived_Status";""");
+            migrationBuilder.Sql("""DROP INDEX IF EXISTS "IX_FiscalDocuments_CompanyId_SaleOrderId";""");
+            migrationBuilder.Sql("""DROP INDEX IF EXISTS "IX_Orders_CompanyId_OriginChannel";""");
 
-            migrationBuilder.DropColumn(
-                name: "IsArchived",
-                table: "SalesQuotes");
+            migrationBuilder.Sql("""
+                ALTER TABLE "SalesQuotes"
+                    DROP COLUMN IF EXISTS "ExpiresAtUtc",
+                    DROP COLUMN IF EXISTS "ArchivedAtUtc",
+                    DROP COLUMN IF EXISTS "IsArchived";
+                """);
 
-            migrationBuilder.DropColumn(
-                name: "ArchivedAtUtc",
-                table: "SalesQuotes");
+            migrationBuilder.Sql("""
+                ALTER TABLE "Orders"
+                    DROP COLUMN IF EXISTS "OriginSaleOrderId",
+                    DROP COLUMN IF EXISTS "OriginChannel";
+                """);
 
-            migrationBuilder.DropColumn(
-                name: "ExpiresAtUtc",
-                table: "SalesQuotes");
-
-            migrationBuilder.DropIndex(
-                name: "IX_FiscalDocuments_CompanyId_SaleOrderId",
-                table: "FiscalDocuments");
-
-            migrationBuilder.DropIndex(
-                name: "IX_Orders_CompanyId_OriginChannel",
-                table: "Orders");
-
-            migrationBuilder.DropColumn(
-                name: "OriginChannel",
-                table: "Orders");
-
-            migrationBuilder.DropColumn(
-                name: "OriginSaleOrderId",
-                table: "Orders");
-
-            migrationBuilder.DropColumn(
-                name: "CashRegisterNameSnapshot",
-                table: "SaleOrders");
-
-            migrationBuilder.DropColumn(
-                name: "OperatorName",
-                table: "SaleOrders");
-
-            migrationBuilder.DropColumn(
-                name: "OperatorUserId",
-                table: "SaleOrders");
+            migrationBuilder.Sql("""
+                ALTER TABLE "SaleOrders"
+                    DROP COLUMN IF EXISTS "OperatorName",
+                    DROP COLUMN IF EXISTS "OperatorUserId",
+                    DROP COLUMN IF EXISTS "CashRegisterNameSnapshot";
+                """);
         }
     }
 }
