@@ -497,6 +497,38 @@ using (var scope = app.Services.CreateScope())
 
     await db.Database.MigrateAsync();
 
+    // Garante colunas de AddOperationalQuerySupport (migration pode ter sido marcada
+    // como aplicada no __EFMigrationsHistory sem ter executado o DDL — aplica aqui de
+    // forma idempotente para garantir que as colunas existam em qualquer cenário)
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "SaleOrders"
+            ADD COLUMN IF NOT EXISTS "CashRegisterNameSnapshot" character varying(80),
+            ADD COLUMN IF NOT EXISTS "OperatorUserId"           uuid,
+            ADD COLUMN IF NOT EXISTS "OperatorName"             character varying(100);
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "Orders"
+            ADD COLUMN IF NOT EXISTS "OriginChannel"     character varying(30),
+            ADD COLUMN IF NOT EXISTS "OriginSaleOrderId" uuid;
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "SalesQuotes"
+            ADD COLUMN IF NOT EXISTS "IsArchived"    boolean NOT NULL DEFAULT false,
+            ADD COLUMN IF NOT EXISTS "ArchivedAtUtc" timestamp with time zone,
+            ADD COLUMN IF NOT EXISTS "ExpiresAtUtc"  timestamp with time zone;
+        """);
+
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE INDEX IF NOT EXISTS "IX_Orders_CompanyId_OriginChannel"
+            ON "Orders" ("CompanyId", "OriginChannel");
+        CREATE INDEX IF NOT EXISTS "IX_FiscalDocuments_CompanyId_SaleOrderId"
+            ON "FiscalDocuments" ("CompanyId", "SaleOrderId");
+        CREATE INDEX IF NOT EXISTS "IX_SalesQuotes_CompanyId_IsArchived_Status"
+            ON "SalesQuotes" ("CompanyId", "IsArchived", "Status");
+        """);
+
     // Garante colunas que podem ter ficado fora das migrations (idempotente)
     await db.Database.ExecuteSqlRawAsync("""
         ALTER TABLE "FiscalConfigs"
