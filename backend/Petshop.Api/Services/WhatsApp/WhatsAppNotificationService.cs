@@ -658,7 +658,27 @@ public class WhatsAppNotificationService
         await _db.SaveChangesAsync(ct);
 
         if (wamid is not null)
+        {
             _logger.LogInformation("WA_SALE_OK | SaleId={SaleId} | PublicId={Id} | Wamid={Wamid}", saleId, sale.PublicId, wamid);
+
+            // Tenta enviar complementar de fidelidade usando o Order espelho criado no Pay,
+            // que tem CustomerId e segue o mesmo fluxo de elegibilidade das entregas.
+            var mirroredOrder = await _db.Orders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.OriginSaleOrderId == saleId && o.CompanyId == companyId, ct);
+
+            if (mirroredOrder is not null)
+            {
+                await TrySendLoyaltyDeliveredComplementAsync(
+                    mirroredOrder,
+                    OrderStatus.ENTREGUE,
+                    waId,
+                    companyId,
+                    integration,
+                    wamid,
+                    ct);
+            }
+        }
         else
             _logger.LogWarning("WA_SALE_FAIL | SaleId={SaleId} | PublicId={Id} | wamid null", saleId, sale.PublicId);
     }
