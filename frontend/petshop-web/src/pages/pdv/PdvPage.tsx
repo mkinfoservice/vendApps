@@ -12,7 +12,7 @@ const GC = {
   caramel: "#C8953A",
 };
 import {
-  createSale, scanBarcode, removeItem, paySale, cancelSale,
+  createSale, scanBarcode, removeItem, paySale, cancelSale, patchSaleCustomer,
   closeSession, getSessionReport, addMovement, importDav, addItem,
   evaluateSalePromotions, searchCustomer,
   type Sale, type CupomData, type SessionReport, type PdvCustomer,
@@ -388,12 +388,24 @@ const PAY_METHODS: PayMethod[] = [
 
 type SaleCompleteAction = "print" | "skip" | "whatsapp";
 
+function sanitizeUiText(raw: string): string {
+  return raw.replace(/Â/g, "").replace(/\uFFFD/g, "");
+}
+
 function maskPhone(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2)  return d.length ? `(${d}` : "";
   if (d.length <= 6)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
   return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+
+function maskCpf(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
 function SaleCompleteModal({
@@ -460,7 +472,7 @@ function SaleCompleteModal({
     {
       key: "skip",
       icon: <Ban size={22} />,
-      title: "Nao imprimir",
+      title: "Não imprimir",
       desc: "Fechar sem imprimir",
       accent: "#6b7280",
     },
@@ -608,7 +620,7 @@ interface PayPanelProps {
   subtotalCents: number;
   baseDiscountCents: number;
   totalCents: number;
-  appliedCoupon: { code: string; discountCents: number; promotionName: string } | null;
+  appliedCoupon: { code: string; discountCents: number; promotionName: string; promotionId?: string } | null;
   onApplyCoupon: (couponCode: string) => Promise<void>;
   onRemoveCoupon: () => void;
   onPay: (method: string, amountCents: number, customerDocument?: string, customerCpfForLoyalty?: string) => void;
@@ -682,7 +694,7 @@ function PayPanel({
     if (!saleId) return;
     const code = normalizeCoupon(couponInput.trim());
     if (code.length < 4) {
-      setCouponError("Use um cÃ³digo com ao menos 4 caracteres.");
+      setCouponError("Use um código com ao menos 4 caracteres.");
       return;
     }
 
@@ -692,7 +704,7 @@ function PayPanel({
       await onApplyCoupon(code);
       setCouponInput(code);
     } catch (e: unknown) {
-      setCouponError(e instanceof Error ? e.message : "Nao foi possivel aplicar o cupom.");
+      setCouponError(e instanceof Error ? e.message : "Não foi possível aplicar o cupom.");
     } finally {
       setCouponLoading(false);
     }
@@ -745,7 +757,7 @@ function PayPanel({
             <div className="min-w-0">
               <p className="text-xs font-black truncate">Cupom {appliedCoupon.code}</p>
               <p className="text-[11px] truncate opacity-75">
-                {appliedCoupon.promotionName} Â· -{brl(appliedCoupon.discountCents)}
+                {sanitizeUiText(appliedCoupon.promotionName)} · -{brl(appliedCoupon.discountCents)}
               </p>
             </div>
             <button
@@ -852,7 +864,7 @@ function PayPanel({
                   ? { background: GC.caramel, color: "#fff" }
                   : { border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: "#fff" }}
               >
-                {t === "none" ? "Nao informar" : t.toUpperCase()}
+                {t === "none" ? "Não informar" : t.toUpperCase()}
               </button>
             ))}
           </div>
@@ -955,7 +967,7 @@ function DavSearchModal({ onSelect, onClose }: { onSelect: (code: string) => voi
               <div>
                 <p className="text-sm font-bold" style={{ color: GC.caramel }}>{d.publicId}</p>
                 <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>
-                  {d.customerName || "-"} Â· {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}
+                  {d.customerName || "-"} · {d.itemCount} item{d.itemCount !== 1 ? "s" : ""}
                 </p>
               </div>
               <p className="text-sm font-black" style={{ color: GC.dark }}>{fmt(d.totalCents)}</p>
@@ -1257,7 +1269,7 @@ function QuickProducts({
           <input
             value={searchInput}
             onChange={(e) => { setSearchInput(e.target.value); }}
-            placeholder="Buscar por nome, codigo ou codigo de barras"
+            placeholder="Buscar por nome, código ou código de barras"
             className="w-full h-9 rounded-xl pl-8 pr-3 text-xs focus:outline-none"
             style={{ border: `1.5px solid rgba(107,79,58,0.15)`, background: "#fff", color: GC.dark }}
           />
@@ -1417,7 +1429,7 @@ function CartTable({
               <td className="px-4 py-2.5 font-medium align-top" style={{ color: GC.dark }}>
                 <span className="block break-words leading-tight">{item.productNameSnapshot}</span>
                 <span className="sm:hidden text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.6 }}>
-                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} Â· {brl(item.unitPriceCentsSnapshot)}
+                  {item.isSoldByWeight ? `${item.weightKg?.toFixed(3)} kg` : `${item.qty}x`} · {brl(item.unitPriceCentsSnapshot)}
                 </span>
                 {item.addons && item.addons.length > 0 && (
                   <span className="block mt-0.5 text-[11px]" style={{ color: GC.caramel }}>
@@ -1662,7 +1674,7 @@ function CouponRevealModal({
           <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: GC.caramel }}>
             Cupom Resgatado
           </p>
-          <p className="text-base font-bold mt-0.5" style={{ color: GC.dark }}>{promotionName}</p>
+          <p className="text-base font-bold mt-0.5" style={{ color: GC.dark }}>{sanitizeUiText(promotionName)}</p>
         </div>
 
         <div className="rounded-2xl px-4 py-4 space-y-3" style={{ background: GC.cream, border: `1px solid rgba(200,149,58,0.3)` }}>
@@ -1714,34 +1726,29 @@ function CustomerSearchModal({
   onSkip: () => void;
   onClose: () => void;
 }) {
-  const [phone, setPhone] = useState("");
+  const [mode, setMode] = useState<"phone" | "cpf">("phone");
+  const [value, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PdvCustomer | null | "notfound">(null);
 
   function applyMask(raw: string) {
-    const d = raw.replace(/\D/g, "").slice(0, 11);
-    // CPF: se o usuário digitou ponto ou traço de CPF (NNN.NNN.NNN-NN)
-    const isCpf = raw.includes(".") || (d.length === 11 && raw.includes("-") && !raw.startsWith("("));
-    if (isCpf) {
-      if (d.length <= 3) return d;
-      if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-      if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-      return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-    }
-    // Telefone: (00) 00000-0000
-    if (d.length <= 2) return d.length ? `(${d}` : "";
-    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    return mode === "cpf" ? maskCpf(raw) : maskPhone(raw);
+  }
+
+  function handleModeChange(m: "phone" | "cpf") {
+    setMode(m);
+    setPhone("");
+    setResult(null);
   }
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) return;
+    const digits = value.replace(/\D/g, "");
+    const minLen = mode === "cpf" ? 11 : 10;
+    if (digits.length < minLen) return;
     setLoading(true);
     try {
-      const found = await searchCustomer(phone);
+      const found = await searchCustomer(value);
       setResult(found ?? "notfound");
     } finally {
       setLoading(false);
@@ -1758,16 +1765,30 @@ function CustomerSearchModal({
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
         </div>
 
+        {/* toggle Telefone / CPF */}
+        <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: "rgba(107,79,58,0.2)" }}>
+          {(["phone", "cpf"] as const).map((m) => (
+            <button key={m} type="button"
+              onClick={() => handleModeChange(m)}
+              className="flex-1 py-1.5 text-xs font-medium transition"
+              style={mode === m
+                ? { background: "#C8953A", color: "#fff" }
+                : { background: "#fff", color: "#6B4F3A" }}>
+              {m === "phone" ? "Telefone" : "CPF"}
+            </button>
+          ))}
+        </div>
         <form onSubmit={handleSearch} className="flex gap-2">
           <input
             autoFocus
-            value={phone}
+            value={value}
             onChange={(e) => setPhone(applyMask(e.target.value))}
-            placeholder="Telefone ou CPF"
+            placeholder={mode === "cpf" ? "000.000.000-00" : "(11) 99999-9999"}
+            inputMode="numeric"
             className="flex-1 rounded-xl px-3 py-2.5 text-sm focus:outline-none"
             style={{ border: "1.5px solid rgba(107,79,58,0.2)", background: "#fff", color: "#1C1209" }}
           />
-          <button type="submit" disabled={loading || phone.replace(/\D/g,"").length < 10}
+          <button type="submit" disabled={loading || value.replace(/\D/g,"").length < (mode === "cpf" ? 11 : 10)}
             className="px-4 py-2.5 rounded-xl text-white text-sm font-bold transition active:scale-95 disabled:opacity-50"
             style={{ background: "linear-gradient(135deg, #1C1209, #3D2314)" }}>
             {loading ? "..." : "Buscar"}
@@ -1800,7 +1821,7 @@ function CustomerSearchModal({
           onClick={onSkip}
           className="w-full py-2 rounded-xl text-sm transition hover:bg-black/5"
           style={{ color: "#6B4F3A" }}>
-          Pular identificacao
+          Pular identificação
         </button>
       </div>
     </div>
@@ -1835,6 +1856,7 @@ export default function PdvPage() {
     code: string;
     discountCents: number;
     promotionName: string;
+    promotionId: string;
   } | null>(null);
   const [loyaltyRewardsModal, setLoyaltyRewardsModal] = useState<{
     customer: PdvCustomer;
@@ -1990,7 +2012,7 @@ export default function PdvPage() {
       (r) => (r.couponCode ?? "").toUpperCase() === normalized
     );
     if (couponResults.length === 0) {
-      throw new Error("Cupom invÃ¡lido, expirado ou nÃ£o aplicÃ¡vel aos itens da venda.");
+      throw new Error("Cupom inválido, expirado ou não aplicável aos itens da venda.");
     }
 
     const best = couponResults.sort((a, b) => b.discountCents - a.discountCents)[0];
@@ -1998,6 +2020,7 @@ export default function PdvPage() {
       code: normalized,
       discountCents: best.discountCents,
       promotionName: best.name,
+      promotionId: best.id,
     });
     flash(`Cupom ${normalized} aplicado (-${brl(best.discountCents)})`, true);
   }
@@ -2026,6 +2049,7 @@ export default function PdvPage() {
         discountCents,
         customerDocument,
         customerCpfForLoyalty,
+        couponCode: appliedCoupon?.code,
       });
       setShowPay(false);
       setDavPayMethod(null);
@@ -2038,6 +2062,8 @@ export default function PdvPage() {
         changeCents: result.changeCents,
         customerPhone: salePhone ?? null,
       });
+      if (result.earnedPoints > 0) flash(`+${result.earnedPoints} pontos de fidelidade acumulados!`, true);
+      if (result.spentPoints > 0) flash(`-${result.spentPoints} pontos debitados pelo cupom`, true);
     } catch (e: unknown) {
       flash(e instanceof Error ? e.message : "Erro ao finalizar venda", false);
     } finally {
@@ -2142,7 +2168,7 @@ export default function PdvPage() {
           <span className="font-black text-base tracking-tight" style={{ color: GC.caramel }}>PDV</span>
           <span className="text-sm ml-2 font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>{session.registerName}</span>
           <span className="hidden sm:inline text-xs ml-1.5" style={{ color: "rgba(255,255,255,0.4)" }}>
-            Â· {session.openedByUserName}
+            · {session.openedByUserName}
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
@@ -2191,6 +2217,13 @@ export default function PdvPage() {
           onSelect={async (c) => {
             setPendingCustomer(c);
             setShowCustomerSearch(false);
+            // Vincular o cliente ao sale ja aberto (se existir)
+            if (sale) {
+              try {
+                await patchSaleCustomer(sale.id, { customerId: c.id, customerName: c.name, customerPhone: c.phone ?? undefined });
+                await refreshSale(sale.id);
+              } catch { /* nao bloqueia */ }
+            }
             if (c.pointsBalance > 0) {
               try {
                 const all = await adminFetch<Array<{
@@ -2318,7 +2351,7 @@ export default function PdvPage() {
               <input
                 value={davCode}
                 onChange={(e) => setDavCode(e.target.value.replace(/^DAV-/i, ""))}
-                placeholder="codigo ou escaneie..."
+                placeholder="código ou escaneie..."
                 className="flex-1 py-2.5 pr-3 text-sm bg-transparent focus:outline-none"
                 style={{ color: GC.dark }}
               />

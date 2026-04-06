@@ -19,7 +19,7 @@ using System.Security.Claims;
 namespace Petshop.Api.Controllers;
 
 /// <summary>
-/// PDV â€” sessÃ£o de caixa e ciclo de venda.
+/// PDV â€" sessÃ£o de caixa e ciclo de venda.
 /// Todos os endpoints exigem JWT de admin/gerente/atendente.
 /// </summary>
 [ApiController]
@@ -67,7 +67,7 @@ public class PdvController : ControllerBase
     // SESSÃƒO DE CAIXA
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // â”€â”€ GET /pdv/session/current â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/session/current â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>Retorna a sessÃ£o aberta da empresa (uma por vez), ou null.</summary>
     [HttpGet("session/current")]
     public async Task<IActionResult> GetCurrentSession(CancellationToken ct)
@@ -84,7 +84,7 @@ public class PdvController : ControllerBase
         return Ok(MapSession(session));
     }
 
-    // â”€â”€ POST /pdv/session/open â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/session/open â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("session/open")]
     public async Task<IActionResult> OpenSession(
         [FromBody] OpenSessionRequest req,
@@ -120,7 +120,7 @@ public class PdvController : ControllerBase
         return Ok(new { session.Id, session.OpenedAtUtc, RegisterName = register.Name });
     }
 
-    // â”€â”€ POST /pdv/session/{sessionId}/close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/session/{sessionId}/close â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("session/{sessionId:guid}/close")]
     public async Task<IActionResult> CloseSession(
         Guid sessionId,
@@ -168,7 +168,7 @@ public class PdvController : ControllerBase
         });
     }
 
-    // â”€â”€ GET /pdv/session/{sessionId}/report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/session/{sessionId}/report â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpGet("session/{sessionId:guid}/report")]
     public async Task<IActionResult> SessionReport(Guid sessionId, CancellationToken ct)
     {
@@ -228,7 +228,7 @@ public class PdvController : ControllerBase
         });
     }
 
-    // â”€â”€ GET /pdv/session/{sessionId}/movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/session/{sessionId}/movements â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpGet("session/{sessionId:guid}/movements")]
     public async Task<IActionResult> ListMovements(Guid sessionId, CancellationToken ct)
     {
@@ -249,7 +249,7 @@ public class PdvController : ControllerBase
         return Ok(movements);
     }
 
-    // â”€â”€ POST /pdv/session/{sessionId}/movements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/session/{sessionId}/movements â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("session/{sessionId:guid}/movements")]
     public async Task<IActionResult> AddMovement(
         Guid sessionId,
@@ -287,7 +287,7 @@ public class PdvController : ControllerBase
     // VENDA
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    // â”€â”€ POST /pdv/sale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("sale")]
     public async Task<IActionResult> CreateSale(
         [FromBody] CreateSaleRequest req,
@@ -370,7 +370,7 @@ public class PdvController : ControllerBase
         return Ok(new { sale.Id, sale.PublicId });
     }
 
-    // â”€â”€ GET /pdv/sale/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/sale/{id} â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpGet("sale/{id:guid}")]
     public async Task<IActionResult> GetSale(Guid id, CancellationToken ct)
     {
@@ -451,7 +451,7 @@ public class PdvController : ControllerBase
     }
 
 
-    // â”€â”€ GET /pdv/sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/sales â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>Lista todas as vendas PDV da empresa com paginaÃ§Ã£o e filtros.</summary>
     [HttpGet("sales")]
     public async Task<IActionResult> ListSales(
@@ -590,7 +590,7 @@ public class PdvController : ControllerBase
         return Ok(new { page, pageSize, total, items });
     }
 
-    // â”€â”€ POST /pdv/sale/{id}/scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale/{id}/scan â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>
     /// LÃª um cÃ³digo de barras: detecta balanÃ§a automaticamente,
     /// depois tenta lookup por EAN normal, e adiciona o item Ã  venda.
@@ -611,7 +611,7 @@ public class PdvController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Barcode))
             return BadRequest("Barcode nÃ£o informado.");
 
-        // â”€â”€ 1. Tentar como balanÃ§a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ 1. Tentar como balanÃ§a â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         if (ScaleBarcodeParser.IsScaleBarcode(req.Barcode))
         {
             var scaleResult = await _scale.ParseAsync(req.Barcode, CompanyId, ct);
@@ -639,7 +639,7 @@ public class PdvController : ControllerBase
                             item.TotalCents, IsScaleBarcode = true });
         }
 
-        // â”€â”€ 2. EAN convencional â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // â"€â"€ 2. EAN convencional â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
         var product = await _db.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Barcode == req.Barcode &&
@@ -666,7 +666,7 @@ public class PdvController : ControllerBase
                         newItem.TotalCents, IsScaleBarcode = false });
     }
 
-    // â”€â”€ POST /pdv/sale/{id}/items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale/{id}/items â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("sale/{id:guid}/items")]
     public async Task<IActionResult> AddItem(
         Guid id,
@@ -737,7 +737,7 @@ public class PdvController : ControllerBase
         return Ok(new { item.Id, item.TotalCents });
     }
 
-    // â”€â”€ DELETE /pdv/sale/{id}/items/{itemId} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ DELETE /pdv/sale/{id}/items/{itemId} â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpDelete("sale/{id:guid}/items/{itemId:guid}")]
     public async Task<IActionResult> RemoveItem(Guid id, Guid itemId, CancellationToken ct)
     {
@@ -758,7 +758,7 @@ public class PdvController : ControllerBase
         return NoContent();
     }
 
-    // â”€â”€ POST /pdv/sale/{id}/pay â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale/{id}/pay â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>
     /// Finaliza a venda com um ou mais pagamentos.
     /// Calcula a decisÃ£o fiscal para cada pagamento e persiste.
@@ -827,7 +827,7 @@ public class PdvController : ControllerBase
             };
         }).ToList();
 
-        // TransaÃ§Ã£o explÃ­cita â€” DecrementOnSaleAsync usa ExecuteSqlAsync (sem EF tracking).
+        // TransaÃ§Ã£o explÃ­cita â€" DecrementOnSaleAsync usa ExecuteSqlAsync (sem EF tracking).
         // SaleOrder tambÃ©m Ã© atualizado via SQL direto para evitar DbUpdateConcurrencyException.
         await using var tx = await _db.Database.BeginTransactionAsync(ct);
 
@@ -963,6 +963,36 @@ public class PdvController : ControllerBase
             }
         }
 
+        // Debita pontos de fidelidade do cupom de desconto, se aplicavel.
+        // Opera fora da transacao principal (nao deve derrubar a venda se falhar).
+        int spentPoints = 0;
+        if (!string.IsNullOrWhiteSpace(req.CouponCode) && sale.CustomerId.HasValue)
+        {
+            try
+            {
+                var couponCode = req.CouponCode.Trim().ToUpperInvariant();
+                var couponPromotion = await _db.Promotions
+                    .AsNoTracking()
+                    .Where(p => p.CompanyId == CompanyId &&
+                                p.CouponCode == couponCode &&
+                                p.IsActive &&
+                                p.LoyaltyPointsCost != null && p.LoyaltyPointsCost > 0)
+                    .FirstOrDefaultAsync(ct);
+
+                if (couponPromotion != null)
+                {
+                    var result = await _loyalty.RedeemPromotionAsync(
+                        CompanyId, sale.CustomerId.Value, couponPromotion.Id, saleId, ct);
+                    spentPoints = result.PointsSpent;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[Loyalty] Falha ao debitar pontos do cupom {Code} na venda {SaleId}.",
+                    req.CouponCode, saleId);
+            }
+        }
+
         return Ok(new
         {
             Id           = saleId,
@@ -971,16 +1001,57 @@ public class PdvController : ControllerBase
             FiscalDecision = fiscalDecision,
             ChangeCents  = payments.Sum(p => p.ChangeCents),
             EarnedPoints = earnedPoints,
+            SpentPoints  = spentPoints,
             MirroredOrderId = mirroredOrder?.Id,
             MirroredOrderPublicId = mirroredOrder?.PublicId,
         });
     }
 
-    // â”€â”€ PATCH /pdv/sale/{id}/customer-phone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // -- PATCH /pdv/sale/{id}/customer ----------------------------------------
     /// <summary>
-    /// Atualiza o telefone do cliente em uma venda jÃ¡ finalizada,
+    /// Vincula (ou atualiza) o cliente de uma venda ainda aberta.
+    /// Chamado quando o operador identifica o cliente APOS a venda ter sido criada.
+    /// </summary>
+    [HttpPatch("sale/{id:guid}/customer")]
+    public async Task<IActionResult> UpdateSaleCustomer(
+        Guid id,
+        [FromBody] UpdateSaleCustomerRequest req,
+        CancellationToken ct)
+    {
+        var sale = await _db.SaleOrders
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId &&
+                                      o.Status == SaleOrderStatus.Open, ct);
+
+        if (sale is null) return NotFound("Venda nao encontrada ou ja finalizada.");
+
+        // Valida que o customerId pertence a esta empresa
+        if (req.CustomerId.HasValue)
+        {
+            var exists = await _db.Customers
+                .AnyAsync(c => c.Id == req.CustomerId.Value && c.CompanyId == CompanyId, ct);
+            if (!exists) return BadRequest("Cliente nao encontrado.");
+        }
+
+        sale.CustomerId    = req.CustomerId;
+        sale.CustomerName  = string.IsNullOrWhiteSpace(req.CustomerName) ? sale.CustomerName : req.CustomerName.Trim();
+        sale.CustomerPhone = string.IsNullOrWhiteSpace(req.CustomerPhone) ? sale.CustomerPhone : req.CustomerPhone.Trim();
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            sale.Id,
+            sale.CustomerId,
+            sale.CustomerName,
+            sale.CustomerPhone,
+        });
+    }
+
+    // -- PATCH /pdv/sale/{id}/customer-phone ----------------------------------
+    /// <summary>
+    /// Atualiza o telefone do cliente em uma venda ja finalizada,
     /// permitindo que o job fiscal envie o comprovante por WhatsApp.
-    /// Chamado pelo PDV apÃ³s o modal pÃ³s-venda.
+    /// Chamado pelo PDV apos o modal pos-venda.
     /// </summary>
     [HttpPatch("sale/{id:guid}/customer-phone")]
     public async Task<IActionResult> UpdateCustomerPhone(
@@ -1006,7 +1077,7 @@ public class PdvController : ControllerBase
         return NoContent();
     }
 
-    // â”€â”€ POST /pdv/sale/{id}/cancel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale/{id}/cancel â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpPost("sale/{id:guid}/cancel")]
     public async Task<IActionResult> CancelSale(Guid id, CancellationToken ct)
     {
@@ -1023,7 +1094,7 @@ public class PdvController : ControllerBase
         return Ok(new { sale.Id, sale.Status });
     }
 
-    // â”€â”€ POST /pdv/sale/{id}/import-dav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ POST /pdv/sale/{id}/import-dav â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>
     /// Importa itens de um DAV (por PublicId) para uma venda aberta.
     /// O caixa escaneia o cÃ³digo de barras do orÃ§amento impresso.
@@ -1061,7 +1132,7 @@ public class PdvController : ControllerBase
         {
             int itemsAdded = 0;
 
-            // Merge DAV items â†’ sale (INSERT novos / UPDATE qty existentes â€” via SQL)
+            // Merge DAV items â†’ sale (INSERT novos / UPDATE qty existentes â€" via SQL)
             foreach (var davItem in dav.Items)
             {
                 var existing = sale.Items.FirstOrDefault(i =>
@@ -1189,7 +1260,7 @@ public class PdvController : ControllerBase
         }
     }
 
-    // â”€â”€ GET /pdv/sale/{id}/cupom â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/sale/{id}/cupom â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>
     /// Retorna os dados do cupom em JSON para renderizaÃ§Ã£o no frontend.
     /// O frontend imprime via window.print() com CSS 80mm.
@@ -1247,7 +1318,7 @@ public class PdvController : ControllerBase
         });
     }
 
-    // â”€â”€ GET /pdv/session/{sessionId}/sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ GET /pdv/session/{sessionId}/sales â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     [HttpGet("session/{sessionId:guid}/sales")]
     public async Task<IActionResult> ListSessionSales(Guid sessionId, CancellationToken ct)
     {
@@ -1278,7 +1349,7 @@ public class PdvController : ControllerBase
         return Ok(sales);
     }
 
-    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ Helpers â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
     private static void RecalcSaleTotals(SaleOrder sale)
     {
@@ -1286,7 +1357,7 @@ public class PdvController : ControllerBase
         sale.TotalCents    = Math.Max(0, sale.SubtotalCents - sale.DiscountCents);
     }
 
-    // â”€â”€ DELETE /pdv/sales/all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â"€â"€ DELETE /pdv/sales/all â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
     /// <summary>
     /// Apaga TODAS as vendas (SaleOrders), sessÃµes de caixa e documentos fiscais
     /// da empresa. Use apenas para ambiente de testes.
@@ -1464,7 +1535,7 @@ WHERE s.""Id"" = {saleId};", ct);
     };
 }
 
-// â”€â”€ Requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€ Requests â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 
 public record OpenSessionRequest(
     Guid CashRegisterId,
@@ -1504,7 +1575,9 @@ public record PaySaleRequest(
     string? Notes = null,
     string? CustomerDocument = null,
     string? CustomerPhone = null,
-    string? CustomerCpfForLoyalty = null
+    string? CustomerCpfForLoyalty = null,
+    /// <summary>Codigo do cupom de desconto aplicado (para debitar pontos de fidelidade).</summary>
+    string? CouponCode = null
 );
 
 public record AddMovementRequest(
@@ -1516,6 +1589,12 @@ public record AddMovementRequest(
 public record ImportDavRequest(string QuoteCode);
 
 public record UpdateCustomerPhoneRequest(string CustomerPhone);
+
+public record UpdateSaleCustomerRequest(
+    Guid? CustomerId,
+    string? CustomerName,
+    string? CustomerPhone
+);
 
 
 

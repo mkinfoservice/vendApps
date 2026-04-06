@@ -227,10 +227,21 @@ export async function paySale(
     customerDocument?: string;
     customerPhone?: string;
     customerCpfForLoyalty?: string;
+    couponCode?: string;
   }
-): Promise<{ id: string; publicId: string; totalCents: number; fiscalDecision: string; changeCents: number }> {
+): Promise<{ id: string; publicId: string; totalCents: number; fiscalDecision: string; changeCents: number; earnedPoints: number; spentPoints: number }> {
   return adminFetch(`/pdv/sale/${saleId}/pay`, {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function patchSaleCustomer(
+  saleId: string,
+  payload: { customerId?: string; customerName?: string; customerPhone?: string }
+): Promise<unknown> {
+  return adminFetch(`/pdv/sale/${saleId}/customer`, {
+    method: "PATCH",
     body: JSON.stringify(payload),
   });
 }
