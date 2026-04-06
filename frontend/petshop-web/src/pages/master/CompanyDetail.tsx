@@ -1051,6 +1051,28 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
             </div>
           </div>
 
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-bold text-green-700">Fidelidade — saldo de pontos</p>
+              <p className="text-xs text-green-600 mt-0.5">
+                Enviado automaticamente apos venda/entrega quando o cliente tem pontos acumulados.
+                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=pontos ganhos, &#123;&#123;3&#125;&#125;=saldo atual.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-40 text-xs text-gray-600 font-medium shrink-0">Template</span>
+              <input
+                value={form.templates["LOYALTY_COMPLEMENT"] ?? ""}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  templates: { ...f.templates, LOYALTY_COMPLEMENT: e.target.value },
+                }))}
+                placeholder="ex: card_transaction_alert_2"
+                className="flex-1 h-9 px-3 rounded-xl border border-green-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Idioma do template</label>
             <input
@@ -1061,46 +1083,24 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
             />
           </div>
 
-          <div className=”rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3”>
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
             <div>
-              <p className=”text-xs font-bold text-purple-700”>🧾 NFC-e por WhatsApp (PDV)</p>
-              <p className=”text-xs text-purple-500 mt-0.5”>
-                Envia comprovante PDF ao cliente após autorização fiscal.
-                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor (ex: 45,79), &#123;&#123;3&#125;&#125;=nº venda.
+              <p className="text-xs font-bold text-purple-700">ðŸ“„ NFC-e por WhatsApp (PDV)</p>
+              <p className="text-xs text-purple-500 mt-0.5">
+                Envia comprovante PDF ao cliente apÃ³s autorizaÃ§Ã£o fiscal.
+                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor (ex: 45,79), &#123;&#123;3&#125;&#125;=nÂº venda.
               </p>
             </div>
-            <div className=”flex items-center gap-3”>
-              <span className=”w-40 text-xs text-gray-600 font-medium shrink-0”>Template</span>
+            <div className="flex items-center gap-3">
+              <span className="w-40 text-xs text-gray-600 font-medium shrink-0">Template</span>
               <input
-                value={form.templates[“SALE_COMPLETED”] ?? “”}
+                value={form.templates["SALE_COMPLETED"] ?? ""}
                 onChange={(e) => setForm((f) => ({
                   ...f,
                   templates: { ...f.templates, SALE_COMPLETED: e.target.value },
                 }))}
-                placeholder=”ex: purchase_receipt_1”
-                className=”flex-1 h-9 px-3 rounded-xl border border-purple-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono”
-              />
-            </div>
-          </div>
-
-          <div className=”rounded-xl border border-green-200 bg-green-50 p-4 space-y-3”>
-            <div>
-              <p className=”text-xs font-bold text-green-700”>🏆 Fidelidade — saldo de pontos</p>
-              <p className=”text-xs text-green-600 mt-0.5”>
-                Enviado automaticamente após venda/entrega quando o cliente tem pontos acumulados.
-                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=pontos ganhos, &#123;&#123;3&#125;&#125;=saldo atual.
-              </p>
-            </div>
-            <div className=”flex items-center gap-3”>
-              <span className=”w-40 text-xs text-gray-600 font-medium shrink-0”>Template</span>
-              <input
-                value={form.templates[“LOYALTY_COMPLEMENT”] ?? “”}
-                onChange={(e) => setForm((f) => ({
-                  ...f,
-                  templates: { ...f.templates, LOYALTY_COMPLEMENT: e.target.value },
-                }))}
-                placeholder=”ex: card_transaction_alert_2”
-                className=”flex-1 h-9 px-3 rounded-xl border border-green-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono”
+                placeholder="ex: purchase_receipt_1"
+                className="flex-1 h-9 px-3 rounded-xl border border-purple-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
               />
             </div>
           </div>
