@@ -111,6 +111,7 @@ public class AdminOrdersController : ControllerBase
             PaymentMethod = (req.PaymentMethod ?? "PIX").Trim().ToUpperInvariant(),
             Status = OrderStatus.RECEBIDO,
             CreatedAtUtc = DateTime.UtcNow,
+            OriginChannel = "phone",
         };
 
         // ── Itens do carrinho ──────────────────────────────────────────────────

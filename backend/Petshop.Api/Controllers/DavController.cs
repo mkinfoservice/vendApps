@@ -38,6 +38,7 @@ public class DavController : ControllerBase
         [FromQuery] string? search  = null,
         [FromQuery] int page        = 1,
         [FromQuery] int pageSize    = 20,
+        [FromQuery] bool includeArchived = false,
         CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -45,6 +46,10 @@ public class DavController : ControllerBase
         var q = _db.SalesQuotes
             .AsNoTracking()
             .Where(s => s.CompanyId == CompanyId);
+
+        // Por padrão exclui arquivados; inclui apenas quando explicitamente solicitado
+        if (!includeArchived)
+            q = q.Where(s => !s.IsArchived);
 
         if (!string.IsNullOrWhiteSpace(status) &&
             Enum.TryParse<SalesQuoteStatus>(status, ignoreCase: true, out var parsedStatus))
@@ -488,4 +493,147 @@ public class DavController : ControllerBase
                 i.Id, i.ProductId, i.ProductNameSnapshot, i.ProductBarcodeSnapshot,
                 i.Qty, i.UnitPriceCentsSnapshot, i.TotalCents,
                 i.IsSoldByWeight, i.WeightKg)).ToList());
+
+
+    // -- GET /admin/dav/abandoned ------------------------------------------------
+    /// <summary>
+    /// Lista DAVs em aberto (Draft) sem movimentacao por mais de N horas.
+    /// Util para identificar orcamentos abandonados antes do arquivamento.
+    /// </summary>
+    [HttpGet("abandoned")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> ListAbandoned(
+        [FromQuery] int olderThanHours = 24,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        pageSize = Math.Clamp(pageSize, 1, 200);
+        var cutoff = DateTime.UtcNow.AddHours(-Math.Abs(olderThanHours));
+
+        var q = _db.SalesQuotes
+            .AsNoTracking()
+            .Where(s => s.CompanyId == CompanyId
+                     && !s.IsArchived
+                     && s.Status == SalesQuoteStatus.Draft
+                     && s.SaleOrderId == null
+                     && s.FiscalDocumentId == null
+                     && s.CreatedAtUtc < cutoff);
+
+        var total = await q.CountAsync(ct);
+        var items = await q
+            .OrderBy(s => s.CreatedAtUtc)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(s => new
+            {
+                s.Id,
+                s.PublicId,
+                s.CustomerName,
+                s.TotalCents,
+                Status = s.Status.ToString(),
+                s.CreatedAtUtc,
+                AgeHours = (int)(DateTime.UtcNow - s.CreatedAtUtc).TotalHours,
+            })
+            .ToListAsync(ct);
+
+        return Ok(new { total, page, pageSize, olderThanHours, items });
+    }
+
+    // -- POST /admin/dav/archive-abandoned ---------------------------------------
+    /// <summary>
+    /// Arquiva em lote os DAVs em Draft sem movimentacao por mais de N horas.
+    /// Apenas arquivamento seguro: nao afeta DAVs com fiscal ou convertidos.
+    /// </summary>
+    [HttpPost("archive-abandoned")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> ArchiveAbandoned(
+        [FromBody] ArchiveAbandonedRequest req,
+        CancellationToken ct)
+    {
+        var olderThanHours = req.OlderThanHours < 1 ? 24 : req.OlderThanHours;
+        var cutoff = DateTime.UtcNow.AddHours(-olderThanHours);
+        var now = DateTime.UtcNow;
+
+        var toArchive = await _db.SalesQuotes
+            .Where(s => s.CompanyId == CompanyId
+                     && !s.IsArchived
+                     && s.Status == SalesQuoteStatus.Draft
+                     && s.SaleOrderId == null
+                     && s.FiscalDocumentId == null
+                     && s.CreatedAtUtc < cutoff)
+            .ToListAsync(ct);
+
+        foreach (var q in toArchive)
+        {
+            q.IsArchived    = true;
+            q.ArchivedAtUtc = now;
+            q.UpdatedAtUtc  = now;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { archived = toArchive.Count, cutoff, olderThanHours });
+    }
+
+    // -- POST /admin/dav/{id}/archive --------------------------------------------
+    /// <summary>
+    /// Arquiva um DAV individual. Seguro apenas para Draft sem fiscal.
+    /// </summary>
+    [HttpPost("{id:guid}/archive")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> ArchiveOne(Guid id, CancellationToken ct)
+    {
+        var quote = await _db.SalesQuotes
+            .FirstOrDefaultAsync(s => s.Id == id && s.CompanyId == CompanyId, ct);
+
+        if (quote is null) return NotFound();
+
+        if (quote.Status == SalesQuoteStatus.Converted)
+            return Conflict("DAV ja convertido em venda — nao pode ser arquivado.");
+
+        if (quote.FiscalDocumentId.HasValue)
+            return Conflict("DAV possui documento fiscal vinculado — nao pode ser arquivado.");
+
+        if (quote.IsArchived)
+            return Ok(new { message = "Ja estava arquivado.", id });
+
+        quote.IsArchived    = true;
+        quote.ArchivedAtUtc = DateTime.UtcNow;
+        quote.UpdatedAtUtc  = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { archived = true, id, quote.PublicId });
+    }
+
+    // -- POST /admin/dav/purge-archived ------------------------------------------
+    /// <summary>
+    /// Delecao fisica de DAVs arquivados ha mais de N dias.
+    /// Seguro: apenas DAVs sem fiscal e sem SaleOrder vinculada.
+    /// </summary>
+    [HttpPost("purge-archived")]
+    [Authorize(Roles = "admin")]
+    public async Task<IActionResult> PurgeArchived(
+        [FromBody] PurgeArchivedRequest req,
+        CancellationToken ct)
+    {
+        var olderThanDays = req.OlderThanDays < 1 ? 30 : req.OlderThanDays;
+        var cutoff = DateTime.UtcNow.AddDays(-olderThanDays);
+
+        var toPurge = await _db.SalesQuotes
+            .Where(s => s.CompanyId == CompanyId
+                     && s.IsArchived
+                     && s.ArchivedAtUtc < cutoff
+                     && s.SaleOrderId == null
+                     && s.FiscalDocumentId == null)
+            .ToListAsync(ct);
+
+        _db.SalesQuotes.RemoveRange(toPurge);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { purged = toPurge.Count, cutoff, olderThanDays });
+    }
 }
+
+
+public record ArchiveAbandonedRequest(int OlderThanHours = 24);
+public record PurgeArchivedRequest(int OlderThanDays = 30);

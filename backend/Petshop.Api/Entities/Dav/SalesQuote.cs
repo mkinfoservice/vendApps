@@ -70,6 +70,16 @@ public class SalesQuote
     public DateTime? FiscalConfirmedAtUtc { get; set; }
     public DateTime? ConvertedAtUtc { get; set; }
 
+    // -- Ciclo de vida / Expiração -------------------------------------------
+    /// <summary>Data/hora em que o DAV expira automaticamente (default: +24h desde criação).</summary>
+    public DateTime? ExpiresAtUtc { get; set; }
+
+    /// <summary>True = DAV foi arquivado (abandonado ou expirado). Não aparece nas listagens padrão.</summary>
+    public bool IsArchived { get; set; } = false;
+
+    /// <summary>Data/hora em que o DAV foi arquivado.</summary>
+    public DateTime? ArchivedAtUtc { get; set; }
+
     // ── Navegações ────────────────────────────────────────
     public List<SalesQuoteItem> Items { get; set; } = new();
 }

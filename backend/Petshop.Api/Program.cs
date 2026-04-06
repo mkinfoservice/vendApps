@@ -324,6 +324,7 @@ builder.Services.AddScoped<NfceNumberService>();
 builder.Services.AddScoped<FiscalQueueProcessorJob>();
 builder.Services.AddScoped<FiscalCertProtectionService>();
 builder.Services.AddScoped<ContingencyReprocessJob>();
+builder.Services.AddScoped<DavAbandonmentJob>();
 
 // ===============================
 // Services — Marketplace (iFood, ...)
@@ -823,6 +824,12 @@ using (var scope = app.Services.CreateScope())
         "accounting-dispatch-scan",
         j => j.RunAsync(CancellationToken.None),
         "*/15 * * * *");
+
+    // Arquivamento automático de DAVs abandonados — 1x por dia às 3h
+    jobManager.AddOrUpdate<DavAbandonmentJob>(
+        "dav-abandonment-cleanup",
+        j => j.ExecuteAsync(CancellationToken.None),
+        "0 3 * * *");
 }
 
 if (enableSwagger)

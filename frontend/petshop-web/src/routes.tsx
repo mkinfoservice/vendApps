@@ -54,6 +54,9 @@ import ScaleAgentsPage from "./pages/admin/ScaleAgentsPage";
 import DavListPage from "./pages/admin/DavListPage";
 import DavBuilderPage from "./pages/admin/DavBuilderPage";
 import CatalogEnrichmentPage from "./pages/admin/CatalogEnrichmentPage";
+import PdvSalesPage from "./pages/admin/PdvSalesPage";
+import FiscalDocumentsPage from "./pages/admin/FiscalDocumentsPage";
+import DeliveriesPage from "./pages/admin/DeliveriesPage";
 import StoreFrontConfigPage from "./pages/admin/StoreFrontConfigPage";
 import TablesPage from "./pages/admin/TablesPage";
 import MarketplacePage from "./pages/admin/MarketplacePage";
@@ -141,6 +144,7 @@ export function AppRoutes() {
 
         {/* ── /app — Logística ────────────────────────────────────────── */}
         <Route path="/app/logistica/rotas" element={<AppPage featureKey="own_delivery"><RoutesList /></AppPage>} />
+        <Route path="/app/logistica/entregas" element={<AppPage><DeliveriesPage /></AppPage>} />
         <Route path="/app/logistica/rotas/planner" element={<AppPage featureKey="own_delivery"><RoutePlanner /></AppPage>} />
         <Route path="/app/logistica/rotas/:routeId" element={<AppPage featureKey="own_delivery"><RouteDetail /></AppPage>} />
         <Route path="/app/logistica/entregadores" element={<AppPage roles={["admin","gerente"]} featureKey="own_delivery"><DeliverersList /></AppPage>} />
@@ -158,6 +162,7 @@ export function AppRoutes() {
 
         <Route path="/app/caixa" element={<AppPage><CashRegistersPage /></AppPage>} />
         <Route path="/app/caixa/sessoes" element={<AppPage><CashSessionsPage /></AppPage>} />
+        <Route path="/app/caixa/vendas" element={<AppPage><PdvSalesPage /></AppPage>} />
 
         <Route path="/app/estoque" element={<AppPage roles={["admin","gerente"]}><StockPage /></AppPage>} />
         <Route path="/app/relatorios" element={<AppPage roles={["admin","gerente"]}><ReportsPage /></AppPage>} />
@@ -165,6 +170,7 @@ export function AppRoutes() {
         {/* ── /app — Plataforma ───────────────────────────────────────── */}
         <Route path="/app/equipe" element={<AppPage roles={["admin"]}><StoreTeam /></AppPage>} />
         <Route path="/app/fiscal" element={<AppPage roles={["admin"]}><FiscalConfigPage /></AppPage>} />
+        <Route path="/app/fiscal/documentos" element={<AppPage roles={["admin","gerente"]}><FiscalDocumentsPage /></AppPage>} />
         <Route path="/app/configuracoes/contabilidade" element={<AppPage roles={["admin","gerente"]} featureKey="accounting_email_dispatch"><AccountingDispatchPage /></AppPage>} />
         <Route path="/app/balanca" element={<AppPage roles={["admin"]}><ScaleAgentsPage /></AppPage>} />
         <Route path="/app/enriquecimento" element={<AppPage roles={["admin","gerente"]}><CatalogEnrichmentPage /></AppPage>} />

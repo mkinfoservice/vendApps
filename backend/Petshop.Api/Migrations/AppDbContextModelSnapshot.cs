@@ -92,6 +92,15 @@ namespace Petshop.Api.Migrations
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ServiceTypeId");
@@ -651,6 +660,9 @@ namespace Petshop.Api.Migrations
 
                     b.HasIndex("CompanyId", "Status");
 
+                    b.HasIndex("CompanyId", "IsArchived", "Status")
+                        .HasDatabaseName("IX_SalesQuotes_CompanyId_IsArchived_Status");
+
                     b.ToTable("SalesQuotes");
                 });
 
@@ -1162,6 +1174,9 @@ namespace Petshop.Api.Migrations
 
                     b.HasIndex("CompanyId", "FiscalStatus");
 
+                    b.HasIndex("CompanyId", "SaleOrderId")
+                        .HasDatabaseName("IX_FiscalDocuments_CompanyId_SaleOrderId");
+
                     b.ToTable("FiscalDocuments");
                 });
 
@@ -1560,6 +1575,13 @@ namespace Petshop.Api.Migrations
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("OriginChannel")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("OriginSaleOrderId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CompanyId");
@@ -1568,6 +1590,9 @@ namespace Petshop.Api.Migrations
 
                     b.HasIndex("PublicId")
                         .IsUnique();
+
+                    b.HasIndex("CompanyId", "OriginChannel")
+                        .HasDatabaseName("IX_Orders_CompanyId_OriginChannel");
 
                     b.ToTable("Orders");
                 });
@@ -1982,6 +2007,17 @@ namespace Petshop.Api.Migrations
 
                     b.Property<int>("TotalCents")
                         .HasColumnType("integer");
+
+                    b.Property<string>("CashRegisterNameSnapshot")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("OperatorName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("OperatorUserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 

@@ -12,6 +12,8 @@ using Petshop.Api.Services.WhatsApp;
 using Petshop.Api.Services.Scale;
 using Petshop.Api.Services.Customers;
 using Petshop.Api.Services.Stock;
+using Petshop.Api.Entities;
+using Petshop.Api.Services;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -313,14 +315,17 @@ public class PdvController : ControllerBase
 
         var sale = new SaleOrder
         {
-            CompanyId      = CompanyId,
-            PublicId       = $"PDV-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(0, 999999):D6}",
-            CashSessionId  = session.Id,
-            CashRegisterId = session.CashRegisterId,
-            CustomerId     = customer?.Id,
-            CustomerName   = req.CustomerName ?? customer?.Name ?? "",
-            CustomerPhone  = req.CustomerPhone ?? customer?.Phone,
-            Status         = SaleOrderStatus.Open
+            CompanyId                  = CompanyId,
+            PublicId                   = $"PDV-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(0, 999999):D6}",
+            CashSessionId              = session.Id,
+            CashRegisterId             = session.CashRegisterId,
+            CashRegisterNameSnapshot   = session.CashRegister?.Name,
+            OperatorUserId             = UserId == Guid.Empty ? null : UserId,
+            OperatorName               = UserName,
+            CustomerId                 = customer?.Id,
+            CustomerName               = req.CustomerName ?? customer?.Name ?? "",
+            CustomerPhone              = req.CustomerPhone ?? customer?.Phone,
+            Status                     = SaleOrderStatus.Open
         };
 
         // Importar de DAV se informado
@@ -377,8 +382,74 @@ public class PdvController : ControllerBase
 
         if (sale is null) return NotFound("Venda nÃ£o encontrada.");
 
-        return Ok(MapSale(sale));
+        Petshop.Api.Entities.Fiscal.FiscalDocument? fiscal = null;
+        if (sale.FiscalDocumentId.HasValue)
+            fiscal = await _db.FiscalDocuments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Id == sale.FiscalDocumentId.Value, ct);
+
+        return Ok(MapSale(sale, fiscal));
     }
+
+    // -- GET /pdv/sale/{id}/fiscal -----------------------------------------------
+    /// <summary>
+    /// Retorna os dados fiscais completos vinculados a uma venda PDV,
+    /// incluindo o XmlContent para download/auditoria.
+    /// Restrito a admin e gerente.
+    /// </summary>
+    [HttpGet("sale/{id:guid}/fiscal")]
+    [Authorize(Roles = "admin,gerente")]
+    public async Task<IActionResult> GetSaleFiscal(Guid id, CancellationToken ct)
+    {
+        var sale = await _db.SaleOrders
+            .AsNoTracking()
+            .Select(o => new { o.Id, o.CompanyId, o.PublicId, o.FiscalDocumentId,
+                               o.TotalCents, o.CreatedAtUtc, o.CompletedAtUtc,
+                               Status = o.Status.ToString() })
+            .FirstOrDefaultAsync(o => o.Id == id && o.CompanyId == CompanyId, ct);
+
+        if (sale is null) return NotFound("Venda nao encontrada.");
+
+        if (!sale.FiscalDocumentId.HasValue)
+            return Ok(new { saleId = id, salePublicId = sale.PublicId, fiscal = (object?)null,
+                            message = "Esta venda nao possui documento fiscal associado." });
+
+        var fiscal = await _db.FiscalDocuments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == sale.FiscalDocumentId.Value, ct);
+
+        if (fiscal is null)
+            return NotFound("Documento fiscal nao encontrado.");
+
+        return Ok(new
+        {
+            SaleId          = sale.Id,
+            SalePublicId    = sale.PublicId,
+            SaleTotalCents  = sale.TotalCents,
+            SaleStatus      = sale.Status,
+            Fiscal = new
+            {
+                fiscal.Id,
+                fiscal.Number,
+                fiscal.Serie,
+                fiscal.AccessKey,
+                FiscalStatus    = fiscal.FiscalStatus.ToString(),
+                ContingencyType = fiscal.ContingencyType.ToString(),
+                IsContingency   = fiscal.ContingencyType != Petshop.Api.Entities.Fiscal.ContingencyType.None,
+                fiscal.AuthorizationCode,
+                fiscal.AuthorizationDateTimeUtc,
+                fiscal.RejectCode,
+                fiscal.RejectMessage,
+                fiscal.TransmissionAttempts,
+                fiscal.LastAttemptAtUtc,
+                fiscal.XmlContent,
+                fiscal.XmlProtocol,
+                fiscal.CreatedAtUtc,
+                fiscal.UpdatedAtUtc,
+            }
+        });
+    }
+
 
     // â”€â”€ GET /pdv/sales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     /// <summary>Lista todas as vendas PDV da empresa com paginaÃ§Ã£o e filtros.</summary>
@@ -388,11 +459,14 @@ public class PdvController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? status = null,
         [FromQuery] string? search = null,
+        [FromQuery] Guid? sessionId = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
+        [FromQuery] string? fiscalStatus = null,
         CancellationToken ct = default)
     {
         if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 20;
-        if (pageSize > 100) pageSize = 100;
+        if (pageSize is < 1 or > 100) pageSize = 20;
 
         var query = _db.SaleOrders
             .AsNoTracking()
@@ -403,6 +477,15 @@ public class PdvController : ControllerBase
             Enum.TryParse<SaleOrderStatus>(status.Trim(), ignoreCase: true, out var parsedStatus))
             query = query.Where(o => o.Status == parsedStatus);
 
+        if (sessionId.HasValue)
+            query = query.Where(o => o.CashSessionId == sessionId.Value);
+
+        if (from.HasValue)
+            query = query.Where(o => o.CreatedAtUtc >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(o => o.CreatedAtUtc <= to.Value);
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -411,18 +494,98 @@ public class PdvController : ControllerBase
         }
 
         var total = await query.CountAsync(ct);
-        var items = await query
+
+        var rawItems = await query
             .OrderByDescending(o => o.CreatedAtUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(o => new
             {
-                o.Id, o.PublicId, o.CustomerName, o.CustomerPhone,
-                Status = o.Status.ToString(),
-                o.TotalCents, o.CreatedAtUtc, o.CompletedAtUtc,
-                FromDav = o.SalesQuoteId.HasValue,
+                o.Id,
+                o.PublicId,
+                o.CashRegisterId,
+                o.CashRegisterNameSnapshot,
+                o.OperatorUserId,
+                o.OperatorName,
+                o.CustomerName,
+                o.CustomerPhone,
+                Status           = o.Status.ToString(),
+                o.SubtotalCents,
+                o.DiscountCents,
+                o.TotalCents,
+                o.FiscalDecision,
+                o.FiscalDocumentId,
+                o.SalesQuoteId,
+                o.CreatedAtUtc,
+                o.CompletedAtUtc,
+                o.CancelledAtUtc,
             })
             .ToListAsync(ct);
+
+        // Enriquecer com dados fiscais (LEFT JOIN manual para evitar cartesian product)
+        var fiscalDocIds = rawItems
+            .Where(i => i.FiscalDocumentId.HasValue)
+            .Select(i => i.FiscalDocumentId!.Value)
+            .Distinct()
+            .ToList();
+
+        Dictionary<Guid, object?> fiscalMap = new();
+        if (fiscalDocIds.Count > 0)
+        {
+            var fiscalDocs = await _db.FiscalDocuments
+                .AsNoTracking()
+                .Where(d => fiscalDocIds.Contains(d.Id))
+                .Select(d => new
+                {
+                    d.Id,
+                    d.Number,
+                    d.Serie,
+                    d.AccessKey,
+                    FiscalStatus     = d.FiscalStatus.ToString(),
+                    ContingencyType  = d.ContingencyType.ToString(),
+                    IsContingency    = d.ContingencyType != Petshop.Api.Entities.Fiscal.ContingencyType.None,
+                    d.AuthorizationDateTimeUtc,
+                    d.RejectCode,
+                })
+                .ToListAsync(ct);
+
+            foreach (var fd in fiscalDocs)
+                fiscalMap[fd.Id] = fd;
+        }
+
+        var items = rawItems.Select(o => new
+        {
+            o.Id,
+            o.PublicId,
+            o.CashRegisterId,
+            o.CashRegisterNameSnapshot,
+            o.OperatorUserId,
+            o.OperatorName,
+            o.CustomerName,
+            o.CustomerPhone,
+            o.Status,
+            o.SubtotalCents,
+            o.DiscountCents,
+            o.TotalCents,
+            o.FiscalDecision,
+            o.SalesQuoteId,
+            FromDav          = o.SalesQuoteId.HasValue,
+            o.CreatedAtUtc,
+            o.CompletedAtUtc,
+            o.CancelledAtUtc,
+            Fiscal           = o.FiscalDocumentId.HasValue && fiscalMap.TryGetValue(o.FiscalDocumentId.Value, out var fd) ? fd : null,
+        }).ToList();
+
+        // Filtro por status fiscal (aplicado após JOIN)
+        if (!string.IsNullOrWhiteSpace(fiscalStatus))
+        {
+            items = items.Where(i =>
+            {
+                if (i.Fiscal is null) return fiscalStatus.Equals("None", StringComparison.OrdinalIgnoreCase);
+                var fs = ((dynamic)i.Fiscal).FiscalStatus as string ?? "";
+                return fs.Equals(fiscalStatus, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
 
         return Ok(new { page, pageSize, total, items });
     }
@@ -674,6 +837,59 @@ public class PdvController : ControllerBase
         var customerPhone = string.IsNullOrWhiteSpace(req.CustomerPhone)
             ? sale.CustomerPhone
             : req.CustomerPhone.Trim();
+        var normalizedPhoneDigits = string.IsNullOrWhiteSpace(customerPhone)
+            ? ""
+            : new string(customerPhone.Where(char.IsDigit).ToArray());
+
+        // Venda direta no PDV agora também entra no fluxo oficial de pedidos.
+        // Assim ela fica visível no módulo de pedidos e mantém o histórico unificado.
+        Order? mirroredOrder = null;
+        if (!sale.SalesQuoteId.HasValue)
+        {
+            mirroredOrder = new Order
+            {
+                Id = Guid.NewGuid(),
+                PublicId = OrderIdGenerator.NewPublicId(),
+                CompanyId = CompanyId,
+                CustomerId = sale.CustomerId,
+                IsPhoneOrder = true,
+                AttendantUserId = UserId == Guid.Empty ? null : UserId,
+                CustomerName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cliente PDV" : sale.CustomerName.Trim(),
+                Phone = normalizedPhoneDigits,
+                Cep = "",
+                Address = "Venda no PDV",
+                OriginChannel = "pdv",
+                OriginSaleOrderId = sale.Id,
+                PaymentMethod = MapToOrderPaymentMethod(primaryMethod),
+                SubtotalCents = sale.SubtotalCents,
+                DeliveryCents = 0,
+                DiscountCents = discountCents,
+                TotalCents = totalCents,
+                Status = OrderStatus.ENTREGUE,
+                CreatedAtUtc = completedAt,
+                UpdatedAtUtc = completedAt,
+                CashGivenCents = primaryMethod.ToUpperInvariant() is "DINHEIRO" or "CASH" ? totalPaid : null,
+                ChangeCents = payments.Sum(p => p.ChangeCents),
+            };
+
+            foreach (var saleItem in sale.Items)
+            {
+                var qty = (saleItem.IsSoldByWeight || saleItem.Qty % 1 != 0m)
+                    ? 1
+                    : Math.Max(1, (int)Math.Round(saleItem.Qty, MidpointRounding.AwayFromZero));
+                var unitPrice = qty > 0 ? Math.Max(0, saleItem.TotalCents / qty) : saleItem.TotalCents;
+                mirroredOrder.Items.Add(new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = saleItem.ProductId,
+                    ProductNameSnapshot = saleItem.ProductNameSnapshot,
+                    UnitPriceCentsSnapshot = unitPrice,
+                    Qty = qty,
+                });
+            }
+
+            _db.Orders.Add(mirroredOrder);
+        }
 
         // UPDATE SaleOrder via SQL direto (sem EF concurrency check)
         await _db.Database.ExecuteSqlAsync(
@@ -755,6 +971,8 @@ public class PdvController : ControllerBase
             FiscalDecision = fiscalDecision,
             ChangeCents  = payments.Sum(p => p.ChangeCents),
             EarnedPoints = earnedPoints,
+            MirroredOrderId = mirroredOrder?.Id,
+            MirroredOrderPublicId = mirroredOrder?.PublicId,
         });
     }
 
@@ -1161,6 +1379,15 @@ WHERE s.""Id"" = {saleId};", ct);
             _                             => Entities.Fiscal.FiscalPaymentMethod.Other
         };
 
+    private static string MapToOrderPaymentMethod(string method) =>
+        method.ToUpperInvariant() switch
+        {
+            "DINHEIRO" or "CASH" => "CASH",
+            "CARTAO_CREDITO" or "CARTAO_DEBITO" or "CARD" or "CARTAO" => "CARD_ON_DELIVERY",
+            "PIX" => "PIX",
+            _ => method.ToUpperInvariant()
+        };
+
     private static string? NormalizeCustomerDocument(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return null;
@@ -1180,11 +1407,17 @@ WHERE s.""Id"" = {saleId};", ct);
         s.OpenedAtUtc
     };
 
-    private static object MapSale(SaleOrder o) => new
+    private static object MapSale(
+        SaleOrder o,
+        Petshop.Api.Entities.Fiscal.FiscalDocument? fiscal = null) => new
     {
         o.Id,
         o.PublicId,
         o.CashSessionId,
+        o.CashRegisterId,
+        o.CashRegisterNameSnapshot,
+        o.OperatorUserId,
+        o.OperatorName,
         o.CustomerName,
         o.CustomerPhone,
         o.CustomerDocument,
@@ -1193,10 +1426,31 @@ WHERE s.""Id"" = {saleId};", ct);
         o.TotalCents,
         Status         = o.Status.ToString(),
         o.FiscalDecision,
+        o.FiscalDocumentId,
         o.SalesQuoteId,
+        FromDav        = o.SalesQuoteId.HasValue,
         o.Notes,
         o.CreatedAtUtc,
         o.CompletedAtUtc,
+        o.CancelledAtUtc,
+        Fiscal = fiscal == null ? null : (object)new
+        {
+            fiscal.Id,
+            fiscal.Number,
+            fiscal.Serie,
+            fiscal.AccessKey,
+            FiscalStatus    = fiscal.FiscalStatus.ToString(),
+            ContingencyType = fiscal.ContingencyType.ToString(),
+            IsContingency   = fiscal.ContingencyType != Petshop.Api.Entities.Fiscal.ContingencyType.None,
+            fiscal.AuthorizationCode,
+            fiscal.AuthorizationDateTimeUtc,
+            fiscal.RejectCode,
+            fiscal.RejectMessage,
+            fiscal.TransmissionAttempts,
+            fiscal.LastAttemptAtUtc,
+            HasXml          = fiscal.XmlContent != null,
+            fiscal.CreatedAtUtc,
+        },
         Items = o.Items.Select(i => new
         {
             i.Id, i.ProductId, i.ProductNameSnapshot, i.ProductBarcodeSnapshot,
@@ -1262,7 +1516,6 @@ public record AddMovementRequest(
 public record ImportDavRequest(string QuoteCode);
 
 public record UpdateCustomerPhoneRequest(string CustomerPhone);
-
 
 
 

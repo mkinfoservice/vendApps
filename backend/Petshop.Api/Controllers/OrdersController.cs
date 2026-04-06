@@ -231,6 +231,9 @@ public class OrdersController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] string? status = null,
         [FromQuery] string? search = null,
+        [FromQuery] string? channel = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken ct = default
     )
     {
@@ -252,10 +255,28 @@ public class OrdersController : ControllerBase
             query = query.Where(o => o.Status == parsed);
         }
 
+        // Filtro por canal de origem: delivery, phone, pdv, table, marketplace
+        if (!string.IsNullOrWhiteSpace(channel))
+        {
+            var ch = channel.Trim().ToLowerInvariant();
+            query = ch switch
+            {
+                "delivery"    => query.Where(o => o.OriginChannel == "delivery"
+                                               || (o.OriginChannel == null && !o.IsTableOrder && !o.IsPhoneOrder && o.OriginSaleOrderId == null)),
+                "pdv"         => query.Where(o => o.OriginChannel == "pdv" || o.OriginSaleOrderId != null),
+                "table"       => query.Where(o => o.OriginChannel == "table" || o.IsTableOrder),
+                "phone"       => query.Where(o => o.OriginChannel == "phone" || (o.IsPhoneOrder && o.OriginChannel == null)),
+                _              => query.Where(o => o.OriginChannel == ch),
+            };
+        }
+
+        if (from.HasValue) query = query.Where(o => o.CreatedAtUtc >= from.Value);
+        if (to.HasValue)   query = query.Where(o => o.CreatedAtUtc <= to.Value);
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            query = query.Where(o => o.PublicId.Contains(term));
+            query = query.Where(o => o.PublicId.Contains(term) || o.CustomerName.Contains(term));
         }
 
         var total = await query.CountAsync(ct);
@@ -804,6 +825,7 @@ public class OrdersController : ControllerBase
             CreatedAtUtc = DateTime.UtcNow,
             IsTableOrder = isTableOrder,
             TableId = req.TableId,
+            OriginChannel = isTableOrder ? "table" : "delivery",
         };
 
         // Se pedido de mesa e cliente forneceu telefone, tenta vincular/criar customer

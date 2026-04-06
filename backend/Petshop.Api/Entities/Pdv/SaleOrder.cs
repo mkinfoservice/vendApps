@@ -22,6 +22,18 @@ public class SaleOrder
 
     public Guid CashRegisterId { get; set; }
 
+    /// <summary>Snapshot do nome do terminal no momento da venda.</summary>
+    [MaxLength(80)]
+    public string? CashRegisterNameSnapshot { get; set; }
+
+    // Operador
+    /// <summary>ID do usuario admin que realizou a venda.</summary>
+    public Guid? OperatorUserId { get; set; }
+
+    /// <summary>Snapshot do nome do operador no momento da venda.</summary>
+    [MaxLength(100)]
+    public string? OperatorName { get; set; }
+
     // ── Origem (DAV) ──────────────────────────────────────
     /// <summary>DAV que originou esta venda (nullable — venda direta no PDV).</summary>
     public Guid? SalesQuoteId { get; set; }

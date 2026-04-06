@@ -64,6 +64,20 @@ namespace Petshop.Api.Entities
        public int DiscountCents { get; set; } // Desconto aplicado (em centavos)
        public int TotalCents { get; set; } // Total do pedido (em centavos)
 
+       // -- Canal de Origem -----------------------------------------------
+       /// <summary>
+       /// Canal que originou o pedido.
+       /// Valores: "delivery", "phone", "pdv", "table", "marketplace".
+       /// </summary>
+       [MaxLength(30)]
+       public string? OriginChannel { get; set; }
+
+       /// <summary>
+       /// SaleOrder PDV que originou este pedido (mirror de venda no caixa).
+       /// Nulo para pedidos de delivery, telefone, mesa ou marketplace.
+       /// </summary>
+       public Guid? OriginSaleOrderId { get; set; }
+
        public OrderStatus Status { get; set; } = OrderStatus.RECEBIDO; // Status do pedido
 
        public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow; // Data e hora de criação do pedido (UTC)

@@ -341,27 +341,96 @@ window.onload=function(){{setTimeout(function(){{window.print();}},600);}};
     [HttpGet("documents")]
     public async Task<IActionResult> ListDocuments(
         [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
         [FromQuery] string? status = null,
+        [FromQuery] string? contingency = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null,
         CancellationToken ct = default)
     {
-        var q = _db.FiscalDocuments.Where(d => d.CompanyId == CompanyId);
+        if (page < 1) page = 1;
+        if (pageSize is < 1 or > 200) pageSize = 50;
+
+        var q = _db.FiscalDocuments
+            .AsNoTracking()
+            .Where(d => d.CompanyId == CompanyId);
 
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<FiscalDocumentStatus>(status, out var st))
             q = q.Where(d => d.FiscalStatus == st);
 
+        if (!string.IsNullOrWhiteSpace(contingency) && Enum.TryParse<ContingencyType>(contingency, out var ct2))
+            q = q.Where(d => d.ContingencyType == ct2);
+
+        if (from.HasValue) q = q.Where(d => d.CreatedAtUtc >= from.Value);
+        if (to.HasValue)   q = q.Where(d => d.CreatedAtUtc <= to.Value);
+
         var total = await q.CountAsync(ct);
-        var items = await q
+
+        // Buscar documentos com JOIN manual para SaleOrder
+        var rawDocs = await q
             .OrderByDescending(d => d.CreatedAtUtc)
-            .Skip((page - 1) * 50).Take(50)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .Select(d => new
             {
-                d.Id, d.Number, d.Serie, d.AccessKey,
-                Status = d.FiscalStatus.ToString(),
-                d.SaleOrderId, d.CreatedAtUtc, d.AuthorizationDateTimeUtc
+                d.Id,
+                d.Number,
+                d.Serie,
+                d.AccessKey,
+                FiscalStatus     = d.FiscalStatus.ToString(),
+                ContingencyType  = d.ContingencyType.ToString(),
+                IsContingency    = d.ContingencyType != ContingencyType.None,
+                d.SaleOrderId,
+                d.RejectCode,
+                d.RejectMessage,
+                d.TransmissionAttempts,
+                d.AuthorizationDateTimeUtc,
+                d.LastAttemptAtUtc,
+                d.CreatedAtUtc,
+                d.UpdatedAtUtc,
+                HasXml           = d.XmlContent != null,
             })
             .ToListAsync(ct);
 
-        return Ok(new { total, page, items });
+        // Enriquecer com PublicId da SaleOrder
+        var saleIds = rawDocs.Where(d => d.SaleOrderId.HasValue)
+                             .Select(d => d.SaleOrderId!.Value)
+                             .Distinct().ToList();
+
+        Dictionary<Guid, string?> salePublicIds = new();
+        if (saleIds.Count > 0)
+        {
+            var sales = await _db.SaleOrders
+                .AsNoTracking()
+                .Where(s => saleIds.Contains(s.Id))
+                .Select(s => new { s.Id, s.PublicId, s.CustomerName, s.TotalCents })
+                .ToListAsync(ct);
+
+            foreach (var s in sales)
+                salePublicIds[s.Id] = s.PublicId;
+        }
+
+        var items = rawDocs.Select(d => new
+        {
+            d.Id,
+            d.Number,
+            d.Serie,
+            d.AccessKey,
+            d.FiscalStatus,
+            d.ContingencyType,
+            d.IsContingency,
+            d.SaleOrderId,
+            SalePublicId     = d.SaleOrderId.HasValue && salePublicIds.TryGetValue(d.SaleOrderId.Value, out var pid) ? pid : null,
+            d.RejectCode,
+            d.RejectMessage,
+            d.TransmissionAttempts,
+            d.AuthorizationDateTimeUtc,
+            d.LastAttemptAtUtc,
+            d.CreatedAtUtc,
+            d.UpdatedAtUtc,
+            d.HasXml,
+        }).ToList();
+
+        return Ok(new { total, page, pageSize, items });
     }
 
     // ── Debug / Testes ────────────────────────────────────────────────────────
