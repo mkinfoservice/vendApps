@@ -893,6 +893,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
     accessToken: "", webhookSecret: "",
     notifyStatuses: [] as OrderStatus[],
     notifySaleCompleted: false,
+    notifyLoyaltyComplement: false,
     templates: {} as Record<string, string>,
     templateLanguageCode: "pt_BR",
     isActive: false,
@@ -908,6 +909,8 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
       (ALL_STATUSES as readonly string[]).includes(s));
     const notifySaleCompleted = rawStatuses.some(
       (s) => s.toUpperCase() === "SALE_COMPLETED");
+    const notifyLoyaltyComplement = rawStatuses.some(
+      (s) => s.toUpperCase() === "LOYALTY_COMPLEMENT");
     let templates: Record<string, string> = {};
     try { templates = JSON.parse(data.notificationTemplatesJson ?? "{}"); } catch { /* ignore */ }
     setForm({
@@ -918,6 +921,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
       webhookSecret:       data.webhookSecret ?? "",
       notifyStatuses,
       notifySaleCompleted,
+      notifyLoyaltyComplement,
       templates,
       templateLanguageCode: data.templateLanguageCode ?? "pt_BR",
       isActive:            data.isActive,
@@ -943,6 +947,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
       notifyOnStatuses:          JSON.stringify([
         ...form.notifyStatuses,
         ...(form.notifySaleCompleted ? ["SALE_COMPLETED"] : []),
+        ...(form.notifyLoyaltyComplement ? ["LOYALTY_COMPLEMENT"] : []),
       ]),
       notificationTemplatesJson: JSON.stringify(form.templates),
       templateLanguageCode:      form.templateLanguageCode || "pt_BR",
@@ -1047,6 +1052,15 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
                   className="w-4 h-4 accent-purple-600"
                 />
                 Recibo PDV (NFC-e)
+              </label>
+              <label className="flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.notifyLoyaltyComplement}
+                  onChange={() => setForm((f) => ({ ...f, notifyLoyaltyComplement: !f.notifyLoyaltyComplement }))}
+                  className="w-4 h-4 accent-purple-600"
+                />
+                Fidelidade (pontos)
               </label>
             </div>
           </div>
