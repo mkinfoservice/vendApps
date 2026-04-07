@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, LogOut, ChevronLeft, KeyRound, UserX, Plus } from "lucide-react";
@@ -16,7 +16,7 @@ import type { CompanyDetailDto, AdminUserDto } from "@/features/master/companies
 
 type Tab = "overview" | "settings" | "admins" | "whatsapp" | "features";
 
-// â”€â”€ Status badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Status badge ──────────────────────────────────────────────
 
 function CompanyStatusBadge({ c }: { c: CompanyDetailDto }) {
   if (c.isDeleted)
@@ -28,7 +28,7 @@ function CompanyStatusBadge({ c }: { c: CompanyDetailDto }) {
   return <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">Ativa</span>;
 }
 
-// â”€â”€ Overview Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Overview Tab ──────────────────────────────────────────────
 
 function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefresh: () => void }) {
   const navigate = useNavigate();
@@ -110,8 +110,8 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
     }),
     onSuccess: (res) => {
       setPResult(
-        `âœ“ Provisionado â€” admin: ${res.adminUsername} | ${res.seededCategories} categorias, ` +
-        `${res.seededProducts} produtos${res.seededDeliverer ? ", entregador padrÃ£o" : ""}`,
+        `✓ Provisionado — admin: ${res.adminUsername} | ${res.seededCategories} categorias, ` +
+        `${res.seededProducts} produtos${res.seededDeliverer ? ", entregador padrão" : ""}`,
       );
       setPErr(null);
       qc.invalidateQueries({ queryKey: ["master", "company",  company.id] });
@@ -128,13 +128,13 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
     ["Plano",     company.plan],
     ["Expira em", company.planExpiresAtUtc
       ? new Date(company.planExpiresAtUtc).toLocaleDateString("pt-BR")
-      : "â€”"],
+      : "—"],
     ["Admins",    String(company.adminCount)],
-    ["Settings",  company.hasSettings ? "âœ“ Configurado" : "NÃ£o configurado"],
-    ["WhatsApp",  company.hasWhatsapp  ? "âœ“ Integrado"  : "â€”"],
+    ["Settings",  company.hasSettings ? "✓ Configurado" : "Não configurado"],
+    ["WhatsApp",  company.hasWhatsapp  ? "✓ Integrado"  : "—"],
     ["Criado em", new Date(company.createdAtUtc).toLocaleDateString("pt-BR")],
     ...(company.suspendedReason
-      ? [["Motivo suspensÃ£o", company.suspendedReason] as [string, string]]
+      ? [["Motivo suspensão", company.suspendedReason] as [string, string]]
       : []),
   ];
 
@@ -167,7 +167,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">ExpiraÃ§Ã£o do plano</label>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Expiração do plano</label>
               <input
                 type="date"
                 value={editForm.planExpiresAtUtc}
@@ -189,7 +189,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                 className="px-4 h-9 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition hover:brightness-110"
                 style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               >
-                {updateMut.isPending ? "Salvandoâ€¦" : "Salvar"}
+                {updateMut.isPending ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
@@ -223,7 +223,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
               disabled={reactivateMut.isPending}
               className="h-9 px-4 rounded-xl border border-green-300 text-sm font-semibold text-green-700 hover:bg-green-50 transition disabled:opacity-60"
             >
-              {reactivateMut.isPending ? "Reativandoâ€¦" : "Reativar empresa"}
+              {reactivateMut.isPending ? "Reativando…" : "Reativar empresa"}
             </button>
           ) : (
             <button
@@ -238,13 +238,13 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
         {!company.isDeleted && (
           <button
             onClick={() => {
-              if (window.confirm(`Deletar "${company.name}"? Esta aÃ§Ã£o Ã© irreversÃ­vel.`))
+              if (window.confirm(`Deletar "${company.name}"? Esta ação é irreversível.`))
                 deleteMut.mutate();
             }}
             disabled={deleteMut.isPending}
             className="h-9 px-4 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 transition disabled:opacity-60"
           >
-            {deleteMut.isPending ? "Deletandoâ€¦" : "Soft-delete"}
+            {deleteMut.isPending ? "Deletando…" : "Soft-delete"}
           </button>
         )}
 
@@ -254,7 +254,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
             className="h-9 px-4 rounded-xl text-sm font-semibold text-white transition hover:brightness-110"
             style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
           >
-            âš¡ Provisionar empresa
+            ⚡ Provisionar empresa
           </button>
         )}
       </div>
@@ -267,7 +267,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
             <textarea
               value={suspendReason}
               onChange={(e) => setSuspendReason(e.target.value)}
-              placeholder="Motivo da suspensÃ£o (opcional)"
+              placeholder="Motivo da suspensão (opcional)"
               className="w-full rounded-xl border border-gray-200 text-sm px-3 py-2.5 outline-none focus:ring-2 focus:ring-[#7c5cf8] transition resize-none h-24"
             />
             {suspendErr && <p className="mt-2 text-sm text-red-600">{suspendErr}</p>}
@@ -283,7 +283,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                 disabled={suspendMut.isPending}
                 className="flex-1 h-9 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 transition disabled:opacity-60"
               >
-                {suspendMut.isPending ? "Suspendendoâ€¦" : "Confirmar"}
+                {suspendMut.isPending ? "Suspendendo…" : "Confirmar"}
               </button>
             </div>
           </div>
@@ -294,7 +294,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
       {showProvision && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 my-4">
-            <h3 className="text-base font-black text-gray-900 mb-4">âš¡ Wizard de Provisionamento</h3>
+            <h3 className="text-base font-black text-gray-900 mb-4">⚡ Wizard de Provisionamento</h3>
 
             {pResult ? (
               <>
@@ -316,7 +316,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Admin da empresa</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">UsuÃ¡rio *</label>
+                      <label className="block text-xs text-gray-500 mb-1">Usuário *</label>
                       <input
                         value={pForm.adminUsername}
                         onChange={(e) => setPForm((f) => ({ ...f, adminUsername: e.target.value }))}
@@ -325,7 +325,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Senha * (mÃ­n. 6)</label>
+                      <label className="block text-xs text-gray-500 mb-1">Senha * (mín. 6)</label>
                       <input
                         type="password"
                         value={pForm.adminPassword}
@@ -348,7 +348,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
 
                 {/* Basic settings */}
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Config bÃ¡sica</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Config básica</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Frete fixo (R$)</label>
@@ -361,7 +361,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 mb-1">Pedido mÃ­nimo (R$)</label>
+                      <label className="block text-xs text-gray-500 mb-1">Pedido mínimo (R$)</label>
                       <input
                         type="number" min="0" step="0.01"
                         value={pForm.minOrderReais}
@@ -389,7 +389,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                           onChange={(e) => setPForm((f) => ({ ...f, [k]: e.target.checked }))}
                           className="w-3.5 h-3.5 accent-purple-600"
                         />
-                        {k === "enablePix" ? "PIX" : k === "enableCard" ? "CartÃ£o" : "Dinheiro"}
+                        {k === "enablePix" ? "PIX" : k === "enableCard" ? "Cartão" : "Dinheiro"}
                       </label>
                     ))}
                   </div>
@@ -432,7 +432,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
                     className="flex-1 h-10 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
                     style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
                   >
-                    {provisionMut.isPending ? "Provisionandoâ€¦" : "âš¡ Provisionar"}
+                    {provisionMut.isPending ? "Provisionando…" : "⚡ Provisionar"}
                   </button>
                 </div>
               </div>
@@ -444,7 +444,7 @@ function OverviewTab({ company, onRefresh }: { company: CompanyDetailDto; onRefr
   );
 }
 
-// â”€â”€ Settings Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Settings Tab ──────────────────────────────────────────────
 
 function SettingsTab({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
@@ -547,22 +547,22 @@ function SettingsTab({ companyId }: { companyId: string }) {
     );
   }
 
-  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Carregandoâ€¦</div>;
+  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Carregando…</div>;
 
   if (isError) return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
-      <p className="text-sm text-gray-500 mb-2">Settings nÃ£o configuradas.</p>
-      <p className="text-xs text-gray-400">Use o wizard âš¡ Provisionar na aba Overview.</p>
+      <p className="text-sm text-gray-500 mb-2">Settings não configuradas.</p>
+      <p className="text-xs text-gray-400">Use o wizard ⚡ Provisionar na aba Overview.</p>
     </div>
   );
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-5">
       <div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">DepÃ³sito</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Depósito</p>
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
-            {textField("EndereÃ§o", "depotAddress", { placeholder: "Rua X, 123 â€” Bairro, Cidade" })}
+            {textField("Endereço", "depotAddress", { placeholder: "Rua X, 123 — Bairro, Cidade" })}
           </div>
           {textField("Latitude",  "depotLatitude",  { type: "number", placeholder: "-23.550" })}
           {textField("Longitude", "depotLongitude", { type: "number", placeholder: "-46.633" })}
@@ -575,7 +575,7 @@ function SettingsTab({ companyId }: { companyId: string }) {
         <div className="grid grid-cols-3 gap-3">
           {textField("Frete fixo (R$)",    "deliveryFixedReais", { type: "number", placeholder: "5.00" })}
           {textField("Frete/km (R$)",      "deliveryPerKmReais", { type: "number", placeholder: "1.50" })}
-          {textField("Pedido mÃ­nimo (R$)", "minOrderReais",      { type: "number", placeholder: "30.00" })}
+          {textField("Pedido mínimo (R$)", "minOrderReais",      { type: "number", placeholder: "30.00" })}
         </div>
       </div>
 
@@ -583,15 +583,15 @@ function SettingsTab({ companyId }: { companyId: string }) {
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Pagamento</p>
         <div className="flex gap-6 mb-3">
           {toggle("PIX",      "enablePix")}
-          {toggle("CartÃ£o",   "enableCard")}
+          {toggle("Cartão",   "enableCard")}
           {toggle("Dinheiro", "enableCash")}
         </div>
         {textField("Chave PIX", "pixKey", { placeholder: "email@empresa.com ou CPF/CNPJ" })}
       </div>
 
       <div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">ImpressÃ£o</p>
-        <div className="flex gap-6 mb-3">{toggle("Habilitar impressÃ£o", "printEnabled")}</div>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Impressão</p>
+        <div className="flex gap-6 mb-3">{toggle("Habilitar impressão", "printEnabled")}</div>
         <div className="flex gap-4">
           {["A4", "80mm"].map((v) => (
             <label key={v} className="flex items-center gap-1.5 text-sm font-medium text-gray-700 cursor-pointer">
@@ -610,11 +610,11 @@ function SettingsTab({ companyId }: { companyId: string }) {
 
       <div>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">WhatsApp</p>
-        {textField("NÃºmero E.164 (link de checkout)", "supportWhatsappE164", { placeholder: "5511999999999" })}
+        {textField("Número E.164 (link de checkout)", "supportWhatsappE164", { placeholder: "5511999999999" })}
       </div>
 
       {saveErr && <p className="text-sm text-red-600">{saveErr}</p>}
-      {saved   && <p className="text-sm text-green-600">âœ“ ConfiguraÃ§Ãµes salvas!</p>}
+      {saved   && <p className="text-sm text-green-600">✓ Configurações salvas!</p>}
 
       <button
         onClick={() => saveMut.mutate()}
@@ -622,13 +622,13 @@ function SettingsTab({ companyId }: { companyId: string }) {
         className="h-10 px-6 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
         style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
       >
-        {saveMut.isPending ? "Salvandoâ€¦" : "Salvar configuraÃ§Ãµes"}
+        {saveMut.isPending ? "Salvando…" : "Salvar configurações"}
       </button>
     </div>
   );
 }
 
-// â”€â”€ Admins Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Admins Tab ────────────────────────────────────────────────
 
 function AdminsTab({ companyId }: { companyId: string }) {
   const qc = useQueryClient();
@@ -697,16 +697,16 @@ function AdminsTab({ companyId }: { companyId: string }) {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {isLoading ? (
-          <div className="py-10 text-center text-sm text-gray-400">Carregandoâ€¦</div>
+          <div className="py-10 text-center text-sm text-gray-400">Carregando…</div>
         ) : !data?.items.length ? (
           <div className="py-10 text-center text-sm text-gray-400">Nenhum admin cadastrado.</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">UsuÃ¡rio</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuário</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">E-mail</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ãšltimo login</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Último login</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -715,11 +715,11 @@ function AdminsTab({ companyId }: { companyId: string }) {
               {data.items.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50/70 transition-colors">
                   <td className="px-5 py-3 font-mono text-xs font-semibold text-gray-900">{u.username}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{u.email ?? "â€”"}</td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">{u.email ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs">
                     {u.lastLoginAtUtc
                       ? new Date(u.lastLoginAtUtc).toLocaleDateString("pt-BR")
-                      : "â€”"}
+                      : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {u.isActive
@@ -763,7 +763,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
             <h3 className="text-base font-black text-gray-900 mb-4">Novo admin</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">UsuÃ¡rio *</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Usuário *</label>
                 <input
                   value={newForm.username}
                   onChange={(e) => setNewForm((f) => ({ ...f, username: e.target.value }))}
@@ -772,7 +772,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">Senha * (mÃ­n. 6)</label>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Senha * (mín. 6)</label>
                 <input
                   type="password"
                   value={newForm.password}
@@ -805,7 +805,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
                 className="flex-1 h-9 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition hover:brightness-110"
                 style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               >
-                {createMut.isPending ? "Criandoâ€¦" : "Criar"}
+                {createMut.isPending ? "Criando…" : "Criar"}
               </button>
             </div>
           </div>
@@ -823,7 +823,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
               className="w-full h-9 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition mb-2"
-              placeholder="Nova senha (mÃ­n. 6)"
+              placeholder="Nova senha (mín. 6)"
             />
             {resetErr && <p className="text-sm text-red-600 mb-2">{resetErr}</p>}
             <div className="flex gap-3">
@@ -839,7 +839,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
                 className="flex-1 h-9 rounded-xl text-sm font-semibold text-white disabled:opacity-60 transition hover:brightness-110"
                 style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
               >
-                {resetMut.isPending ? "Salvandoâ€¦" : "Salvar"}
+                {resetMut.isPending ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
@@ -849,7 +849,7 @@ function AdminsTab({ companyId }: { companyId: string }) {
   );
 }
 
-// â”€â”€ WhatsApp Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── WhatsApp Tab ──────────────────────────────────────────────
 
 const ALL_STATUSES = ["RECEBIDO","EM_PREPARO","SAIU_PARA_ENTREGA","ENTREGUE","CANCELADO"] as const;
 type OrderStatus = typeof ALL_STATUSES[number];
@@ -867,7 +867,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
     retry: false,
   });
 
-  // â”€â”€ Prefs de alerta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Prefs de alerta ─────────────────────────────────────────
   const [waMode,     setWaMode]     = useState<"own" | "platform" | "none">(company.whatsappMode ?? "none");
   const [ownerPhone, setOwnerPhone] = useState(company.ownerAlertPhone ?? "");
   const [prefsSaved, setPrefsSaved] = useState(false);
@@ -886,7 +886,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
     },
     onError: (e: Error) => setPrefsErr(e.message),
   });
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ────────────────────────────────────────────────────────────
 
   const [form, setForm] = useState({
     mode: "link", wabaId: "", phoneNumberId: "",
@@ -958,14 +958,14 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
     onError: (e: Error) => setSaveErr(e.message),
   });
 
-  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Carregandoâ€¦</div>;
+  if (isLoading) return <div className="py-10 text-center text-sm text-gray-400">Carregando…</div>;
 
   return (
     <div className="space-y-4">
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
       {isError && (
         <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-700">
-          Nenhuma integraÃ§Ã£o configurada. Preencha abaixo para criar.
+          Nenhuma integração configurada. Preencha abaixo para criar.
         </div>
       )}
 
@@ -973,8 +973,8 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500">Token armazenado:</span>
           {data.hasAccessToken
-            ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">âœ“ Sim</span>
-            : <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">NÃ£o</span>}
+            ? <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">✓ Sim</span>
+            : <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Não</span>}
         </div>
       )}
 
@@ -1051,11 +1051,43 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Idioma do template</label>
+            <input
+              value={form.templateLanguageCode}
+              onChange={(e) => setForm((f) => ({ ...f, templateLanguageCode: e.target.value }))}
+              placeholder="pt_BR"
+              className="w-40 h-9 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition"
+            />
+          </div>
+
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
+            <div>
+              <p className="text-xs font-bold text-purple-700">📄 NFC-e por WhatsApp (PDV)</p>
+              <p className="text-xs text-purple-500 mt-0.5">
+                Envia comprovante PDF ao cliente após autorização fiscal.
+                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor (ex: 45,79), &#123;&#123;3&#125;&#125;=nº venda.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="w-40 text-xs text-gray-600 font-medium shrink-0">Template</span>
+              <input
+                value={form.templates["SALE_COMPLETED"] ?? ""}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  templates: { ...f.templates, SALE_COMPLETED: e.target.value },
+                }))}
+                placeholder="ex: purchase_receipt_1"
+                className="flex-1 h-9 px-3 rounded-xl border border-purple-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
+              />
+            </div>
+          </div>
+
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-3">
             <div>
               <p className="text-xs font-bold text-green-700">Fidelidade — saldo de pontos</p>
               <p className="text-xs text-green-600 mt-0.5">
-                Enviado automaticamente apos venda/entrega quando o cliente tem pontos acumulados.
+                Enviado automaticamente após venda/entrega quando o cliente tem pontos acumulados.
                 Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=pontos ganhos, &#123;&#123;3&#125;&#125;=saldo atual.
               </p>
             </div>
@@ -1069,38 +1101,6 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
                 }))}
                 placeholder="ex: card_transaction_alert_2"
                 className="flex-1 h-9 px-3 rounded-xl border border-green-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Idioma do template</label>
-            <input
-              value={form.templateLanguageCode}
-              onChange={(e) => setForm((f) => ({ ...f, templateLanguageCode: e.target.value }))}
-              placeholder="pt_BR"
-              className="w-40 h-9 px-3 rounded-xl border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition"
-            />
-          </div>
-
-          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-3">
-            <div>
-              <p className="text-xs font-bold text-purple-700">ðŸ“„ NFC-e por WhatsApp (PDV)</p>
-              <p className="text-xs text-purple-500 mt-0.5">
-                Envia comprovante PDF ao cliente apÃ³s autorizaÃ§Ã£o fiscal.
-                Vars: &#123;&#123;1&#125;&#125;=nome, &#123;&#123;2&#125;&#125;=valor (ex: 45,79), &#123;&#123;3&#125;&#125;=nÂº venda.
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-40 text-xs text-gray-600 font-medium shrink-0">Template</span>
-              <input
-                value={form.templates["SALE_COMPLETED"] ?? ""}
-                onChange={(e) => setForm((f) => ({
-                  ...f,
-                  templates: { ...f.templates, SALE_COMPLETED: e.target.value },
-                }))}
-                placeholder="ex: purchase_receipt_1"
-                className="flex-1 h-9 px-3 rounded-xl border border-purple-300 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8] transition bg-white font-mono"
               />
             </div>
           </div>
@@ -1137,11 +1137,11 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
           onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
           className="w-4 h-4 accent-purple-600"
         />
-        IntegraÃ§Ã£o ativa
+        Integração ativa
       </label>
 
       {saveErr && <p className="text-sm text-red-600">{saveErr}</p>}
-      {saved   && <p className="text-sm text-green-600">âœ“ IntegraÃ§Ã£o salva!</p>}
+      {saved   && <p className="text-sm text-green-600">✓ Integração salva!</p>}
 
       <button
         onClick={() => saveMut.mutate()}
@@ -1149,15 +1149,15 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
         className="h-10 px-6 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
         style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
       >
-        {saveMut.isPending ? "Salvandoâ€¦" : "Salvar integraÃ§Ã£o"}
+        {saveMut.isPending ? "Salvando…" : "Salvar integração"}
       </button>
     </div>
 
-    {/* â”€â”€ Modo de envio de alertas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+    {/* ── Modo de envio de alertas ─────────────────────────── */}
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
       <p className="text-sm font-bold text-gray-700">Alertas internos (insumos / estoque)</p>
       <p className="text-xs text-gray-400">
-        Define qual conta WhatsApp envia notificaÃ§Ãµes ao dono da empresa quando o estoque de insumos fica abaixo do mÃ­nimo.
+        Define qual conta WhatsApp envia notificações ao dono da empresa quando o estoque de insumos fica abaixo do mínimo.
       </p>
 
       <div className="flex flex-col gap-2">
@@ -1171,9 +1171,9 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
               className="w-4 h-4 accent-purple-600"
             />
             <span className="text-sm text-gray-700 font-medium">
-              {v === "own"      && "PrÃ³pria (credenciais desta empresa)"}
+              {v === "own"      && "Própria (credenciais desta empresa)"}
               {v === "platform" && "Plataforma (conta global do vendApps)"}
-              {v === "none"     && "NÃ£o enviar alertas"}
+              {v === "none"     && "Não enviar alertas"}
             </span>
           </label>
         ))}
@@ -1189,11 +1189,11 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
           placeholder="5511999999999"
           className="w-full h-9 rounded-xl border border-gray-200 px-3 text-sm bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400"
         />
-        <p className="text-xs text-gray-400 mt-1">Formato internacional sem + â€” ex: 5511999999999</p>
+        <p className="text-xs text-gray-400 mt-1">Formato internacional sem + — ex: 5511999999999</p>
       </div>
 
       {prefsErr  && <p className="text-sm text-red-600">{prefsErr}</p>}
-      {prefsSaved && <p className="text-sm text-green-600">âœ“ Prefs salvas!</p>}
+      {prefsSaved && <p className="text-sm text-green-600">✓ Prefs salvas!</p>}
 
       <button
         onClick={() => prefsMut.mutate()}
@@ -1201,21 +1201,21 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
         className="h-9 px-5 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
         style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
       >
-        {prefsMut.isPending ? "Salvandoâ€¦" : "Salvar prefs"}
+        {prefsMut.isPending ? "Salvando…" : "Salvar prefs"}
       </button>
     </div>
     </div>
   );
 }
 
-// â”€â”€ Features Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Features Tab ──────────────────────────────────────────────
 
 const FEATURE_META: Record<string, { label: string; description: string }> = {
-  own_delivery:   { label: "Entrega PrÃ³pria",   description: "Exibe mÃ³dulos de Rotas e Entregadores. Desative para tenants que nÃ£o fazem entregas (ex: restaurantes, balcÃ£o)." },
-  agenda:         { label: "Agenda",            description: "MÃ³dulo de agendamentos (plano Pro+)." },
-  commissions:    { label: "ComissÃµes",         description: "Rastreamento de comissÃµes por vendedor." },
+  own_delivery:   { label: "Entrega Própria",   description: "Exibe módulos de Rotas e Entregadores. Desative para tenants que não fazem entregas (ex: restaurantes, balcão)." },
+  agenda:         { label: "Agenda",            description: "Módulo de agendamentos (plano Pro+)." },
+  commissions:    { label: "Comissões",         description: "Rastreamento de comissões por vendedor." },
   tips:           { label: "Gorjetas",          description: "Funcionalidade de gorjetas no checkout." },
-  dav_menu:       { label: "DAV / OrÃ§amento",   description: "Menu de DAV e orÃ§amentos." },
+  dav_menu:       { label: "DAV / Orçamento",   description: "Menu de DAV e orçamentos." },
   financial_menu: { label: "Financeiro",        description: "Menu financeiro e lancamentos." },
   loyalty_program:{ label: "Fidelidade",        description: "Libera o programa de fidelidade, resgates e portal publico /loyalty." },
   accounting_email_dispatch:{ label: "Contabilidade automatizada", description: "Habilita fechamento contabil automatico e envio para o contador por tenant." },
@@ -1255,8 +1255,8 @@ function FeaturesTab({ companyId }: { companyId: string }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-gray-500">
-        Overrides aplicados por cima dos defaults do plano <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{data?.plan ?? "â€”"}</code>.
-        AlteraÃ§Ãµes sÃ£o imediatas apÃ³s salvar.
+        Overrides aplicados por cima dos defaults do plano <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{data?.plan ?? "—"}</code>.
+        Alterações são imediatas após salvar.
       </p>
 
       <div className="rounded-2xl border border-gray-200 overflow-hidden">
@@ -1289,7 +1289,7 @@ function FeaturesTab({ companyId }: { companyId: string }) {
       </div>
 
       {saveErr && <p className="text-sm text-red-600">{saveErr}</p>}
-      {saved   && <p className="text-sm text-green-600">âœ“ Feature flags atualizados!</p>}
+      {saved   && <p className="text-sm text-green-600">✓ Feature flags atualizados!</p>}
 
       <button
         onClick={() => saveMut.mutate()}
@@ -1297,13 +1297,13 @@ function FeaturesTab({ companyId }: { companyId: string }) {
         className="h-10 px-6 rounded-xl font-semibold text-sm text-white disabled:opacity-60 transition hover:brightness-110"
         style={{ background: "linear-gradient(135deg, #7c5cf8, #6d4df2)" }}
       >
-        {saveMut.isPending ? "Salvandoâ€¦" : "Salvar feature flags"}
+        {saveMut.isPending ? "Salvando…" : "Salvar feature flags"}
       </button>
     </div>
   );
 }
 
-// â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main page ─────────────────────────────────────────────────
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview",  label: "Overview"       },
@@ -1368,7 +1368,7 @@ export default function CompanyDetail() {
           {isLoading ? (
             <div className="h-8 w-56 bg-gray-200 animate-pulse rounded-xl" />
           ) : isError ? (
-            <p className="text-sm text-red-500">Empresa nÃ£o encontrada.</p>
+            <p className="text-sm text-red-500">Empresa não encontrada.</p>
           ) : company && (
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-black text-gray-900">{company.name}</h1>
