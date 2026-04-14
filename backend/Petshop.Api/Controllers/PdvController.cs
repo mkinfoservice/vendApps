@@ -940,20 +940,41 @@ public class PdvController : ControllerBase
         // pode processar toda a cadeia antes de EarnAsync registrar a transação,
         // resultando em earnedPoints = 0 na mensagem ao cliente.
         int earnedPoints = 0;
-        var loyaltyCpf = CpfValidator.Normalize(req.CustomerCpfForLoyalty);
-        if (sale.CustomerId.HasValue && CpfValidator.IsValid(loyaltyCpf))
+        if (sale.CustomerId.HasValue)
         {
-            var customerCpfHash = await _db.Customers
-                .AsNoTracking()
-                .Where(c => c.Id == sale.CustomerId.Value && c.CompanyId == CompanyId)
-                .Select(c => c.CpfHash)
-                .FirstOrDefaultAsync(ct);
+            // Determina se a identidade do cliente está confirmada para fins de fidelidade.
+            // Dois caminhos:
+            //   1) CPF digitado explicitamente → valida hash (fluxo original)
+            //   2) Cliente buscado por telefone → CPF não foi digitado; a seleção do cadastro
+            //      pelo operador já confirma a identidade; basta verificar que o cadastro
+            //      possui CPF registrado (CpfHash preenchido).
+            var loyaltyCpf = CpfValidator.Normalize(req.CustomerCpfForLoyalty);
+            bool cpfConfirmed;
 
-            var inputHash = _cpfProtection.Hash(loyaltyCpf!);
-            var isCpfConfirmed = !string.IsNullOrWhiteSpace(customerCpfHash) &&
-                                 string.Equals(customerCpfHash, inputHash, StringComparison.Ordinal);
+            if (CpfValidator.IsValid(loyaltyCpf))
+            {
+                // CPF informado: confirma pelo hash
+                var customerCpfHash = await _db.Customers
+                    .AsNoTracking()
+                    .Where(c => c.Id == sale.CustomerId.Value && c.CompanyId == CompanyId)
+                    .Select(c => c.CpfHash)
+                    .FirstOrDefaultAsync(ct);
 
-            if (isCpfConfirmed)
+                var inputHash = _cpfProtection.Hash(loyaltyCpf!);
+                cpfConfirmed = !string.IsNullOrWhiteSpace(customerCpfHash) &&
+                               string.Equals(customerCpfHash, inputHash, StringComparison.Ordinal);
+            }
+            else
+            {
+                // Cliente identificado por telefone: identidade confirmada pelo operador na busca.
+                // Garante apenas que o cadastro tem CPF registrado (pré-requisito do programa).
+                cpfConfirmed = await _db.Customers
+                    .AsNoTracking()
+                    .Where(c => c.Id == sale.CustomerId.Value && c.CompanyId == CompanyId)
+                    .AnyAsync(c => c.CpfHash != null && c.CpfHash != "", ct);
+            }
+
+            if (cpfConfirmed)
             {
                 try
                 {
@@ -963,7 +984,6 @@ public class PdvController : ControllerBase
                 catch { /* fidelidade nao pode derrubar a venda */ }
 
                 // Envia complemento de fidelidade via WhatsApp independente de NFC-e.
-                // Sempre enfileira quando CPF é confirmado: o job verifica elegibilidade e idempotência.
                 _jobs.Enqueue<WhatsAppNotificationService>(
                     s => s.SendPdvLoyaltyComplementAsync(saleId, CancellationToken.None));
             }
