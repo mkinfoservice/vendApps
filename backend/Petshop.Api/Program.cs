@@ -497,6 +497,42 @@ using (var scope = app.Services.CreateScope())
 
     await db.Database.MigrateAsync();
 
+    // ── Safety nets idempotentes (ADD COLUMN IF NOT EXISTS) ──────────────────
+    // Garante que colunas adicionadas em migrations recentes existam no banco,
+    // mesmo que a migration tenha sido marcada no __EFMigrationsHistory sem
+    // executar o DDL (bug conhecido em deploys com lock de schema no Render).
+
+    // [20260414] OrderId em LoyaltyTransactions — vincula transação ao pedido de delivery
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE "LoyaltyTransactions"
+            ADD COLUMN IF NOT EXISTS "OrderId" uuid;
+        CREATE INDEX IF NOT EXISTS "IX_LoyaltyTransactions_OrderId"
+            ON "LoyaltyTransactions" ("OrderId");
+        """);
+
+    // [20260414] AddonGroups — fluxo step-by-step de adicionais por grupo
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "ProductAddonGroups" (
+            "Id"             uuid                         NOT NULL,
+            "ProductId"      uuid                         NOT NULL,
+            "Name"           character varying(80)        NOT NULL,
+            "IsRequired"     boolean                      NOT NULL DEFAULT false,
+            "SelectionType"  character varying(10)        NOT NULL DEFAULT 'multiple',
+            "MinSelections"  integer                      NOT NULL DEFAULT 0,
+            "MaxSelections"  integer                      NOT NULL DEFAULT 0,
+            "SortOrder"      integer                      NOT NULL DEFAULT 0,
+            CONSTRAINT "PK_ProductAddonGroups" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_ProductAddonGroups_Products_ProductId"
+                FOREIGN KEY ("ProductId") REFERENCES "Products" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_ProductAddonGroups_ProductId"
+            ON "ProductAddonGroups" ("ProductId");
+        ALTER TABLE "ProductAddons"
+            ADD COLUMN IF NOT EXISTS "AddonGroupId" uuid;
+        CREATE INDEX IF NOT EXISTS "IX_ProductAddons_AddonGroupId"
+            ON "ProductAddons" ("AddonGroupId");
+        """);
+
     // Garante colunas de AddOperationalQuerySupport (migration pode ter sido marcada
     // como aplicada no __EFMigrationsHistory sem ter executado o DDL — aplica aqui de
     // forma idempotente para garantir que as colunas existam em qualquer cenário)
