@@ -44,6 +44,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<ProductAddonGroup> ProductAddonGroups => Set<ProductAddonGroup>();
 
     // ── Clientes ─────────────────────────────────────────────
     public DbSet<Customer> Customers => Set<Customer>();

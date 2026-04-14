@@ -29,6 +29,20 @@ export type ProductAddon = {
   id: string;
   name: string;
   priceCents: number;
+  addonGroupId?: string | null;
+};
+
+export type ProductAddonGroup = {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  /** "single" = radio; "multiple" = checkbox */
+  selectionType: "single" | "multiple";
+  minSelections: number;
+  /** 0 = sem limite */
+  maxSelections: number;
+  sortOrder: number;
+  addons: ProductAddon[];
 };
 
 export type Product = {
@@ -44,6 +58,7 @@ export type Product = {
   category: { id: string; name: string; slug: string };
   variants: ProductVariant[];
   addons: ProductAddon[];
+  addonGroups: ProductAddonGroup[];
 };
 
 export async function fetchCategories(): Promise<Category[]> {

@@ -109,6 +109,8 @@ public class CatalogController : ControllerBase
             .Where(p => p.CompanyId == company.Id && p.IsActive && !p.IsSupply)
             .Include(p => p.Category)
             .Include(p => p.Variants.Where(v => v.IsActive))
+            .Include(p => p.AddonGroups.OrderBy(g => g.SortOrder))
+                .ThenInclude(g => g.Addons.Where(a => a.IsActive).OrderBy(a => a.SortOrder))
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(categorySlug))
@@ -138,7 +140,23 @@ public class CatalogController : ControllerBase
                 Addons = p.Addons
                     .Where(a => a.IsActive)
                     .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
-                    .Select(a => new { a.Id, a.Name, a.PriceCents })
+                    .Select(a => new { a.Id, a.Name, a.PriceCents, a.AddonGroupId }),
+                AddonGroups = p.AddonGroups
+                    .OrderBy(g => g.SortOrder)
+                    .Select(g => new
+                    {
+                        g.Id,
+                        g.Name,
+                        g.IsRequired,
+                        g.SelectionType,
+                        g.MinSelections,
+                        g.MaxSelections,
+                        g.SortOrder,
+                        Addons = g.Addons
+                            .Where(a => a.IsActive)
+                            .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
+                            .Select(a => new { a.Id, a.Name, a.PriceCents })
+                    })
             })
             .ToListAsync(ct);
 

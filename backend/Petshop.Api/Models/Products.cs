@@ -121,4 +121,5 @@ public class Product
     public List<ProductVariant> Variants { get; set; } = new();
     public List<ProductImage> Images { get; set; } = new();
     public List<Petshop.Api.Entities.Catalog.ProductAddon> Addons { get; set; } = new();
+    public List<Petshop.Api.Entities.Catalog.ProductAddonGroup> AddonGroups { get; set; } = new();
 }

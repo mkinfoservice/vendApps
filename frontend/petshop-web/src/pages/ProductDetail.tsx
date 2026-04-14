@@ -5,6 +5,8 @@ import { useProduct } from "@/features/catalog/queries";
 import { useCart } from "@/features/cart/cart";
 import { ToastProvider, useToast } from "@/components/Toast";
 import { useBrandVar } from "@/hooks/useBrandVar";
+import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
+import type { Product } from "@/features/catalog/api";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -76,15 +78,24 @@ function ProductDetailContent() {
   }
 
   const img = product.imageUrl || "https://picsum.photos/seed/pet/800/600";
+  const hasGroups = (product.addonGroups?.length ?? 0) > 0;
 
-  function handleAddToCart() {
-    for (let i = 0; i < qty; i++) {
-      cart.add(product as any);
-    }
+  function handleSimpleAdd() {
+    for (let i = 0; i < qty; i++) cart.add(product as any);
     showToast(
       qty > 1
-        ? `${qty}x ${product!.name} adicionados ao carrinho!`
-        : `${product!.name} adicionado ao carrinho!`
+        ? `${qty}x ${product!.name} adicionados!`
+        : `${product!.name} adicionado!`
+    );
+    navigate(-1);
+  }
+
+  function handleStepperConfirm(synthetic: Product, confirmedQty: number) {
+    for (let i = 0; i < confirmedQty; i++) cart.add(synthetic as any);
+    showToast(
+      confirmedQty > 1
+        ? `${confirmedQty}x ${synthetic.name} adicionados!`
+        : `${synthetic.name} adicionado!`
     );
     navigate(-1);
   }
@@ -102,12 +113,15 @@ function ProductDetailContent() {
           <ChevronLeft className="w-5 h-5 text-gray-700" />
         </button>
         <h1 className="flex-1 text-center text-base font-semibold text-gray-900 pr-9 truncate">
-          Detalhes do Produto
+          {product.name}
         </h1>
       </div>
 
       {/* Hero image */}
-      <div className="relative w-full shrink-0 overflow-hidden bg-gray-100" style={{ height: "min(320px, 44vw + 80px)" }}>
+      <div
+        className="relative w-full shrink-0 overflow-hidden bg-gray-100"
+        style={{ height: "min(280px, 44vw + 60px)" }}
+      >
         <img
           src={img}
           alt={product.name}
@@ -115,79 +129,100 @@ function ProductDetailContent() {
         />
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto pb-32">
-        <div className="p-5">
-          {/* Title */}
-          <h2 className="font-bold text-2xl text-gray-900 leading-tight">{product.name}</h2>
-
-          {/* Price + Quantity */}
-          <div className="mt-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs text-gray-400 mb-1">Preço</p>
-              <span className="text-2xl font-black tabular-nums" style={{ color: "var(--brand)" }}>
+      {hasGroups ? (
+        /* ── Modo stepper (mobile fullscreen) ─────────────── */
+        <div
+          className="flex-1 flex flex-col overflow-hidden"
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        >
+          {/* Preço base */}
+          <div className="px-5 pt-4 pb-2 border-b border-gray-100 shrink-0">
+            <p className="text-xs text-gray-400">
+              a partir de{" "}
+              <span className="font-bold" style={{ color: "var(--brand)" }}>
                 {formatBRL(product.priceCents)}
               </span>
-            </div>
+            </p>
+          </div>
+          <ProductAddonStepper
+            product={product}
+            onConfirm={handleStepperConfirm}
+            onCancel={() => navigate(-1)}
+          />
+        </div>
+      ) : (
+        /* ── Modo simples ──────────────────────────────────── */
+        <>
+          <div className="flex-1 overflow-y-auto pb-32">
+            <div className="p-5">
+              <h2 className="font-bold text-2xl text-gray-900 leading-tight">{product.name}</h2>
 
-            <div className="shrink-0">
-              <p className="text-xs text-gray-400 mb-1 text-right">Quantidade</p>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center active:scale-95 transition-all"
-                  aria-label="Diminuir"
-                >
-                  <Minus className="w-4 h-4 text-gray-600" />
-                </button>
-                <span className="w-6 text-center text-base font-bold text-gray-900 tabular-nums select-none">
-                  {qty}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQty((q) => q + 1)}
-                  className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
-                  style={{ background: "var(--brand)" }}
-                  aria-label="Aumentar"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+              <div className="mt-5 flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Preço</p>
+                  <span className="text-2xl font-black tabular-nums" style={{ color: "var(--brand)" }}>
+                    {formatBRL(product.priceCents)}
+                  </span>
+                </div>
+
+                <div className="shrink-0">
+                  <p className="text-xs text-gray-400 mb-1 text-right">Quantidade</p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center active:scale-95 transition-all"
+                      aria-label="Diminuir"
+                    >
+                      <Minus className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <span className="w-6 text-center text-base font-bold text-gray-900 tabular-nums select-none">
+                      {qty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQty((q) => q + 1)}
+                      className="w-9 h-9 rounded-full text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition-all"
+                      style={{ background: "var(--brand)" }}
+                      aria-label="Aumentar"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 divide-y divide-gray-100 border-t border-gray-100">
+                <div className="py-3.5 flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Categoria</span>
+                  <span className="font-semibold text-gray-900">{product.category?.name ?? "—"}</span>
+                </div>
+                <div className="py-3.5 flex items-center justify-between text-sm">
+                  <span className="text-gray-400">Entrega</span>
+                  <span className="font-semibold text-green-500">Entrega rápida disponível</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Info rows */}
-          <div className="mt-6 divide-y divide-gray-100 border-t border-gray-100">
-            <div className="py-3.5 flex items-center justify-between text-sm">
-              <span className="text-gray-400">Categoria</span>
-              <span className="font-semibold text-gray-900">{product.category?.name ?? "—"}</span>
-            </div>
-            <div className="py-3.5 flex items-center justify-between text-sm">
-              <span className="text-gray-400">Entrega</span>
-              <span className="font-semibold text-green-500">Entrega rápida disponível</span>
+          <div
+            className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4"
+            style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+          >
+            <div className="max-w-2xl mx-auto">
+              <button
+                type="button"
+                onClick={handleSimpleAdd}
+                className="w-full h-14 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition"
+                style={{ background: "var(--brand)" }}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                Adicionar ao Carrinho
+              </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Fixed CTA */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4"
-        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
-      >
-        <div className="max-w-2xl mx-auto">
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className="w-full h-14 rounded-2xl font-black text-base text-white flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition"
-            style={{ background: "var(--brand)" }}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            Adicionar ao Carrinho
-          </button>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

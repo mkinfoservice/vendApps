@@ -392,6 +392,82 @@ namespace Petshop.Api.Migrations
                     b.ToTable("ProductVariants");
                 });
 
+            modelBuilder.Entity("Petshop.Api.Entities.Catalog.ProductAddon", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AddonGroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("PriceCents")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AddonGroupId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductAddons");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Catalog.ProductAddonGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxSelections")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MinSelections")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SelectionType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("ProductAddonGroups");
+                });
+
             modelBuilder.Entity("Petshop.Api.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3287,6 +3363,34 @@ namespace Petshop.Api.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Petshop.Api.Entities.Catalog.ProductAddon", b =>
+                {
+                    b.HasOne("Petshop.Api.Entities.Catalog.ProductAddonGroup", "AddonGroup")
+                        .WithMany("Addons")
+                        .HasForeignKey("AddonGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Petshop.Api.Models.Product", "Product")
+                        .WithMany("Addons")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AddonGroup");
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("Petshop.Api.Entities.Catalog.ProductAddonGroup", b =>
+                {
+                    b.HasOne("Petshop.Api.Models.Product", "Product")
+                        .WithMany("AddonGroups")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("Petshop.Api.Entities.Customer", b =>
                 {
                     b.HasOne("Petshop.Api.Entities.Catalog.Company", "Company")
@@ -3835,6 +3939,10 @@ namespace Petshop.Api.Migrations
 
             modelBuilder.Entity("Petshop.Api.Models.Product", b =>
                 {
+                    b.Navigation("AddonGroups");
+
+                    b.Navigation("Addons");
+
                     b.Navigation("Images");
 
                     b.Navigation("Variants");

@@ -14,6 +14,10 @@ public class ProductAddon
     public Guid ProductId { get; set; }
     public Product Product { get; set; } = default!;
 
+    /// <summary>Grupo ao qual este adicional pertence (opcional). Nulo = adicional avulso sem step definido.</summary>
+    public Guid? AddonGroupId { get; set; }
+    public ProductAddonGroup? AddonGroup { get; set; }
+
     [Required, MaxLength(100)]
     public string Name { get; set; } = "";
 
