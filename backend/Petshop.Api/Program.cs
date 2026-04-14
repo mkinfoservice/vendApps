@@ -841,6 +841,7 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(db);
     await AddonGroupSeeder.SeedAsync(app.Services);
+    await AddonSplitSeeder.SeedAsync(app.Services);
 
     // Migração LGPD: criptografa CPFs que ainda estão em plaintext
     using var cpfScope = app.Services.CreateScope();

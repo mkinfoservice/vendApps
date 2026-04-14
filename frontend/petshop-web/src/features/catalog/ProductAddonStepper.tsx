@@ -99,7 +99,13 @@ export function ProductAddonStepper({ product, onConfirm, onCancel }: Props) {
             <button
               key={addon.id}
               type="button"
-              onClick={() => toggle(addon.id)}
+              onClick={() => {
+                toggle(addon.id);
+                // Single-selection: avança automaticamente após escolha, exceto na última etapa
+                if (isSingle && !isLastStep) {
+                  setTimeout(() => goNext(), 180);
+                }
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all duration-150 text-left ${
                 isSelected
                   ? "border-[var(--brand)] bg-[var(--brand)]/5 shadow-sm"
