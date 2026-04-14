@@ -67,6 +67,29 @@ export async function fetchCategories(): Promise<Category[]> {
   return r.json();
 }
 
+/**
+ * Quando um produto tem adicionais (flat) mas nenhum grupo configurado,
+ * cria um grupo sintético "Adicionais" para ativar a UI step-by-step.
+ * Produtos sem adicionais não são afetados.
+ */
+function normalizeProductGroups(p: Product): Product {
+  if (p.addonGroups.length > 0 || p.addons.length === 0) return p;
+  const syntheticId = `${p.id}__default`;
+  return {
+    ...p,
+    addonGroups: [{
+      id: syntheticId,
+      name: "Adicionais",
+      isRequired: false,
+      selectionType: "multiple",
+      minSelections: 0,
+      maxSelections: 0,
+      sortOrder: 0,
+      addons: p.addons.map((a) => ({ ...a, addonGroupId: syntheticId })),
+    }],
+  };
+}
+
 export async function fetchProducts(categorySlug?: string, search?: string): Promise<Product[]> {
   const params = new URLSearchParams();
   if (categorySlug) params.set("categorySlug", categorySlug);
@@ -76,7 +99,8 @@ export async function fetchProducts(categorySlug?: string, search?: string): Pro
   const r = await fetch(`${catalogBase}/products${qs ? `?${qs}` : ""}`);
 
   if (!r.ok) throw new Error("Erro ao buscar produtos");
-  return r.json();
+  const products: Product[] = await r.json();
+  return products.map(normalizeProductGroups);
 }
 
 // ── StoreFront (banner + cor primária) ────────────────────────────────────────

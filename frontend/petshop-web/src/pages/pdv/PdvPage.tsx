@@ -1042,6 +1042,7 @@ function AddonModal({
         setAddons(activeAddons);
 
         if (groupsRaw.length > 0) {
+          // Grupos configurados: monta estrutura real
           const groups: ProductAddonGroup[] = groupsRaw.map((g) => ({
             id: g.id,
             name: g.name,
@@ -1055,6 +1056,25 @@ function AddonModal({
               .map((a) => ({ id: a.id, name: a.name, priceCents: a.priceCents, addonGroupId: g.id })),
           }));
           setAddonGroups(groups);
+        } else if (activeAddons.length > 0) {
+          // Sem grupos configurados: agrupa todos os adicionais em um único grupo sintético
+          // para ativar a UI step-by-step. Opcional, múltipla escolha, sem limite.
+          const syntheticGroupId = `${product.id}__default`;
+          setAddonGroups([{
+            id: syntheticGroupId,
+            name: "Adicionais",
+            isRequired: false,
+            selectionType: "multiple",
+            minSelections: 0,
+            maxSelections: 0,
+            sortOrder: 0,
+            addons: activeAddons.map((a) => ({
+              id: a.id,
+              name: a.name,
+              priceCents: a.priceCents,
+              addonGroupId: syntheticGroupId,
+            })),
+          }]);
         }
       })
       .catch(() => { setAddons([]); setAddonGroups([]); })

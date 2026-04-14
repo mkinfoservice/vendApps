@@ -961,10 +961,15 @@ public class PdvController : ControllerBase
                         CompanyId, sale.CustomerId.Value, saleId, totalCents, ct);
                 }
                 catch { /* fidelidade nao pode derrubar a venda */ }
+
+                // Envia complemento de fidelidade via WhatsApp independente de NFC-e.
+                // Sempre enfileira quando CPF é confirmado: o job verifica elegibilidade e idempotência.
+                _jobs.Enqueue<WhatsAppNotificationService>(
+                    s => s.SendPdvLoyaltyComplementAsync(saleId, CancellationToken.None));
             }
         }
 
-        // Dispara processamento assÃ­ncrono da fila fiscal (APÓS loyalty para evitar race condition)
+        // Dispara processamento assíncrono da fila fiscal (APÓS loyalty para evitar race condition)
         if (fiscalDecision != "PermanentContingency")
             _jobs.Enqueue<FiscalQueueProcessorJob>(j => j.ProcessAsync(CompanyId, CancellationToken.None));
 

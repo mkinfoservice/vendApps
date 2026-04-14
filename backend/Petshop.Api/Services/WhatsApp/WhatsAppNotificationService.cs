@@ -566,6 +566,176 @@ public class WhatsAppNotificationService
     private static string GetLoyaltyComplementTrigger(OrderStatus status)
         => $"{status}_LOYALTY_COMPLEMENT";
 
+    // ── Fidelidade PDV direta (independente de NFC-e) ────────────────────────
+
+    /// <summary>
+    /// Envia o complemento de fidelidade após venda PDV, independente de NFC-e ou WhatsApp SALE_COMPLETED.
+    /// Disparado diretamente após EarnAsync, sem aguardar processamento fiscal.
+    /// Idempotência: chave PDV_LOYALTY_COMPLEMENT + saleId no PayloadJson.
+    /// Também verifica se o caminho SALE_COMPLETED já enviou via ENTREGUE_LOYALTY_COMPLEMENT para não duplicar.
+    /// </summary>
+    public async Task SendPdvLoyaltyComplementAsync(Guid saleId, CancellationToken ct = default)
+    {
+        try
+        {
+            var sale = await _db.SaleOrders
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == saleId, ct);
+            if (sale is null) return;
+
+            var companyId = sale.CompanyId;
+
+            var companyWaMode = await _db.Companies
+                .AsNoTracking()
+                .Where(c => c.Id == companyId)
+                .Select(c => c.WhatsappMode)
+                .FirstOrDefaultAsync(ct) ?? "none";
+            if (companyWaMode == "none") return;
+
+            var integration = await _db.CompanyIntegrationsWhatsapp
+                .AsNoTracking()
+                .FirstOrDefaultAsync(w => w.CompanyId == companyId && w.IsActive, ct);
+
+            var canSend = companyWaMode == "platform" || (integration?.Mode == "cloud_api");
+            if (!canSend) return;
+
+            if (!IsLoyaltyComplementEnabled()) return;
+            if (!await IsLoyaltyFeatureEnabledAsync(companyId, ct)) return;
+
+            // Tenta telefone da venda; fallback no cadastro do cliente
+            var rawPhone = sale.CustomerPhone;
+            if (string.IsNullOrWhiteSpace(rawPhone) && sale.CustomerId.HasValue)
+            {
+                rawPhone = await _db.Customers
+                    .AsNoTracking()
+                    .Where(c => c.Id == sale.CustomerId.Value && c.CompanyId == companyId)
+                    .Select(c => c.Phone)
+                    .FirstOrDefaultAsync(ct);
+            }
+
+            var waId = WhatsAppClient.NormalizeToE164Brazil(rawPhone);
+            if (waId is null) return;
+
+            const string triggerKey = "PDV_LOYALTY_COMPLEMENT";
+            var saleIdStr = saleId.ToString();
+
+            // Idempotência própria
+            var alreadySent = await _db.WhatsAppMessageLogs
+                .AnyAsync(l => l.TriggerStatus == triggerKey
+                             && l.Direction == "out"
+                             && l.PayloadJson != null && l.PayloadJson.Contains(saleIdStr), ct);
+            if (alreadySent)
+            {
+                _logger.LogDebug("WA_PDV_LOYALTY_DEDUPE | SaleId={SaleId} | Já enviado via PDV_LOYALTY_COMPLEMENT", saleId);
+                return;
+            }
+
+            // Também verifica se SALE_COMPLETED já enviou o complemento via pedido espelho
+            var mirrorOrderId = await _db.Orders
+                .AsNoTracking()
+                .Where(o => o.OriginSaleOrderId == saleId && o.CompanyId == companyId)
+                .Select(o => (Guid?)o.Id)
+                .FirstOrDefaultAsync(ct);
+
+            if (mirrorOrderId.HasValue)
+            {
+                var alreadySentViaMirror = await _db.WhatsAppMessageLogs
+                    .AnyAsync(l => l.OrderId == mirrorOrderId.Value
+                                 && l.TriggerStatus == "ENTREGUE_LOYALTY_COMPLEMENT"
+                                 && l.Direction == "out", ct);
+                if (alreadySentViaMirror)
+                {
+                    _logger.LogDebug("WA_PDV_LOYALTY_DEDUPE | SaleId={SaleId} | Já enviado via ENTREGUE_LOYALTY_COMPLEMENT", saleId);
+                    return;
+                }
+            }
+
+            if (!sale.CustomerId.HasValue) return;
+
+            var customer = await _db.Customers
+                .AsNoTracking()
+                .Where(c => c.CompanyId == companyId && c.Id == sale.CustomerId.Value)
+                .Select(c => new { c.PointsBalance })
+                .FirstOrDefaultAsync(ct);
+            if (customer is null) return;
+            if (customer.PointsBalance < 0) return;
+            if (customer.PointsBalance == 0 && !ShouldSendWhenPointsIsZero()) return;
+
+            var earnedPoints = await _db.LoyaltyTransactions
+                .AsNoTracking()
+                .Where(t => t.CompanyId == companyId
+                         && t.CustomerId == sale.CustomerId.Value
+                         && t.SaleOrderId == saleId
+                         && t.Points > 0)
+                .OrderByDescending(t => t.CreatedAtUtc)
+                .Select(t => t.Points)
+                .FirstOrDefaultAsync(ct);
+
+            var loyaltyUrl = await BuildLoyaltyUrlAsync(companyId, ct);
+            if (loyaltyUrl is null) return;
+
+            var firstName = (sale.CustomerName ?? "").Split(' ')[0];
+
+            var delaySeconds = GetLoyaltyComplementDelaySeconds();
+            if (delaySeconds > 0)
+                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
+
+            var loyaltyTemplateName = ResolveTemplateName(integration?.NotificationTemplatesJson, "LOYALTY_COMPLEMENT")
+                ?? _config["WhatsApp:LoyaltyComplement:TemplateName"];
+            var langCode = integration?.TemplateLanguageCode ?? "pt_BR";
+
+            string? wamid;
+            if (!string.IsNullOrWhiteSpace(loyaltyTemplateName))
+            {
+                var bodyParams = new List<string>
+                {
+                    firstName,
+                    earnedPoints.ToString(),
+                    customer.PointsBalance.ToString(),
+                };
+                wamid = await _wa.SendTemplateAsync(waId, loyaltyTemplateName, langCode, bodyParams, companyId, ct);
+            }
+            else
+            {
+                var text = BuildLoyaltyComplementMessage(customer.PointsBalance, loyaltyUrl);
+                wamid = await _wa.SendTextAsync(waId, text, companyId, ct);
+            }
+
+            if (wamid is null)
+            {
+                _logger.LogWarning("WA_PDV_LOYALTY_FAIL | SaleId={SaleId} | WaId={WaId} | wamid null", saleId, waId);
+                return;
+            }
+
+            _db.WhatsAppMessageLogs.Add(new WhatsAppMessageLog
+            {
+                CompanyId     = companyId,
+                Direction     = "out",
+                Wamid         = wamid,
+                WaId          = waId,
+                OrderId       = mirrorOrderId,
+                TriggerStatus = triggerKey,
+                PayloadJson   = JsonSerializer.Serialize(new
+                {
+                    saleId        = saleIdStr,
+                    complement    = "loyalty_balance",
+                    earnedPoints,
+                    pointsBalance = customer.PointsBalance,
+                    loyaltyUrl,
+                }),
+            });
+            await _db.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "WA_PDV_LOYALTY_OK | SaleId={SaleId} | Wamid={Wamid} | EarnedPoints={Earned} | Balance={Balance}",
+                saleId, wamid, earnedPoints, customer.PointsBalance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "WA_PDV_LOYALTY_WARN | SaleId={SaleId} | Falha ao enviar complemento de fidelidade PDV", saleId);
+        }
+    }
+
     // ── Notificação de venda PDV (NFC-e por WhatsApp) ─────────────────────────
 
     /// <summary>
