@@ -10,8 +10,11 @@ public class LoyaltyTransaction
     public Guid CustomerId { get; set; }
     public Petshop.Api.Entities.Customer? Customer { get; set; }
 
-    /// <summary>Venda relacionada (opcional).</summary>
+    /// <summary>Venda PDV relacionada (opcional).</summary>
     public Guid? SaleOrderId { get; set; }
+
+    /// <summary>Pedido de delivery/mesa relacionado (opcional).</summary>
+    public Guid? OrderId { get; set; }
 
     /// <summary>Positivo = acúmulo, Negativo = resgate, Zero = ajuste manual.</summary>
     public int Points { get; set; }

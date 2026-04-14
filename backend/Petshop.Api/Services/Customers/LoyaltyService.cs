@@ -116,6 +116,7 @@ public class LoyaltyService
         {
             CompanyId     = order.CompanyId.Value,
             CustomerId    = order.CustomerId.Value,
+            OrderId       = order.Id,
             Points        = points,
             BalanceBefore = before,
             BalanceAfter  = customer.PointsBalance,

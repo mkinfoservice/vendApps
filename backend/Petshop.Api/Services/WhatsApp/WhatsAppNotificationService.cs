@@ -469,7 +469,9 @@ public class WhatsAppNotificationService
 
         var firstName = (order.CustomerName ?? "").Split(' ')[0];
 
-        // Tenta buscar pontos acumulados nesta transação via LoyaltyTransaction.SaleOrderId
+        // Busca pontos acumulados nesta transação:
+        // - PDV: via SaleOrderId (Order espelho tem OriginSaleOrderId)
+        // - Delivery: via OrderId (adicionado em 20260414)
         int earnedPoints = 0;
         if (order.OriginSaleOrderId.HasValue)
         {
@@ -478,6 +480,18 @@ public class WhatsAppNotificationService
                 .Where(t => t.CompanyId == companyId
                          && t.CustomerId == order.CustomerId.Value
                          && t.SaleOrderId == order.OriginSaleOrderId.Value
+                         && t.Points > 0)
+                .OrderByDescending(t => t.CreatedAtUtc)
+                .Select(t => t.Points)
+                .FirstOrDefaultAsync(ct);
+        }
+        else
+        {
+            earnedPoints = await _db.LoyaltyTransactions
+                .AsNoTracking()
+                .Where(t => t.CompanyId == companyId
+                         && t.CustomerId == order.CustomerId.Value
+                         && t.OrderId == order.Id
                          && t.Points > 0)
                 .OrderByDescending(t => t.CreatedAtUtc)
                 .Select(t => t.Points)

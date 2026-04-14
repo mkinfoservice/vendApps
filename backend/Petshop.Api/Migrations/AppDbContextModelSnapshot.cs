@@ -556,12 +556,17 @@ namespace Petshop.Api.Migrations
                     b.Property<int>("Points")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("SaleOrderId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("CompanyId", "CustomerId", "CreatedAtUtc");
 
