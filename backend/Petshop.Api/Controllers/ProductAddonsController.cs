@@ -27,7 +27,7 @@ public class ProductAddonsController : ControllerBase
         var addons = await _db.ProductAddons
             .Where(a => a.ProductId == productId)
             .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
-            .Select(a => new AddonDto(a.Id, a.Name, a.PriceCents, a.SortOrder, a.IsActive, a.AddonGroupId))
+            .Select(a => new AddonDto(a.Id, a.Name, a.PriceCents, a.SortOrder, a.IsActive, a.AddonGroupId, a.IsDefault))
             .ToListAsync(ct);
 
         return Ok(addons);
@@ -56,7 +56,7 @@ public class ProductAddonsController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         return CreatedAtAction(nameof(List), new { productId }, new AddonDto(
-            addon.Id, addon.Name, addon.PriceCents, addon.SortOrder, addon.IsActive, addon.AddonGroupId));
+            addon.Id, addon.Name, addon.PriceCents, addon.SortOrder, addon.IsActive, addon.AddonGroupId, addon.IsDefault));
     }
 
     [HttpPut("{addonId:guid}")]
@@ -72,7 +72,7 @@ public class ProductAddonsController : ControllerBase
         addon.SortOrder    = req.SortOrder ?? addon.SortOrder;
         addon.AddonGroupId = req.AddonGroupId;
         await _db.SaveChangesAsync(ct);
-        return Ok(new AddonDto(addon.Id, addon.Name, addon.PriceCents, addon.SortOrder, addon.IsActive, addon.AddonGroupId));
+        return Ok(new AddonDto(addon.Id, addon.Name, addon.PriceCents, addon.SortOrder, addon.IsActive, addon.AddonGroupId, addon.IsDefault));
     }
 
     [HttpDelete("{addonId:guid}")]
@@ -185,7 +185,7 @@ public class ProductAddonGroupsController(AppDbContext db) : ControllerBase
 
 // ── DTOs ──────────────────────────────────────────────────────────────────────
 
-public record AddonDto(Guid Id, string Name, int PriceCents, int SortOrder, bool IsActive, Guid? AddonGroupId);
+public record AddonDto(Guid Id, string Name, int PriceCents, int SortOrder, bool IsActive, Guid? AddonGroupId, bool IsDefault = false);
 
 public record UpsertAddonRequest(string Name, int PriceCents, int? SortOrder, Guid? AddonGroupId = null);
 

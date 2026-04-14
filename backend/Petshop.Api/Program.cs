@@ -528,7 +528,8 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS "IX_ProductAddonGroups_ProductId"
             ON "ProductAddonGroups" ("ProductId");
         ALTER TABLE "ProductAddons"
-            ADD COLUMN IF NOT EXISTS "AddonGroupId" uuid;
+            ADD COLUMN IF NOT EXISTS "AddonGroupId" uuid,
+            ADD COLUMN IF NOT EXISTS "IsDefault"    boolean NOT NULL DEFAULT false;
         CREATE INDEX IF NOT EXISTS "IX_ProductAddons_AddonGroupId"
             ON "ProductAddons" ("AddonGroupId");
         """);
@@ -839,6 +840,7 @@ using (var scope = app.Services.CreateScope())
         """);
 
     await DbSeeder.SeedAsync(db);
+    await AddonGroupSeeder.SeedAsync(app.Services);
 
     // Migração LGPD: criptografa CPFs que ainda estão em plaintext
     using var cpfScope = app.Services.CreateScope();

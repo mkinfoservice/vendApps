@@ -21,11 +21,27 @@ export interface ProductStepperState {
   buildSynthetic: () => Product;
 }
 
+/** Inicializa o Map de seleções com adicionais marcados como default. */
+function buildInitialSelections(groups: ProductAddonGroup[]): StepperSelections {
+  const init: StepperSelections = new Map();
+  for (const g of groups) {
+    const defaultAddon = g.addons.find(
+      (a) => a.isDefault ||
+             a.name.toLowerCase().includes("(padrão)") ||
+             a.name.toLowerCase().includes("(padrao)")
+    );
+    if (defaultAddon) {
+      init.set(g.id, new Set([defaultAddon.id]));
+    }
+  }
+  return init;
+}
+
 export function useProductStepper(product: Product): ProductStepperState {
   const groups = product.addonGroups ?? [];
   const [step, setStep] = useState(0);
   const [qty, setQty] = useState(1);
-  const [selections, setSelections] = useState<StepperSelections>(new Map());
+  const [selections, setSelections] = useState<StepperSelections>(() => buildInitialSelections(groups));
 
   const currentGroup = groups[step];
 

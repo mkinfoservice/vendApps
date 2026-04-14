@@ -140,7 +140,7 @@ public class CatalogController : ControllerBase
                 Addons = p.Addons
                     .Where(a => a.IsActive)
                     .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
-                    .Select(a => new { a.Id, a.Name, a.PriceCents, a.AddonGroupId }),
+                    .Select(a => new { a.Id, a.Name, a.PriceCents, a.AddonGroupId, a.IsDefault }),
                 AddonGroups = p.AddonGroups
                     .OrderBy(g => g.SortOrder)
                     .Select(g => new
@@ -155,7 +155,7 @@ public class CatalogController : ControllerBase
                         Addons = g.Addons
                             .Where(a => a.IsActive)
                             .OrderBy(a => a.SortOrder).ThenBy(a => a.Name)
-                            .Select(a => new { a.Id, a.Name, a.PriceCents })
+                            .Select(a => new { a.Id, a.Name, a.PriceCents, a.IsDefault })
                     })
             })
             .ToListAsync(ct);

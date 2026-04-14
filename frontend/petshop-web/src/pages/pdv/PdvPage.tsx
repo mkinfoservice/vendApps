@@ -1057,23 +1057,61 @@ function AddonModal({
           }));
           setAddonGroups(groups);
         } else if (activeAddons.length > 0) {
-          // Sem grupos configurados: agrupa todos os adicionais em um único grupo sintético
-          // para ativar a UI step-by-step. Opcional, múltipla escolha, sem limite.
-          const syntheticGroupId = `${product.id}__default`;
-          setAddonGroups([{
-            id: syntheticGroupId,
+          // Sem grupos configurados: classifica adicionais pelas mesmas regras do backend
+          const classify = (name: string, price: number): { group: string; sort: number } => {
+            const n = name.toLowerCase();
+            if (n.includes("leite") || n.includes("lactose") || n.includes("aveia") ||
+                n.includes("integral") || n.includes("soja") || n.includes("coco"))
+              return { group: "Tipo de Leite", sort: 1 };
+            if (n.includes("cobertura") || n.includes("chantilly") || n.includes("ganache"))
+              return { group: "Cobertura", sort: 2 };
+            if (price === 0)
+              return { group: "Sabor", sort: 0 };
+            return { group: "Extras", sort: 3 };
+          };
+
+          const buckets = new Map<string, { sort: number; addons: AddonOption[] }>();
+          for (const a of activeAddons) {
+            const { group, sort } = classify(a.name, a.priceCents);
+            if (!buckets.has(group)) buckets.set(group, { sort, addons: [] });
+            buckets.get(group)!.addons.push(a);
+          }
+
+          const groups: ProductAddonGroup[] = [];
+          for (const [groupName, { sort, addons }] of [...buckets.entries()].sort((a, b) => a[1].sort - b[1].sort)) {
+            const gid = `${product.id}__${groupName.replace(/\s+/g, "_").toLowerCase()}`;
+            let ordered = addons;
+            if (groupName === "Tipo de Leite") {
+              ordered = [...addons].sort((a) =>
+                (a.name.toLowerCase().includes("integral") || a.name.toLowerCase().includes("(padrão)")) ? -1 : 1
+              );
+            }
+            groups.push({
+              id: gid,
+              name: groupName,
+              isRequired: false,
+              selectionType: groupName === "Extras" ? "multiple" : "single",
+              minSelections: 0,
+              maxSelections: groupName === "Extras" ? 0 : 1,
+              sortOrder: sort,
+              addons: ordered.map((a, i) => ({
+                id: a.id,
+                name: a.name,
+                priceCents: a.priceCents,
+                addonGroupId: gid,
+                isDefault: groupName === "Tipo de Leite" && i === 0,
+              })),
+            });
+          }
+          setAddonGroups(groups.length > 0 ? groups : [{
+            id: `${product.id}__default`,
             name: "Adicionais",
             isRequired: false,
             selectionType: "multiple",
             minSelections: 0,
             maxSelections: 0,
             sortOrder: 0,
-            addons: activeAddons.map((a) => ({
-              id: a.id,
-              name: a.name,
-              priceCents: a.priceCents,
-              addonGroupId: syntheticGroupId,
-            })),
+            addons: activeAddons.map((a) => ({ id: a.id, name: a.name, priceCents: a.priceCents, addonGroupId: `${product.id}__default` })),
           }]);
         }
       })

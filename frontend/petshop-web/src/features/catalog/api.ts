@@ -30,6 +30,7 @@ export type ProductAddon = {
   name: string;
   priceCents: number;
   addonGroupId?: string | null;
+  isDefault?: boolean;
 };
 
 export type ProductAddonGroup = {
@@ -72,22 +73,68 @@ export async function fetchCategories(): Promise<Category[]> {
  * cria um grupo sintético "Adicionais" para ativar a UI step-by-step.
  * Produtos sem adicionais não são afetados.
  */
+/** Palavra-chave para classificar adicionais no mesmo esquema do backend AddonGroupSeeder. */
+function classifyAddon(name: string, priceCents: number): { group: string; sort: number } {
+  const n = name.toLowerCase();
+  if (n.includes("leite") || n.includes("lactose") || n.includes("aveia") ||
+      n.includes("integral") || n.includes("desnatat") || n.includes("soja") || n.includes("coco"))
+    return { group: "Tipo de Leite", sort: 1 };
+  if (n.includes("cobertura") || n.includes("chantilly") || n.includes("ganache") || n.includes("calda"))
+    return { group: "Cobertura", sort: 2 };
+  if (priceCents === 0)
+    return { group: "Sabor", sort: 0 };
+  return { group: "Extras", sort: 3 };
+}
+
 function normalizeProductGroups(p: Product): Product {
   if (p.addonGroups.length > 0 || p.addons.length === 0) return p;
-  const syntheticId = `${p.id}__default`;
-  return {
-    ...p,
-    addonGroups: [{
+
+  // Agrupa adicionais flat pelas mesmas regras do AddonGroupSeeder (backend)
+  const buckets = new Map<string, { sort: number; addons: ProductAddon[] }>();
+  for (const a of p.addons) {
+    const { group, sort } = classifyAddon(a.name, a.priceCents);
+    if (!buckets.has(group)) buckets.set(group, { sort, addons: [] });
+    buckets.get(group)!.addons.push(a);
+  }
+
+  const syntheticGroups: ProductAddonGroup[] = [];
+  for (const [groupName, { sort, addons }] of [...buckets.entries()].sort((a, b) => a[1].sort - b[1].sort)) {
+    const syntheticId = `${p.id}__${groupName.replace(/\s+/g, "_").toLowerCase()}`;
+
+    // Tipo de Leite: coloca "integral"/"padrão" primeiro e marca como isDefault
+    let orderedAddons = addons;
+    if (groupName === "Tipo de Leite") {
+      orderedAddons = [...addons].sort((a) =>
+        (a.name.toLowerCase().includes("integral") || a.name.toLowerCase().includes("(padrão)")) ? -1 : 1
+      );
+      orderedAddons = orderedAddons.map((a, i) => ({ ...a, isDefault: i === 0, addonGroupId: syntheticId }));
+    } else {
+      orderedAddons = addons.map((a) => ({ ...a, addonGroupId: syntheticId }));
+    }
+
+    syntheticGroups.push({
       id: syntheticId,
-      name: "Adicionais",
+      name: groupName,
       isRequired: false,
-      selectionType: "multiple",
+      selectionType: groupName === "Extras" ? "multiple" : "single",
       minSelections: 0,
-      maxSelections: 0,
-      sortOrder: 0,
-      addons: p.addons.map((a) => ({ ...a, addonGroupId: syntheticId })),
-    }],
-  };
+      maxSelections: groupName === "Extras" ? 0 : 1,
+      sortOrder: sort,
+      addons: orderedAddons,
+    });
+  }
+
+  // Fallback: se todos os adicionais têm preço > 0 e nenhum match específico, usa grupo único
+  if (syntheticGroups.length === 0) {
+    const id = `${p.id}__default`;
+    syntheticGroups.push({
+      id, name: "Adicionais", isRequired: false, selectionType: "multiple",
+      minSelections: 0, maxSelections: 0, sortOrder: 0,
+      addons: p.addons.map((a) => ({ ...a, addonGroupId: id })),
+    });
+  }
+
+  return { ...p, addonGroups: syntheticGroups };
 }
 
 export async function fetchProducts(categorySlug?: string, search?: string): Promise<Product[]> {

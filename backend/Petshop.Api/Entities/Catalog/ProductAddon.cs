@@ -28,5 +28,8 @@ public class ProductAddon
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Se verdadeiro, este adicional é pré-selecionado automaticamente no stepper (ex: leite integral padrão).</summary>
+    public bool IsDefault { get; set; } = false;
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
