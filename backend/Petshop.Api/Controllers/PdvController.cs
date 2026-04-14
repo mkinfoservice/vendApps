@@ -933,11 +933,12 @@ public class PdvController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
-        // Dispara processamento assÃ­ncrono da fila fiscal
-        if (fiscalDecision != "PermanentContingency")
-            _jobs.Enqueue<FiscalQueueProcessorJob>(j => j.ProcessAsync(CompanyId, CancellationToken.None));
-
-        // Acumula pontos de fidelidade com confirmacao de CPF por hash.
+        // Acumula pontos de fidelidade ANTES de enfileirar o job fiscal.
+        // Ordem crítica: o FiscalQueueProcessorJob enfileira NotifySaleCompletedAsync,
+        // que por sua vez consulta LoyaltyTransactions para montar o complemento de
+        // pontos no WhatsApp. Se o job fiscal for enfileirado primeiro, o Hangfire
+        // pode processar toda a cadeia antes de EarnAsync registrar a transação,
+        // resultando em earnedPoints = 0 na mensagem ao cliente.
         int earnedPoints = 0;
         var loyaltyCpf = CpfValidator.Normalize(req.CustomerCpfForLoyalty);
         if (sale.CustomerId.HasValue && CpfValidator.IsValid(loyaltyCpf))
@@ -962,6 +963,10 @@ public class PdvController : ControllerBase
                 catch { /* fidelidade nao pode derrubar a venda */ }
             }
         }
+
+        // Dispara processamento assÃ­ncrono da fila fiscal (APÓS loyalty para evitar race condition)
+        if (fiscalDecision != "PermanentContingency")
+            _jobs.Enqueue<FiscalQueueProcessorJob>(j => j.ProcessAsync(CompanyId, CancellationToken.None));
 
         // Debita pontos de fidelidade do cupom de desconto, se aplicavel.
         // Opera fora da transacao principal (nao deve derrubar a venda se falhar).

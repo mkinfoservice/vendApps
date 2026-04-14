@@ -18,6 +18,8 @@ import {
   type Sale, type CupomData, type SessionReport, type PdvCustomer,
 } from "@/features/pdv/api";
 import { adminFetch } from "@/features/admin/auth/adminFetch";
+import type { Product, ProductAddonGroup } from "@/features/catalog/api";
+import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
 import OpenSessionPage from "./OpenSessionPage";
 
 //
@@ -998,6 +1000,18 @@ interface AddonOption {
   id: string;
   name: string;
   priceCents: number;
+  isActive?: boolean;
+  addonGroupId?: string | null;
+}
+
+interface AddonGroupRaw {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  selectionType: string;
+  minSelections: number;
+  maxSelections: number;
+  sortOrder: number;
 }
 
 function AddonModal({
@@ -1012,14 +1026,38 @@ function AddonModal({
   onClose: () => void;
 }) {
   const [addons, setAddons]           = useState<AddonOption[]>([]);
+  const [addonGroups, setAddonGroups] = useState<ProductAddonGroup[]>([]);
   const [selected, setSelected]       = useState<Set<string>>(new Set());
   const [loading, setLoading]         = useState(true);
   const [adding, setAdding]           = useState(false);
 
   useEffect(() => {
-    adminFetch<AddonOption[]>(`/admin/products/${product.id}/addons`)
-      .then(setAddons)
-      .catch(() => setAddons([]))
+    setLoading(true);
+    Promise.all([
+      adminFetch<AddonOption[]>(`/admin/products/${product.id}/addons`),
+      adminFetch<AddonGroupRaw[]>(`/admin/products/${product.id}/addon-groups`),
+    ])
+      .then(([allAddons, groupsRaw]) => {
+        const activeAddons = allAddons.filter((a) => a.isActive !== false);
+        setAddons(activeAddons);
+
+        if (groupsRaw.length > 0) {
+          const groups: ProductAddonGroup[] = groupsRaw.map((g) => ({
+            id: g.id,
+            name: g.name,
+            isRequired: g.isRequired,
+            selectionType: g.selectionType as "single" | "multiple",
+            minSelections: g.minSelections,
+            maxSelections: g.maxSelections,
+            sortOrder: g.sortOrder,
+            addons: activeAddons
+              .filter((a) => a.addonGroupId === g.id)
+              .map((a) => ({ id: a.id, name: a.name, priceCents: a.priceCents, addonGroupId: g.id })),
+          }));
+          setAddonGroups(groups);
+        }
+      })
+      .catch(() => { setAddons([]); setAddonGroups([]); })
       .finally(() => setLoading(false));
   }, [product.id]);
 
@@ -1031,11 +1069,13 @@ function AddonModal({
     });
   }
 
+  const hasGroups = addonGroups.length > 0;
+
   const extraCents = addons
     .filter((a) => selected.has(a.id))
     .reduce((s, a) => s + a.priceCents, 0);
 
-  async function handleConfirm(addonIds: string[]) {
+  async function handleFlatConfirm(addonIds: string[]) {
     setAdding(true);
     try {
       const override = product.promotionPriceCents ?? undefined;
@@ -1046,81 +1086,147 @@ function AddonModal({
     }
   }
 
+  async function handleStepperConfirm(synthetic: Product, confirmedQty: number) {
+    setAdding(true);
+    try {
+      // Extract addon IDs encoded in synthetic.id by buildSynthetic()
+      const idParts = synthetic.id.split("__");
+      const addonIds = idParts[1] ? idParts[1].split("_") : [];
+      const override = product.promotionPriceCents ?? undefined;
+      await addItem(saleId, {
+        productId: product.id,
+        qty: confirmedQty,
+        addonIds: addonIds.length ? addonIds : undefined,
+        unitPriceCentsOverride: override,
+      });
+      onConfirm(product.name);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  // Build a Product-compatible object for the stepper
+  const stepperProduct: Product = {
+    id: product.id,
+    name: product.name,
+    slug: "",
+    priceCents: product.promotionPriceCents ?? product.priceCents,
+    imageUrl: product.imageUrl ?? null,
+    description: null,
+    isFeatured: false,
+    isBestSeller: product.isBestSeller ?? false,
+    discountPercent: null,
+    category: { id: "", name: product.categoryName ?? "", slug: "" },
+    variants: [],
+    addons: addons.map((a) => ({ id: a.id, name: a.name, priceCents: a.priceCents, addonGroupId: a.addonGroupId ?? null })),
+    addonGroups,
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ backgroundColor: "rgba(28,18,9,0.65)" }}>
-      <div className="rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative"
-        style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}>
+      <div
+        className="rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative flex flex-col"
+        style={{
+          background: GC.bg,
+          boxShadow: "0 24px 80px rgba(28,18,9,0.35)",
+          maxHeight: "85vh",
+        }}
+      >
         <button type="button" onClick={onClose}
           className="absolute top-4 right-4 w-7 h-7 rounded-xl flex items-center justify-center z-10"
           style={{ background: GC.cream }}>
           <X size={13} style={{ color: GC.brown }} />
         </button>
 
-        <div className="p-5 space-y-4">
-          <div>
-            <h2 className="font-black text-base pr-8" style={{ color: GC.dark }}>{product.name}</h2>
-            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.65 }}>Escolha os adicionais</p>
-          </div>
-
-          {loading ? (
-            <p className="text-sm py-4 text-center" style={{ color: GC.brown }}>Carregando...</p>
-          ) : addons.length === 0 ? (
-            <p className="text-sm py-2" style={{ color: GC.brown, opacity: 0.6 }}>Nenhum adicional disponivel.</p>
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 shrink-0">
+          <h2 className="font-black text-base pr-8" style={{ color: GC.dark }}>{product.name}</h2>
+          {hasGroups ? (
+            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.65 }}>
+              a partir de {brl(product.promotionPriceCents ?? product.priceCents)}
+            </p>
           ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {addons.map((a) => (
-                <button key={a.id} type="button" onClick={() => toggle(a.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all text-left"
-                  style={{
-                    border: `1.5px solid ${selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.15)"}`,
-                    background: selected.has(a.id) ? `${GC.caramel}12` : "#fff",
-                  }}>
-                  <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
-                    style={{
-                      borderColor: selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.3)",
-                      background: selected.has(a.id) ? GC.caramel : "transparent",
-                    }}>
-                    {selected.has(a.id) && <span className="text-white text-[10px] font-black">OK</span>}
-                  </div>
-                  <span className="flex-1 text-sm font-medium" style={{ color: GC.dark }}>{a.name}</span>
-                  <span className="text-sm font-bold" style={{ color: GC.caramel }}>+{brl(a.priceCents)}</span>
-                </button>
-              ))}
-            </div>
+            <p className="text-xs mt-0.5 font-medium" style={{ color: GC.brown, opacity: 0.65 }}>Escolha os adicionais</p>
           )}
-
-          <div className="flex justify-between text-sm px-1">
-            <span style={{ color: GC.brown }}>Produto</span>
-            <span className="flex items-center gap-1.5">
-              {product.promotionPriceCents != null && (
-                <span className="text-xs line-through opacity-50" style={{ color: GC.brown }}>{brl(product.priceCents)}</span>
-              )}
-              <span className="font-bold" style={{ color: product.promotionPriceCents != null ? "#059669" : GC.brown }}>
-                {brl(product.promotionPriceCents ?? product.priceCents)}
-              </span>
-            </span>
-          </div>
-          {extraCents > 0 && (
-            <div className="flex justify-between text-sm px-1">
-              <span style={{ color: GC.brown }}>Total com adicionais</span>
-              <span className="font-black" style={{ color: GC.dark }}>{brl((product.promotionPriceCents ?? product.priceCents) + extraCents)}</span>
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-1">
-            <button type="button" onClick={() => handleConfirm([])} disabled={adding}
-              className="flex-1 py-2.5 text-sm rounded-2xl font-medium transition hover:opacity-80 disabled:opacity-40"
-              style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
-              Sem adicionais
-            </button>
-            <button type="button" disabled={adding || loading} onClick={() => handleConfirm([...selected])}
-              className="flex-1 py-2.5 text-sm font-bold text-white rounded-2xl transition hover:opacity-90 disabled:opacity-40"
-              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
-              {adding ? "Adicionando..." : selected.size > 0 ? `Adicionar (${selected.size})` : "Adicionar"}
-            </button>
-          </div>
         </div>
+
+        {loading ? (
+          <div className="px-5 pb-5">
+            <p className="text-sm py-4 text-center" style={{ color: GC.brown }}>Carregando...</p>
+          </div>
+        ) : hasGroups ? (
+          /* ── Modo stepper ─── */
+          <div
+            className="flex-1 min-h-0 overflow-hidden"
+            style={{ "--brand": GC.caramel } as React.CSSProperties}
+          >
+            <ProductAddonStepper
+              product={stepperProduct}
+              onConfirm={handleStepperConfirm}
+              onCancel={onClose}
+            />
+          </div>
+        ) : (
+          /* ── Modo lista plana ─── */
+          <div className="px-5 pb-5 space-y-4">
+            {addons.length === 0 ? (
+              <p className="text-sm py-2" style={{ color: GC.brown, opacity: 0.6 }}>Nenhum adicional disponivel.</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {addons.map((a) => (
+                  <button key={a.id} type="button" onClick={() => toggle(a.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all text-left"
+                    style={{
+                      border: `1.5px solid ${selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.15)"}`,
+                      background: selected.has(a.id) ? `${GC.caramel}12` : "#fff",
+                    }}>
+                    <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                      style={{
+                        borderColor: selected.has(a.id) ? GC.caramel : "rgba(107,79,58,0.3)",
+                        background: selected.has(a.id) ? GC.caramel : "transparent",
+                      }}>
+                      {selected.has(a.id) && <span className="text-white text-[10px] font-black">OK</span>}
+                    </div>
+                    <span className="flex-1 text-sm font-medium" style={{ color: GC.dark }}>{a.name}</span>
+                    <span className="text-sm font-bold" style={{ color: GC.caramel }}>+{brl(a.priceCents)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-between text-sm px-1">
+              <span style={{ color: GC.brown }}>Produto</span>
+              <span className="flex items-center gap-1.5">
+                {product.promotionPriceCents != null && (
+                  <span className="text-xs line-through opacity-50" style={{ color: GC.brown }}>{brl(product.priceCents)}</span>
+                )}
+                <span className="font-bold" style={{ color: product.promotionPriceCents != null ? "#059669" : GC.brown }}>
+                  {brl(product.promotionPriceCents ?? product.priceCents)}
+                </span>
+              </span>
+            </div>
+            {extraCents > 0 && (
+              <div className="flex justify-between text-sm px-1">
+                <span style={{ color: GC.brown }}>Total com adicionais</span>
+                <span className="font-black" style={{ color: GC.dark }}>{brl((product.promotionPriceCents ?? product.priceCents) + extraCents)}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button type="button" onClick={() => handleFlatConfirm([])} disabled={adding}
+                className="flex-1 py-2.5 text-sm rounded-2xl font-medium transition hover:opacity-80 disabled:opacity-40"
+                style={{ border: `1.5px solid rgba(107,79,58,0.2)`, color: GC.brown, background: GC.cream }}>
+                Sem adicionais
+              </button>
+              <button type="button" disabled={adding} onClick={() => handleFlatConfirm([...selected])}
+                className="flex-1 py-2.5 text-sm font-bold text-white rounded-2xl transition hover:opacity-90 disabled:opacity-40"
+                style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}>
+                {adding ? "Adicionando..." : selected.size > 0 ? `Adicionar (${selected.size})` : "Adicionar"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
