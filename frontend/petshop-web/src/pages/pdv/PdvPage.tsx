@@ -716,6 +716,9 @@ function PayPanel({
   const totalDiscountCents = Math.max(baseDiscountCents, appliedCoupon?.discountCents ?? 0);
   const suggestedMethod = defaultMethod ?? null;
   const suggestedAmountCents = defaultAmountCents ?? totalCents;
+  const suggestedPayMethod = suggestedMethod
+    ? PAY_METHODS.find((p) => p.method === suggestedMethod) ?? null
+    : null;
 
   useEffect(() => {
     if (suggestedMethod === "DINHEIRO" && suggestedAmountCents > 0) {
@@ -792,27 +795,27 @@ function PayPanel({
 
       <p className="text-center text-2xl font-black" style={{ color: GC.dark }}>{brl(totalCents)}</p>
 
-      {suggestedMethod && (
+      {suggestedPayMethod && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
           style={{ background: `${GC.caramel}15`, color: GC.caramel }}>
           <span className="opacity-70">Sugestao do atendimento:</span>
-          <span className="font-black">{PAY_METHODS.find((p) => p.method === suggestedMethod)?.label ?? suggestedMethod}</span>
+          <span className="font-black">{suggestedPayMethod.label}</span>
         </div>
       )}
 
-      {suggestedMethod && suggestedAmountCents > 0 && (
+      {suggestedPayMethod && suggestedAmountCents > 0 && (
         <button
           disabled={paying}
-          onClick={() => openDocPrompt(suggestedMethod, suggestedAmountCents)}
+          onClick={() => openDocPrompt(suggestedPayMethod.method, suggestedAmountCents)}
           className="w-full py-2.5 rounded-xl text-white text-sm font-black transition hover:opacity-90 disabled:opacity-50"
           style={{ background: "linear-gradient(135deg, #047857, #065f46)" }}>
-          Confirmar pagamento sugerido {suggestedMethod === "DINHEIRO" ? `(recebido ${brl(suggestedAmountCents)})` : ""}
+          Confirmar pagamento sugerido {suggestedPayMethod.method === "DINHEIRO" ? `(recebido ${brl(suggestedAmountCents)})` : ""}
         </button>
       )}
 
       <div className="grid grid-cols-2 gap-3">
         {PAY_METHODS.map((pm) => {
-          const isSuggested = suggestedMethod === pm.method;
+          const isSuggested = suggestedPayMethod?.method === pm.method;
           return (
             <button
               key={pm.method}

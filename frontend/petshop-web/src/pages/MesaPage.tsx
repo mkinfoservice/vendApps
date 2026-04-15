@@ -1174,7 +1174,7 @@ export default function MesaPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nome, c�digo ou c�digo de barras"
+              placeholder="Buscar por nome, código ou código de barras"
               className="flex-1 bg-transparent text-sm focus:outline-none"
               style={{ color: GC.dark }}
             />
