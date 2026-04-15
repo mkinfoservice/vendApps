@@ -20,6 +20,7 @@ import {
 import { adminFetch } from "@/features/admin/auth/adminFetch";
 import type { Product, ProductAddonGroup } from "@/features/catalog/api";
 import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
+import { parseSyntheticProductId } from "@/features/catalog/syntheticProductId";
 import OpenSessionPage from "./OpenSessionPage";
 
 //
@@ -1147,9 +1148,7 @@ function AddonModal({
   async function handleStepperConfirm(synthetic: Product, confirmedQty: number) {
     setAdding(true);
     try {
-      // Extract addon IDs encoded in synthetic.id by buildSynthetic()
-      const idParts = synthetic.id.split("__");
-      const addonIds = idParts[1] ? idParts[1].split("_") : [];
+      const { addonIds } = parseSyntheticProductId(synthetic.id);
       const override = product.promotionPriceCents ?? undefined;
       await addItem(saleId, {
         productId: product.id,

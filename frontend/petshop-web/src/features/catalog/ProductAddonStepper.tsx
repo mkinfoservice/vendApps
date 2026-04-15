@@ -18,25 +18,27 @@ interface Props {
  */
 export function ProductAddonStepper({ product, onConfirm, onCancel }: Props) {
   const {
-    groups,
+    steps,
     step,
     qty,
     setQty,
-    currentGroup,
+    currentStep,
     isFirstStep,
     isLastStep,
     selectedIdsForStep,
+    selectedVariantIdForStep,
     canAdvance,
     totalCents,
     goNext,
     goBack,
     toggle,
+    selectVariant,
     buildSynthetic,
   } = useProductStepper(product);
 
-  if (!currentGroup) return null;
+  if (!currentStep) return null;
 
-  const isSingle = currentGroup.selectionType === "single";
+  const isSingle = currentStep.selectionType === "single";
 
   function handleAdd() {
     onConfirm(buildSynthetic(), qty);
@@ -48,7 +50,7 @@ export function ProductAddonStepper({ product, onConfirm, onCancel }: Props) {
       <div className="px-5 pt-4 pb-3 shrink-0">
         {/* Barra de progresso */}
         <div className="flex items-center gap-1.5 mb-3">
-          {groups.map((g, i) => (
+          {steps.map((g, i) => (
             <div
               key={g.id}
               className={`h-1 rounded-full transition-all duration-300 ${
@@ -61,16 +63,16 @@ export function ProductAddonStepper({ product, onConfirm, onCancel }: Props) {
             />
           ))}
           <span className="ml-1 text-[11px] text-gray-400 shrink-0 tabular-nums">
-            {step + 1} / {groups.length}
+            {step + 1} / {steps.length}
           </span>
         </div>
 
         {/* Título + badge */}
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-base text-gray-900 leading-tight">
-            {currentGroup.name}
+            {currentStep.name}
           </h3>
-          {currentGroup.isRequired ? (
+          {currentStep.isRequired ? (
             <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
               Obrigatório
             </span>
@@ -85,71 +87,88 @@ export function ProductAddonStepper({ product, onConfirm, onCancel }: Props) {
         <p className="mt-0.5 text-xs text-gray-400">
           {isSingle
             ? "Escolha uma opção"
-            : currentGroup.maxSelections > 0
-            ? `Escolha até ${currentGroup.maxSelections} opções`
+            : currentStep.kind === "addon" && currentStep.maxSelections > 0
+            ? `Escolha até ${currentStep.maxSelections} opções`
             : "Escolha quantas quiser"}
         </p>
       </div>
 
       {/* ── Lista de opções ─────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pb-2 space-y-2 min-h-0">
-        {currentGroup.addons.map((addon) => {
-          const isSelected = selectedIdsForStep.has(addon.id);
-          return (
-            <button
-              key={addon.id}
-              type="button"
-              onClick={() => {
-                toggle(addon.id);
-                // Single-selection: avança automaticamente após escolha, exceto na última etapa
-                if (isSingle && !isLastStep) {
-                  setTimeout(() => goNext(), 180);
-                }
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all duration-150 text-left ${
-                isSelected
-                  ? "border-[var(--brand)] bg-[var(--brand)]/5 shadow-sm"
-                  : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
-              }`}
-            >
-              {/* Indicador radio / checkbox */}
-              <div
-                className={`shrink-0 flex items-center justify-center transition-all ${
-                  isSingle
-                    ? `w-5 h-5 rounded-full border-2 ${
-                        isSelected
-                          ? "border-[var(--brand)]"
-                          : "border-gray-300"
-                      }`
-                    : `w-5 h-5 rounded-md border-2 ${
-                        isSelected
-                          ? "border-[var(--brand)] bg-[var(--brand)]"
-                          : "border-gray-300"
-                      }`
+        {currentStep.kind === "variant" &&
+          currentStep.variants.map((variant) => {
+            const isSelected = selectedVariantIdForStep === variant.id;
+            const variantPrice = variant.priceCents ?? product.priceCents;
+            return (
+              <button
+                key={variant.id}
+                type="button"
+                onClick={() => {
+                  selectVariant(variant.id);
+                  if (!isLastStep) setTimeout(() => goNext(), 180);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all duration-150 text-left ${
+                  isSelected
+                    ? "border-[var(--brand)] bg-[var(--brand)]/5 shadow-sm"
+                    : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
                 }`}
               >
-                {isSingle && isSelected && (
-                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />
-                )}
-                {!isSingle && isSelected && (
-                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                )}
-              </div>
+                <div
+                  className={`shrink-0 flex items-center justify-center transition-all w-5 h-5 rounded-full border-2 ${
+                    isSelected ? "border-[var(--brand)]" : "border-gray-300"
+                  }`}
+                >
+                  {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />}
+                </div>
 
-              <span className="flex-1 text-sm font-medium text-gray-800">
-                {addon.name}
-              </span>
+                <span className="flex-1 text-sm font-medium text-gray-800">{variant.variantValue}</span>
+                <span className="text-sm font-semibold shrink-0 text-[var(--brand)]">
+                  {formatBRL(variantPrice)}
+                </span>
+              </button>
+            );
+          })}
 
-              <span
-                className={`text-sm font-semibold shrink-0 ${
-                  addon.priceCents > 0 ? "text-[var(--brand)]" : "text-gray-400"
+        {currentStep.kind === "addon" &&
+          currentStep.addons.map((addon) => {
+            const isSelected = selectedIdsForStep.has(addon.id);
+            return (
+              <button
+                key={addon.id}
+                type="button"
+                onClick={() => {
+                  toggle(addon.id);
+                  if (isSingle && !isLastStep) setTimeout(() => goNext(), 180);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all duration-150 text-left ${
+                  isSelected
+                    ? "border-[var(--brand)] bg-[var(--brand)]/5 shadow-sm"
+                    : "border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50"
                 }`}
               >
-                {addon.priceCents === 0 ? "Grátis" : `+${formatBRL(addon.priceCents)}`}
-              </span>
-            </button>
-          );
-        })}
+                <div
+                  className={`shrink-0 flex items-center justify-center transition-all ${
+                    isSingle
+                      ? `w-5 h-5 rounded-full border-2 ${isSelected ? "border-[var(--brand)]" : "border-gray-300"}`
+                      : `w-5 h-5 rounded-md border-2 ${isSelected ? "border-[var(--brand)] bg-[var(--brand)]" : "border-gray-300"}`
+                  }`}
+                >
+                  {isSingle && isSelected && <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />}
+                  {!isSingle && isSelected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </div>
+
+                <span className="flex-1 text-sm font-medium text-gray-800">{addon.name}</span>
+
+                <span
+                  className={`text-sm font-semibold shrink-0 ${
+                    addon.priceCents > 0 ? "text-[var(--brand)]" : "text-gray-400"
+                  }`}
+                >
+                  {addon.priceCents === 0 ? "Grátis" : `+${formatBRL(addon.priceCents)}`}
+                </span>
+              </button>
+            );
+          })}
       </div>
 
       {/* ── Quantidade + total (última etapa) ───────────────── */}

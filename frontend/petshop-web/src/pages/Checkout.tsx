@@ -3,6 +3,7 @@ import { useCart } from "@/features/cart/cart";
 import { useNavigate } from "react-router-dom";
 import { CreateOrder, validateCoupon, type CreateOrderRequest } from "@/features/orders/api";
 import { fetchAddressByCep } from "@/features/shipping/viacep";
+import { parseSyntheticProductId } from "@/features/catalog/syntheticProductId";
 import { ArrowLeft, CheckCircle2, ChevronRight, MapPin, CreditCard, Banknote, QrCode, Package, Tag, X } from "lucide-react";
 import { useBrandVar } from "@/hooks/useBrandVar";
 import { useStoreFront } from "@/features/catalog/queries";
@@ -253,7 +254,7 @@ export default function Checkout() {
     setCouponLoading(true);
     try {
       const couponItems = cart.items.map((i) => ({
-        productId: i.product.id.split("__")[0],
+        productId: parseSyntheticProductId(i.product.id).productId,
         totalCents: (i.product.priceCents ?? 0) * i.qty,
       }));
       const result = await validateCoupon(storeFront.companyId, code, couponItems, cart.subtotalCents);
@@ -295,7 +296,7 @@ export default function Checkout() {
         name: review.name, phone: review.phone, cep: review.cep, address: review.fullAddress,
         paymentMethodStr: review.paymentMethodStr,
         items: cart.items.map((i) => {
-          const [productId, variantId] = i.product.id.split("__");
+          const { productId, variantId } = parseSyntheticProductId(i.product.id);
           return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
         }),
         ...(review.paymentMethodStr === "CASH" ? { cashGivenCents: review.cashGivenCents ?? undefined } : {}),

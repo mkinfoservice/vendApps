@@ -9,10 +9,10 @@ import type { LucideIcon } from "lucide-react";
 import type { Category, Product, ProductAddon, ProductVariant, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder, identifyCustomer } from "@/features/orders/api";
 import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
+import { parseSyntheticProductId } from "@/features/catalog/syntheticProductId";
 
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
-const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null; capacity: number }> {
   const r = await fetch(`${API_URL}/public/tables/${tableId}`);
@@ -412,6 +412,7 @@ function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart, onAdd
   const hasVariants = product.variants.length > 0;
   const hasAddons   = product.addons.length > 0;
   const hasGroups   = (product.addonGroups?.length ?? 0) > 0;
+  const hasStepper  = hasVariants || hasGroups;
 
   // Group variants by key
   const variantGroups = product.variants.reduce<Record<string, ProductVariant[]>>((acc, v) => {
@@ -443,7 +444,7 @@ function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart, onAdd
     onClose();
   }
 
-  if (hasGroups) {
+  if (hasStepper) {
     return (
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -831,8 +832,7 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
       const res = await CreateOrder({
         name, phone: phone || "00000000000", cep: "", address: "",
         items: items.map(i => {
-          const [productId, secondPart] = i.product.id.split("__");
-          const variantId = secondPart && GUID_RE.test(secondPart) ? secondPart : undefined;
+          const { productId, variantId } = parseSyntheticProductId(i.product.id);
           return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
         }),
         paymentMethodStr: "PAY_AT_COUNTER", tableId,

@@ -78,7 +78,7 @@ function ProductDetailContent() {
   }
 
   const img = product.imageUrl || "https://picsum.photos/seed/pet/800/600";
-  const hasGroups = (product.addonGroups?.length ?? 0) > 0;
+  const hasStepper = (product.addonGroups?.length ?? 0) > 0 || (product.variants?.length ?? 0) > 0;
 
   function handleSimpleAdd() {
     for (let i = 0; i < qty; i++) cart.add(product as any);
@@ -129,7 +129,7 @@ function ProductDetailContent() {
         />
       </div>
 
-      {hasGroups ? (
+      {hasStepper ? (
         /* ── Modo stepper (mobile fullscreen) ─────────────── */
         <div
           className="flex-1 flex flex-col overflow-hidden"

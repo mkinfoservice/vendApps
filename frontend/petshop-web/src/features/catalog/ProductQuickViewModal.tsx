@@ -53,7 +53,7 @@ export function ProductQuickViewModal({ productId, onClose }: Props) {
   }
 
   const img = product?.imageUrl || "https://picsum.photos/seed/pet/800/600";
-  const hasGroups = (product?.addonGroups?.length ?? 0) > 0;
+  const hasStepper = (product?.addonGroups?.length ?? 0) > 0 || (product?.variants?.length ?? 0) > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
@@ -122,7 +122,7 @@ export function ProductQuickViewModal({ productId, onClose }: Props) {
 
             {/* Painel direito */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {hasGroups ? (
+              {hasStepper ? (
                 /* ── Modo stepper ──────────────────────────── */
                 <>
                   {/* Cabeçalho fixo com nome + preço base */}
