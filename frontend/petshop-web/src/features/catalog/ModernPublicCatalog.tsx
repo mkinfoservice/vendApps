@@ -256,7 +256,7 @@ function ModernPublicCatalogContent() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por nome, c\u00f3digo ou c\u00f3digo de barras"
+              placeholder="Buscar por nome, código ou código de barras"
               className="flex-1 bg-transparent text-sm outline-none"
             />
             {search && (
