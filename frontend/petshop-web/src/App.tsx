@@ -14,6 +14,7 @@ import { HeroBanner } from "@/components/HeroBanner";
 import { TrustBar } from "@/components/TrustBar";
 import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal";
+import { ModernPublicCatalog } from "@/features/catalog/ModernPublicCatalog";
 import { TopBar } from "@/components/TopBar";
 import { ToastProvider } from "@/components/Toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -115,6 +116,8 @@ export default function App() {
   const bestSellers     = isFiltered ? [] : products.filter((p) => p.isBestSeller).slice(0, 8);
 
   const cart = useCart();
+  const modernCatalogEnabled =
+    (tenantQuery.data?.features?.["modern_catalog_experience"] ?? false) === true;
 
   // Empresa suspensa → tela de aviso (não renderiza loja)
   if (_tenantSlug && tenantQuery.isError && (tenantQuery.error as { status?: number })?.status === 403) {
@@ -133,6 +136,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (modernCatalogEnabled) {
+    return <ModernPublicCatalog />;
   }
 
   /** Botão do carrinho — usado tanto no TopBar quanto na bottom bar mobile */

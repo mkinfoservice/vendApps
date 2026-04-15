@@ -38,6 +38,7 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 
 ### Catálogo Online
 - Vitrine pública responsiva, otimizada para mobile e para Google
+- **Experiência moderna opcional por tenant (feature flag):** layout em grade com categorias laterais, busca fixa, cards compactos e carrinho no padrão operacional (PDV/DAV), com foco em celular e tablet
 - Categorias com filtro, busca em tempo real e banner rotativo configurável
 - Carrinho persistente com controle de quantidade e subtotal ao vivo
 - Checkout com auto-preenchimento de CEP (ViaCEP), múltiplas formas de pagamento e cálculo de troco
@@ -49,6 +50,7 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 - Pedido feito pelo cliente já entra automaticamente na fila da cozinha/barista
 - Identificação do cliente por número de telefone antes de fazer o pedido
 - Suporte a pedidos com adicionais e observações por item
+- **Quando o catálogo moderno está ativo no tenant:** experiência de mesa com grid moderno e seleção de adicionais em step-by-step (mesmo mecanismo do PDV)
 - Ideal para cafeterias, restaurantes, food courts e espaços de coworking
 
 ### PDV — Ponto de Venda
@@ -210,6 +212,7 @@ PWA mobile-first dedicado ao entregador — sem instalação, acessível pelo na
 ### Painel Master Admin
 - Visão consolidada de todas as empresas da plataforma
 - Ativação e desativação de features por tenant (feature flags)
+- Feature flag `modern_catalog_experience` para habilitar/desabilitar o novo catálogo/carrinho público por empresa, sem impacto nos demais tenants
 - Log de auditoria de ações administrativas críticas
 
 ---

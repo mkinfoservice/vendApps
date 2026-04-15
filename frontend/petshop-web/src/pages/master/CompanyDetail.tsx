@@ -1226,6 +1226,7 @@ function WhatsappTab({ companyId, company }: { companyId: string; company: Compa
 
 const FEATURE_META: Record<string, { label: string; description: string }> = {
   own_delivery:   { label: "Entrega Própria",   description: "Exibe módulos de Rotas e Entregadores. Desative para tenants que não fazem entregas (ex: restaurantes, balcão)." },
+  modern_catalog_experience: { label: "Catálogo Moderno (Público)", description: "Ativa o novo layout de catálogo + carrinho para os fluxos públicos (delivery e mesa)." },
   agenda:         { label: "Agenda",            description: "Módulo de agendamentos (plano Pro+)." },
   commissions:    { label: "Comissões",         description: "Rastreamento de comissões por vendedor." },
   tips:           { label: "Gorjetas",          description: "Funcionalidade de gorjetas no checkout." },

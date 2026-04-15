@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import type { Category, Product, ProductAddon, ProductVariant, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder, identifyCustomer } from "@/features/orders/api";
+import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
 
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
@@ -14,6 +15,12 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
 async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null; capacity: number }> {
   const r = await fetch(`${API_URL}/public/tables/${tableId}`);
   if (!r.ok) throw new Error("Mesa não encontrada");
+  return r.json();
+}
+
+async function fetchTenantBySlug(slug: string): Promise<{ features: Record<string, boolean> }> {
+  const r = await fetch(`${API_URL}/public/tenant/resolve?slug=${encodeURIComponent(slug)}`);
+  if (!r.ok) throw new Error("Tenant não encontrado");
   return r.json();
 }
 
@@ -395,14 +402,16 @@ function StepRegister({ name, tableId, primaryColor, onSkip, onRegister }: {
 }
 
 // ── Product Detail Sheet ───────────────────────────────────────────────────────
-function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart }: {
+function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart, onAddSynthetic }: {
   product: Product; primaryColor?: string;
   onClose: () => void;
   onAddToCart: (product: Product, variant: ProductVariant | null, addons: ProductAddon[], qty: number) => void;
+  onAddSynthetic: (synthetic: Product, qty: number) => void;
 }) {
   const color = primaryColor || GC.caramel;
   const hasVariants = product.variants.length > 0;
   const hasAddons   = product.addons.length > 0;
+  const hasGroups   = (product.addonGroups?.length ?? 0) > 0;
 
   // Group variants by key
   const variantGroups = product.variants.reduce<Record<string, ProductVariant[]>>((acc, v) => {
@@ -432,6 +441,43 @@ function ProductDetailSheet({ product, primaryColor, onClose, onAddToCart }: {
   function handleAdd() {
     onAddToCart(product, selectedVariant, activeAddons, qty);
     onClose();
+  }
+
+  if (hasGroups) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+        <div
+          className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92vh]"
+          style={{ background: GC.bg, boxShadow: "0 24px 80px rgba(28,18,9,0.35)" }}
+        >
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="w-10 h-1 rounded-full" style={{ background: "rgba(107,79,58,0.2)" }} />
+          </div>
+          <div className="px-5 pt-2 pb-3 border-b" style={{ borderColor: "rgba(107,79,58,0.1)" }}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-black leading-tight" style={{ color: GC.dark }}>{product.name}</h2>
+                <p className="text-xs mt-1" style={{ color: GC.brown, opacity: 0.7 }}>
+                  a partir de <span className="font-bold" style={{ color }}>{fmtBRL(product.priceCents)}</span>
+                </p>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center" style={{ background: GC.cream }}>
+                <X size={14} style={{ color: GC.brown }} />
+              </button>
+            </div>
+          </div>
+          <ProductAddonStepper
+            product={product}
+            onCancel={onClose}
+            onConfirm={(synthetic, selectedQty) => {
+              onAddSynthetic(synthetic, selectedQty);
+              onClose();
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -685,6 +731,79 @@ function MesaProductCard({ product, qty, primaryColor, onOpen, onInc, onDec }: {
   );
 }
 
+function MesaModernProductCard({ product, qty, primaryColor, onOpen, onInc, onDec }: {
+  product: Product; qty: number; primaryColor?: string;
+  onOpen: () => void; onInc: () => void; onDec: () => void;
+}) {
+  const color = primaryColor || GC.caramel;
+  const hasOptions = product.variants.length > 0 || product.addons.length > 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-3xl border p-2.5 text-left transition hover:shadow-md active:scale-[0.99]"
+      style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}
+    >
+      <div className="relative">
+        <div className="aspect-square overflow-hidden rounded-2xl" style={{ background: GC.cream }}>
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-3xl opacity-30">☕</div>
+          )}
+        </div>
+
+        {qty === 0 ? (
+          <div
+            className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-white shadow"
+            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
+          >
+            <Plus size={13} />
+          </div>
+        ) : (
+          <div className="absolute -right-1 -top-1 flex min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-black text-white" style={{ background: color }}>
+            {qty}
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2">
+        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold" style={{ color: GC.dark }}>
+          {product.name}
+        </p>
+        <p className="mt-1 text-sm font-black tabular-nums" style={{ color }}>
+          {fmtBRL(product.priceCents)}
+        </p>
+
+        {!hasOptions && qty > 0 && (
+          <div className="mt-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={onDec}
+              className="flex h-7 w-7 items-center justify-center rounded-full"
+              style={{ background: GC.cream, color: GC.brown }}
+              aria-label="Diminuir"
+            >
+              {qty === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
+            </button>
+            <span className="w-5 text-center text-sm font-black">{qty}</span>
+            <button
+              type="button"
+              onClick={onInc}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-white"
+              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
+              aria-label="Aumentar"
+            >
+              <Plus size={12} />
+            </button>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 // ── Cart Sheet ─────────────────────────────────────────────────────────────────
 function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone, cpf, customerId, primaryColor,
   onInc, onDec, onRemove, onClose, onSuccess }: {
@@ -723,7 +842,7 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl" style={{ background: GC.bg }}>
+      <div className="relative rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl" style={{ background: "#F7F2E9" }}>
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
           <div className="w-12 h-1 rounded-full" style={{ background: `rgba(107,79,58,0.2)` }} />
@@ -744,14 +863,18 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
         </div>
 
         {/* Items */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {items.map(({ product, qty }) => (
-            <div key={product.id} className="flex items-center gap-3">
-              {product.imageUrl && (
-                <img src={product.imageUrl} alt={product.name}
-                  className="w-14 h-14 rounded-2xl object-cover shrink-0 shadow-sm"
-                  style={{ background: GC.cream }} />
-              )}
+            <div key={product.id} className="flex items-center gap-3 rounded-2xl p-3" style={{ background: "#fff", border: "1px solid rgba(107,79,58,0.08)" }}>
+              <div className="w-14 h-14 rounded-2xl object-cover shrink-0 shadow-sm overflow-hidden" style={{ background: GC.cream }}>
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name}
+                    className="w-14 h-14 rounded-2xl object-cover shrink-0 shadow-sm"
+                    style={{ background: GC.cream }} />
+                ) : (
+                  <div className="w-14 h-14 flex items-center justify-center text-xl opacity-30">☕</div>
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate" style={{ color: GC.dark }}>{product.name}</p>
                 <p className="text-xs mt-0.5" style={{ color: GC.brown, opacity: 0.65 }}>{fmtBRL(product.priceCents)} · un.</p>
@@ -779,7 +902,7 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
         </div>
 
         {/* Footer */}
-        <div className="px-5 pb-10 pt-4 space-y-4" style={{ borderTop: `1px solid rgba(107,79,58,0.12)` }}>
+        <div className="px-5 pb-10 pt-4 space-y-4" style={{ borderTop: `1px solid rgba(107,79,58,0.12)`, background: "#F7F2E9" }}>
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium" style={{ color: GC.brown }}>Total</span>
             <span className="text-2xl font-black" style={{ color: GC.dark }}>{fmtBRL(totalCents)}</span>
@@ -891,6 +1014,11 @@ export default function MesaPage() {
   });
 
   const slug = tableInfo?.slug;
+  const { data: tenantInfo } = useQuery<{ features: Record<string, boolean> }>({
+    queryKey: ["mesa-tenant-features", slug],
+    queryFn: () => fetchTenantBySlug(slug!),
+    enabled: !!slug,
+  });
 
   // 2. Catalog queries — só rodam quando slug está disponível
   const { data: sf } = useQuery({
@@ -916,6 +1044,7 @@ export default function MesaPage() {
   const tableName    = tableInfo?.name;
   const tableCapacity = tableInfo?.capacity ?? 4;
   const safeGuests = Math.min(Math.max(guests, 1), Math.max(tableCapacity, 1));
+  const modernCatalogEnabled = (tenantInfo?.features?.["modern_catalog_experience"] ?? false) === true;
 
   function handleNameNext(n: string, g: number) { setName(n); setGuests(g); setStep("register"); }
   function handleRegister(p: string, c: string, cid: string, pts: number, isNew: boolean) {
@@ -1043,7 +1172,7 @@ export default function MesaPage() {
 
         {/* Categories — redesigned */}
         {categories.length > 0 && (
-          <div className="overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
+          <div className={`overflow-x-auto pb-3 ${modernCatalogEnabled ? "lg:hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-2 px-4" style={{ width: "max-content" }}>
               <button
                 onClick={() => setCatSlug("")}
@@ -1091,9 +1220,39 @@ export default function MesaPage() {
       </div>
 
       {/* Product grid */}
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-36">
+      <div className={`${modernCatalogEnabled ? "max-w-6xl lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4" : "max-w-2xl"} mx-auto px-4 py-5 pb-36`}>
+        {modernCatalogEnabled && categories.length > 0 && (
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 space-y-2 rounded-3xl border p-3" style={{ background: GC.cream, borderColor: "rgba(107,79,58,0.12)" }}>
+              <button
+                type="button"
+                onClick={() => setCatSlug("")}
+                className="w-full rounded-2xl px-3 py-2 text-left text-sm font-bold transition"
+                style={!catSlug ? { background: GC.dark, color: "#fff" } : { background: "#fff", color: GC.brown }}
+              >
+                🍽️ Todos
+              </button>
+              {(categories as Category[]).map((c) => {
+                const active = catSlug === c.slug;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCatSlug(c.slug)}
+                    className="w-full rounded-2xl px-3 py-2 text-left text-sm font-bold transition"
+                    style={active ? { background: GC.dark, color: "#fff" } : { background: "#fff", color: GC.brown }}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        )}
+
+        <div className="min-w-0">
         {productsLoading || !slug ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className={`grid gap-3 ${modernCatalogEnabled ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-3xl animate-pulse" style={{ aspectRatio: "4/3", background: GC.cream }} />
             ))}
@@ -1103,6 +1262,32 @@ export default function MesaPage() {
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
               style={{ background: GC.cream }}>🔍</div>
             <p className="text-sm font-medium" style={{ color: GC.brown }}>Nenhum produto encontrado</p>
+          </div>
+        ) : modernCatalogEnabled ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {(products as Product[]).map((p) => {
+              const hasOptions = p.variants.length > 0 || p.addons.length > 0;
+              const qty = cart.items
+                .filter((i) => i.product.id === p.id || i.product.id.startsWith(`${p.id}__`))
+                .reduce((acc, i) => acc + i.qty, 0);
+              return (
+                <MesaModernProductCard
+                  key={p.id}
+                  product={p}
+                  qty={qty}
+                  primaryColor={primaryColor}
+                  onOpen={() => {
+                    if (hasOptions) {
+                      setSheetProduct(p);
+                      return;
+                    }
+                    cart.add(p);
+                  }}
+                  onInc={() => cart.inc(p.id)}
+                  onDec={() => cart.dec(p.id)}
+                />
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -1122,6 +1307,7 @@ export default function MesaPage() {
             })}
           </div>
         )}
+        </div>
       </div>
 
       {/* Floating cart */}
@@ -1152,6 +1338,9 @@ export default function MesaPage() {
           product={sheetProduct}
           primaryColor={primaryColor}
           onClose={() => setSheetProduct(null)}
+          onAddSynthetic={(synthetic, qty) => {
+            for (let i = 0; i < qty; i++) cart.add(synthetic);
+          }}
           onAddToCart={(product, variant, addons, qty) => {
             const extraCents = addons.reduce((s, a) => s + a.priceCents, 0);
             const baseCents  = variant?.priceCents ?? product.priceCents;

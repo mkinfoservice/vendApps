@@ -15,6 +15,7 @@ public static class AppFeatureKeys
     public const string AccountingEmailDispatch = "accounting_email_dispatch";
     /// <summary>Exibe módulos de entrega própria (Rotas, Entregadores). false = entrega somente via marketplace.</summary>
     public const string OwnDelivery = "own_delivery";
+    public const string ModernCatalogExperience = "modern_catalog_experience";
 }
 
 public class PlanFeatureService
@@ -35,7 +36,8 @@ public class PlanFeatureService
         AppFeatureKeys.FinancialMenu,
         AppFeatureKeys.LoyaltyProgram,
         AppFeatureKeys.AccountingEmailDispatch,
-        AppFeatureKeys.OwnDelivery
+        AppFeatureKeys.OwnDelivery,
+        AppFeatureKeys.ModernCatalogExperience
     ];
 
     public async Task<Dictionary<string, bool>> ResolveFeaturesAsync(Company company, CancellationToken ct = default)
@@ -67,6 +69,7 @@ public class PlanFeatureService
             [AppFeatureKeys.LoyaltyProgram] = IsPlanAtLeast(plan, "trial"),
             [AppFeatureKeys.AccountingEmailDispatch] = IsPlanAtLeast(plan, "pro"),
             [AppFeatureKeys.OwnDelivery] = true,
+            [AppFeatureKeys.ModernCatalogExperience] = false,
         };
     }
 

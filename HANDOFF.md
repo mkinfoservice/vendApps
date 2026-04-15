@@ -357,3 +357,18 @@ Na primeira execução o `DbSeeder` + `AddonGroupSeeder` + `AddonSplitSeeder` ro
 | `1d6d6ae` | fix: safety nets idempotentes OrderId + AddonGroups |
 | `4186311` | feat: fluxo step-by-step para seleção de adicionais por grupo |
 | `de151ec` | fix: earnedPoints zerados na notificação WhatsApp delivery |
+
+---
+
+## 15. Catalogo Moderno (Feature Flag)
+
+- Nova flag por tenant: `modern_catalog_experience`
+- Origem da flag: `PlanFeatureService` (default `false`) + overrides em `CompanyFeatureOverrides`
+- Configuracao: Master Admin -> Company -> Feature Flags
+- Escopo:
+  - Catalogo publico (`/`) alterna entre layout legado e `ModernPublicCatalog`
+  - Catalogo por mesa (`/mesa/:tableId`) usa a mesma flag por slug
+- Compatibilidade de fluxo preservada:
+  - Delivery continua finalizando pelo checkout existente
+  - Mesa continua finalizando via `CreateOrder` com `PAY_AT_COUNTER`
+  - Selecao de adicionais por grupos no fluxo de mesa usa `ProductAddonStepper` (mesma base do PDV)
