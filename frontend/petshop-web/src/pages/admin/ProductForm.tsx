@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ImagePlus, Trash2, Star, Plus } from "lucide-react";
 import { fetchCategories } from "@/features/catalog/api";
+import { adminFetch } from "@/features/admin/auth/adminFetch";
 import {
   useAdminProductById,
   useCreateProduct,
@@ -14,6 +15,22 @@ import {
 } from "@/features/admin/products/queries";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
+
+// ── Tipos: Insumos vinculados ──────────────────────────────────────────────
+
+type SupplyLink = {
+  id: string;
+  supplyId: string;
+  supplyName: string;
+  unit: string;
+  quantityPerUnit: number;
+};
+
+type SupplyOption = {
+  id: string;
+  name: string;
+  unit: string;
+};
 
 function resolveUrl(url: string) {
   if (url.startsWith("http")) return url;
@@ -101,10 +118,30 @@ export default function ProductForm() {
   const [newAddonName, setNewAddonName]   = useState("");
   const [newAddonPrice, setNewAddonPrice] = useState("0,00");
 
+  // Estado: Insumos vinculados
+  const [supplyLinks, setSupplyLinks]       = useState<SupplyLink[]>([]);
+  const [supplyOptions, setSupplyOptions]   = useState<SupplyOption[]>([]);
+  const [newLinkSupplyId, setNewLinkSupplyId] = useState("");
+  const [newLinkQty, setNewLinkQty]           = useState("1");
+  const [savingLink, setSavingLink]           = useState(false);
+
   // Carrega categorias (público, usa VITE_COMPANY_SLUG)
   useEffect(() => {
     fetchCategories().then(setCategories).catch(() => {});
   }, []);
+
+  // Carrega insumos vinculados e lista de insumos disponíveis (modo edição)
+  useEffect(() => {
+    if (isNew || !id) return;
+    adminFetch(`/admin/products/${id}/supply-links`)
+      .then((r) => r.json())
+      .then((data: SupplyLink[]) => setSupplyLinks(data))
+      .catch(() => {});
+    adminFetch("/admin/supplies?active=true")
+      .then((r) => r.json())
+      .then((data: SupplyOption[]) => setSupplyOptions(data))
+      .catch(() => {});
+  }, [isNew, id]);
 
   // Preenche form ao carregar produto (modo edição)
   useEffect(() => {
@@ -148,6 +185,43 @@ export default function ProductForm() {
   const price  = realToCents(form.priceStr);
   const cost   = realToCents(form.costStr);
   const margin = price > 0 ? ((price - cost) / price * 100) : 0;
+
+  async function handleAddSupplyLink() {
+    if (!newLinkSupplyId || !id) return;
+    const qty = parseFloat(newLinkQty.replace(",", "."));
+    if (isNaN(qty) || qty <= 0) return;
+    setSavingLink(true);
+    try {
+      const res = await adminFetch(`/admin/products/${id}/supply-links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplyId: newLinkSupplyId, quantityPerUnit: qty }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert((err as { title?: string })?.title ?? "Erro ao vincular insumo.");
+        return;
+      }
+      const link: SupplyLink = await res.json();
+      setSupplyLinks((prev) => [...prev, link]);
+      setNewLinkSupplyId("");
+      setNewLinkQty("1");
+    } catch {
+      alert("Erro ao vincular insumo.");
+    } finally {
+      setSavingLink(false);
+    }
+  }
+
+  async function handleDeleteSupplyLink(linkId: string, supplyName: string) {
+    if (!id || !confirm(`Remover vínculo com "${supplyName}"?`)) return;
+    try {
+      await adminFetch(`/admin/products/${id}/supply-links/${linkId}`, { method: "DELETE" });
+      setSupplyLinks((prev) => prev.filter((l) => l.id !== linkId));
+    } catch {
+      alert("Erro ao remover vínculo.");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -547,6 +621,84 @@ export default function ProductForm() {
                   >
                     <Plus size={14} />
                     Add
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {/* Insumos vinculados — só disponível em edição */}
+            {!isNew && (
+              <section
+                className="rounded-2xl border p-5 space-y-4"
+                style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+              >
+                <div>
+                  <div className="text-sm font-extrabold" style={{ color: "var(--text)" }}>Insumos consumidos</div>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    Ao vender este produto, o estoque dos insumos abaixo será debitado automaticamente.
+                  </p>
+                </div>
+
+                {/* Lista de vínculos existentes */}
+                {supplyLinks.length === 0 ? (
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>Nenhum insumo vinculado.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {supplyLinks.map((link) => (
+                      <div
+                        key={link.id}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2"
+                        style={{ backgroundColor: "var(--surface-2)" }}
+                      >
+                        <span className="flex-1 text-sm" style={{ color: "var(--text)" }}>{link.supplyName}</span>
+                        <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-muted)" }}>
+                          {link.quantityPerUnit} {link.unit} / venda
+                        </span>
+                        <button
+                          type="button"
+                          title="Remover vínculo"
+                          onClick={() => handleDeleteSupplyLink(link.id, link.supplyName)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-red-950/40"
+                        >
+                          <Trash2 size={13} className="text-red-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Adicionar novo vínculo */}
+                <div className="flex gap-2 pt-1">
+                  <select
+                    value={newLinkSupplyId}
+                    onChange={(e) => setNewLinkSupplyId(e.target.value)}
+                    className="flex-1 h-9 rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8]/40"
+                    style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  >
+                    <option value="">Selecione um insumo</option>
+                    {supplyOptions
+                      .filter((s) => !supplyLinks.some((l) => l.supplyId === s.id))
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.unit})</option>
+                      ))}
+                  </select>
+                  <input
+                    value={newLinkQty}
+                    onChange={(e) => setNewLinkQty(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="Qtd"
+                    className="w-20 h-9 rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[#7c5cf8]/40"
+                    style={{ backgroundColor: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!newLinkSupplyId || savingLink}
+                    onClick={handleAddSupplyLink}
+                    className="h-9 px-3 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40 flex items-center gap-1"
+                    style={{ background: "linear-gradient(135deg, #7c5cf8 0%, #9b7efa 100%)" }}
+                  >
+                    <Plus size={14} />
+                    Vincular
                   </button>
                 </div>
               </section>

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
+using Petshop.Api.Entities.Catalog;
 using Petshop.Api.Entities.Pdv;
 using Petshop.Api.Entities.Stock;
 
@@ -80,6 +81,78 @@ public class StockService
         }
 
         _logger.LogDebug("[Stock] Debitados {Count} itens da venda {SaleId}.", sale.Items.Count, sale.Id);
+    }
+
+    /// <summary>
+    /// Debita automaticamente os insumos vinculados aos produtos vendidos.
+    /// Para cada item da venda, carrega os ProductSupplyLinks do produto e
+    /// decrementa Supply.StockQty via SQL direto dentro da mesma transação.
+    /// Retorna os insumos cujo StockQty ficou ≤ MinQty (para disparar alertas fora da transação).
+    /// </summary>
+    public async Task<List<Supply>> DecrementSuppliesOnSaleAsync(SaleOrder sale, CancellationToken ct)
+    {
+        var productIds = sale.Items.Select(i => i.ProductId).Distinct().ToList();
+
+        // Carrega todos os vínculos dos produtos desta venda de uma só query
+        var links = await _db.ProductSupplyLinks
+            .AsNoTracking()
+            .Where(l => l.CompanyId == sale.CompanyId && productIds.Contains(l.ProductId))
+            .Include(l => l.Supply)
+            .ToListAsync(ct);
+
+        if (links.Count == 0) return [];
+
+        var now           = DateTime.UtcNow;
+        var supplyDeltas  = new Dictionary<Guid, decimal>(); // supplyId → total debitado
+
+        // Acumula consumo por insumo (um produto pode estar em múltiplos itens)
+        foreach (var item in sale.Items)
+        {
+            var qty = item.IsSoldByWeight
+                ? (item.WeightKg ?? 0)
+                : (decimal)item.Qty;
+
+            if (qty <= 0) continue;
+
+            foreach (var link in links.Where(l => l.ProductId == item.ProductId))
+            {
+                var consumed = link.QuantityPerUnit * qty;
+                supplyDeltas.TryAdd(link.SupplyId, 0);
+                supplyDeltas[link.SupplyId] += consumed;
+            }
+        }
+
+        if (supplyDeltas.Count == 0) return [];
+
+        // Debita cada insumo via SQL direto dentro da transação do caller
+        foreach (var (supplyId, delta) in supplyDeltas)
+        {
+            await _db.Database.ExecuteSqlAsync(
+                $"""
+                UPDATE "Supplies"
+                SET    "StockQty"     = "StockQty" - {delta},
+                       "UpdatedAtUtc" = {now}
+                WHERE  "Id"        = {supplyId}
+                  AND  "CompanyId" = {sale.CompanyId}
+                """, ct);
+        }
+
+        // Recarrega os insumos para verificar quais ficaram abaixo do mínimo
+        var supplyIds = supplyDeltas.Keys.ToList();
+        var updatedSupplies = await _db.Supplies
+            .AsNoTracking()
+            .Where(s => supplyIds.Contains(s.Id) && s.CompanyId == sale.CompanyId)
+            .ToListAsync(ct);
+
+        var lowSupplies = updatedSupplies
+            .Where(s => s.MinQty > 0 && s.StockQty <= s.MinQty)
+            .ToList();
+
+        _logger.LogDebug(
+            "[Stock] Debitados {Count} insumo(s) da venda {SaleId}. {Low} abaixo do mínimo.",
+            supplyDeltas.Count, sale.Id, lowSupplies.Count);
+
+        return lowSupplies;
     }
 
     /// <summary>Ajuste manual de estoque (entrada, saída, perda, devolução, etc.).</summary>

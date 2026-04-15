@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Petshop.Api.Data;
 using Petshop.Api.Entities.Catalog;
-using Petshop.Api.Services.WhatsApp;
+using Petshop.Api.Services.Stock;
 using System.Security.Claims;
 
 namespace Petshop.Api.Controllers;
@@ -13,14 +13,14 @@ namespace Petshop.Api.Controllers;
 [Authorize(Roles = "admin,gerente")]
 public class SuppliesController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    private readonly WhatsAppClient _whatsAppClient;
+    private readonly AppDbContext      _db;
+    private readonly SupplyAlertService _alerts;
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
 
-    public SuppliesController(AppDbContext db, WhatsAppClient whatsAppClient)
+    public SuppliesController(AppDbContext db, SupplyAlertService alerts)
     {
-        _db = db;
-        _whatsAppClient = whatsAppClient;
+        _db     = db;
+        _alerts = alerts;
     }
 
     [HttpGet]
@@ -164,41 +164,7 @@ public class SuppliesController : ControllerBase
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task EnsureLowStockAlertAsync(Supply supply, CancellationToken ct)
-    {
-        if (supply.MinQty <= 0 || supply.StockQty > supply.MinQty) return;
-        await CreateLowStockAlertAsync(supply, ct);
-    }
-
-    private async Task CreateLowStockAlertAsync(Supply supply, CancellationToken ct)
-    {
-        // Evita duplicar alerta não lido para o mesmo insumo
-        var exists = await _db.AdminAlerts.AnyAsync(a =>
-            a.CompanyId == CompanyId &&
-            a.AlertType == "supply_low" &&
-            a.ReferenceId == supply.Id &&
-            !a.IsRead, ct);
-
-        if (exists) return;
-
-        _db.AdminAlerts.Add(new Petshop.Api.Entities.Master.AdminAlert
-        {
-            CompanyId   = CompanyId,
-            AlertType   = "supply_low",
-            Title       = $"Insumo baixo: {supply.Name}",
-            Message     = $"O insumo \"{supply.Name}\" está com estoque baixo: {supply.StockQty} {supply.Unit} (mínimo: {supply.MinQty} {supply.Unit}). Recomendamos reabastecer.",
-            ReferenceId = supply.Id,
-        });
-        await _db.SaveChangesAsync(ct);
-
-        var company = await _db.Companies
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == CompanyId, ct);
-        var ownerPhone = WhatsAppClient.NormalizeToE164Brazil(company?.OwnerAlertPhone);
-        if (ownerPhone is null) return;
-
-        var text = $"[Alerta de insumo] {supply.Name} está em {supply.StockQty} {supply.Unit} (mínimo {supply.MinQty} {supply.Unit}). Reabastecimento recomendado.";
-        await _whatsAppClient.SendTextAsync(ownerPhone, text, CompanyId, ct);
-    }
+        => await _alerts.EnsureLowStockAlertAsync(supply, CompanyId, ct);
 
     private static SupplyDto ToDto(Supply s) =>
         new(s.Id, s.Name, s.Unit, s.Category, s.StockQty, s.MinQty,

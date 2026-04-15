@@ -273,6 +273,7 @@ builder.Services.AddScoped<ScaleProductSyncJob>();
 // Services — Estoque (Fase 6)
 // ===============================
 builder.Services.AddScoped<Petshop.Api.Services.Stock.StockService>();
+builder.Services.AddScoped<Petshop.Api.Services.Stock.SupplyAlertService>();
 
 // ===============================
 // Services — Compras (Fase 8)
@@ -532,6 +533,28 @@ using (var scope = app.Services.CreateScope())
             ADD COLUMN IF NOT EXISTS "IsDefault"    boolean NOT NULL DEFAULT false;
         CREATE INDEX IF NOT EXISTS "IX_ProductAddons_AddonGroupId"
             ON "ProductAddons" ("AddonGroupId");
+        """);
+
+    // [20260415] ProductSupplyLinks — vínculo produto → insumo para débito automático no PDV
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS "ProductSupplyLinks" (
+            "Id"              uuid          NOT NULL DEFAULT gen_random_uuid(),
+            "CompanyId"       uuid          NOT NULL,
+            "ProductId"       uuid          NOT NULL,
+            "SupplyId"        uuid          NOT NULL,
+            "QuantityPerUnit" decimal(14,4) NOT NULL DEFAULT 1,
+            "CreatedAtUtc"    timestamptz   NOT NULL DEFAULT now(),
+            CONSTRAINT "PK_ProductSupplyLinks" PRIMARY KEY ("Id"),
+            CONSTRAINT "FK_PSL_Products" FOREIGN KEY ("ProductId")
+                REFERENCES "Products"("Id") ON DELETE CASCADE,
+            CONSTRAINT "FK_PSL_Supplies" FOREIGN KEY ("SupplyId")
+                REFERENCES "Supplies"("Id") ON DELETE CASCADE,
+            CONSTRAINT "UQ_PSL_ProductSupply" UNIQUE ("ProductId", "SupplyId")
+        );
+        CREATE INDEX IF NOT EXISTS "IX_ProductSupplyLinks_ProductId"
+            ON "ProductSupplyLinks" ("ProductId");
+        CREATE INDEX IF NOT EXISTS "IX_ProductSupplyLinks_SupplyId"
+            ON "ProductSupplyLinks" ("SupplyId");
         """);
 
     // Garante colunas de AddOperationalQuerySupport (migration pode ter sido marcada

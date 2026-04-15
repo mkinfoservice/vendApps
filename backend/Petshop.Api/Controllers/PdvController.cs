@@ -34,18 +34,20 @@ public class PdvController : ControllerBase
     private readonly StockService                _stock;
     private readonly LoyaltyService              _loyalty;
     private readonly CpfProtectionService        _cpfProtection;
+    private readonly SupplyAlertService          _supplyAlerts;
     private readonly ILogger<PdvController>      _logger;
 
-    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty, CpfProtectionService cpfProtection, ILogger<PdvController> logger)
+    public PdvController(AppDbContext db, ScaleBarcodeParser scale, FiscalDecisionService fiscal, IBackgroundJobClient jobs, StockService stock, LoyaltyService loyalty, CpfProtectionService cpfProtection, SupplyAlertService supplyAlerts, ILogger<PdvController> logger)
     {
-        _db      = db;
-        _scale   = scale;
-        _fiscal  = fiscal;
-        _jobs    = jobs;
-        _stock   = stock;
-        _loyalty = loyalty;
+        _db           = db;
+        _scale        = scale;
+        _fiscal       = fiscal;
+        _jobs         = jobs;
+        _stock        = stock;
+        _loyalty      = loyalty;
         _cpfProtection = cpfProtection;
-        _logger  = logger;
+        _supplyAlerts = supplyAlerts;
+        _logger       = logger;
     }
 
     private Guid CompanyId => Guid.Parse(User.FindFirstValue("companyId")!);
@@ -834,6 +836,9 @@ public class PdvController : ControllerBase
         // Debita estoque via SQL direto (sem EF tracking, sem concurrency check)
         await _stock.DecrementOnSaleAsync(sale, UserName, ct);
 
+        // Debita insumos vinculados aos produtos vendidos (dentro da mesma transação)
+        var lowSupplies = await _stock.DecrementSuppliesOnSaleAsync(sale, ct);
+
         var customerPhone = string.IsNullOrWhiteSpace(req.CustomerPhone)
             ? sale.CustomerPhone
             : req.CustomerPhone.Trim();
@@ -932,6 +937,16 @@ public class PdvController : ControllerBase
         // Salva apenas INSERTs (SalePayments + StockMovements + FiscalQueue)
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+
+        // Verifica insumos abaixo do mínimo e envia alertas (best-effort, fora da transação)
+        if (lowSupplies.Count > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try { await _supplyAlerts.EnsureLowStockAlertsAsync(lowSupplies, CompanyId, CancellationToken.None); }
+                catch { /* non-critical */ }
+            });
+        }
 
         // Acumula pontos de fidelidade ANTES de enfileirar o job fiscal.
         // Ordem crítica: o FiscalQueueProcessorJob enfileira NotifySaleCompletedAsync,
