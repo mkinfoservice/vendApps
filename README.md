@@ -55,7 +55,7 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 - Interface otimizada para toque, com produtos organizados por categoria
 - Busca instantânea por nome, código interno ou código de barras
 - Suporte nativo a leitor de código de barras USB e balança integrada
-- Adicionais de produto configuráveis (ponto do café, tamanho, extras)
+- **Seleção de adicionais step-by-step:** fluxo guiado por grupos configuráveis (ex: Tipo de Leite → Cobertura → Extras) com radio/checkbox, barra de progresso e auto-avanço ao escolher opção única
 - Variantes de produto (P/M/G, quente/gelado, 200ml/400ml)
 - Sessão de caixa com abertura, sangria, suprimento e fechamento com relatório
 - Múltiplas formas de pagamento combinadas na mesma venda
@@ -83,8 +83,10 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 
 ### WhatsApp
 - Notificação automática ao cliente quando o pedido é criado ou atualizado
+- **Complemento de fidelidade:** mensagem automática com pontos ganhos e saldo após cada compra PDV (template configurável por empresa, independente de NFC-e)
 - Webhook de entrada para receber e responder mensagens de clientes no painel
 - Roteamento inteligente de conversas por empresa
+- Idempotência garantida: cada notificação é enviada exatamente uma vez por evento
 
 ### Gestão de Pedidos
 - Painel em tempo real com todos os pedidos do dia por canal
@@ -97,7 +99,9 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 - Cadastro automático na primeira compra por telefone
 - Histórico completo de pedidos e ticket médio por cliente
 - Programa de fidelidade configurável: pontos por real gasto
+- Identificação por CPF **ou por telefone** — ambos acumulam pontos corretamente
 - Resgate de pontos no checkout e no balcão
+- Notificação WhatsApp de pontos acumulados após cada compra PDV, independente de NFC-e
 - Relatório de clientes mais fiéis, frequência e LTV
 
 ### Fiscal — NFC-e
@@ -135,6 +139,8 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 
 ### Gestão de Catálogo
 - CRUD completo de produtos com foto, descrição, variantes e adicionais
+- **Grupos de adicionais configuráveis:** organize adicionais em etapas (ex: Tipo de Leite → Cobertura → Extras) com seleção única (radio) ou múltipla (checkbox) por grupo
+- Classificação automática na inicialização: adicionais existentes são organizados em grupos por padrão de nome sem intervenção manual
 - Categorias com ordenação personalizada e slug automático
 - Enriquecimento automático: normalização de nomes e busca de imagens por código de barras (base Cosmos/Bluesoft)
 - Sync bidirecional com sistemas externos via conectores CSV, REST ou banco de dados
