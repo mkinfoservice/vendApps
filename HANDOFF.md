@@ -247,7 +247,64 @@ VITE_API_URL=https://vendapps.onrender.com
 
 ---
 
-## 11. Padrões de Código
+## 11. Impressão Mobile (Android + iPad)
+
+### Arquitetura
+
+O sistema de impressão tem três camadas, todas conectadas ao mesmo hub SignalR `/hubs/print`:
+
+| Camada | Plataforma | Mecanismo |
+|---|---|---|
+| `PrintAgent` (Windows service) | PC Windows | `System.Drawing.Printing` → impressora local (USB/rede/Bluetooth pareado) |
+| Print Station (browser, flag `PRINT_STATION_KEY`) | Qualquer browser | `window.print()` → dialog do SO |
+| **Mobile Agent** (browser, flag `MOBILE_AGENT_KEY`) | Tablet Android/iPad | Web Bluetooth ou `window.print()` + AirPrint |
+
+### Arquivos do Agente Mobile
+
+| Arquivo | Responsabilidade |
+|---|---|
+| `features/admin/print/escpos.ts` | Gerador de bytes ESC/POS (Uint8Array). Suporta papel 58 mm (32 col) e 80 mm (48 col). Sem deps externas. |
+| `features/admin/print/mobilePrint.ts` | Lógica de despacho: `isMobileAgent()`, `connectBluetoothPrinter()`, `mobilePrint()`. Gerencia estado BLE da sessão. |
+| `pages/admin/MobilePrintAgentPage.tsx` | Página `/app/impressao/mobile` — toggle de agente, seletor de modo, pairing BLE, teste de impressão, log. |
+
+### Fluxo de dispatch (`usePrintListener.tsx`)
+
+```
+PrintOrder (SignalR)
+        │
+        ├─ isMobileAgent() → true  → mobilePrint(payload, jobId)
+        │                                ├─ mode=bluetooth → sendViaBluetooth (ESC/POS via BLE)
+        │                                └─ mode=browser  → window.print() → AirPrint/dialog
+        │
+        └─ isPrintStation() → true → window.print() (desktop)
+```
+
+### Web Bluetooth — Notas de compatibilidade
+
+- Requer **Chrome no Android** (ou qualquer browser baseado em Chromium com BLE)
+- **Safari/iOS não suporta** Web Bluetooth — usar modo "Navegador/AirPrint"
+- O pairing ocorre via `navigator.bluetooth.requestDevice()` e exige gesto do usuário (clique)
+- A referência ao dispositivo fica em memória; reconexão automática ao reconectar o GATT
+- Tenta UUIDs de serviço de múltiplas marcas; fallback: percorre todos os serviços do dispositivo
+- Envia bytes em chunks de 512 (MTU BLE) com delay de 20 ms entre chunks
+
+### Configurações (localStorage, por dispositivo)
+
+| Chave | Valores | Descrição |
+|---|---|---|
+| `vendapps_mobile_agent` | `"1"` / ausente | Agente ativo neste tablet |
+| `vendapps_mobile_mode` | `"bluetooth"` / `"browser"` | Estratégia de impressão |
+| `vendapps_mobile_paper` | `"58"` / `"80"` | Largura do papel em mm |
+
+Configurações persistem entre sessões e trocas de turno — o atendente não precisa reconfigurar.
+
+### Impressoras AirPrint compatíveis (modo browser/iPad)
+
+Epson TM-m30II, Star mPOP, Star TSP100IV (com AirPrint habilitado), Brother PJ-722/PJ-723, e qualquer impressora que exponha AirPrint na rede local.
+
+---
+
+## 12. Padrões de Código
 
 ### Backend — Regra de ouro
 - Loyalty e WhatsApp nunca derrubam a venda: sempre em `try { } catch { }` fora da transação principal
@@ -266,7 +323,7 @@ const groups = await adminFetch<AddonGroupRaw[]>(`/admin/products/${id}/addon-gr
 
 ---
 
-## 12. Como Rodar Localmente
+## 13. Como Rodar Localmente
 
 ```bash
 # Backend
@@ -287,10 +344,11 @@ Na primeira execução o `DbSeeder` + `AddonGroupSeeder` + `AddonSplitSeeder` ro
 
 ---
 
-## 13. Commits Recentes Relevantes
+## 14. Commits Recentes Relevantes
 
 | Hash | Descrição |
 |---|---|
+| (atual) | feat: agente de impressão mobile — Web Bluetooth + AirPrint para Android/iPad |
 | `8430a63` | fix: fidelidade ao buscar cliente por telefone (sem CPF digitado) |
 | `559f70d` | feat: desmembrar addons combinados + auto-avanço em seleção única |
 | `2a1f044` | feat: grupos de adicionais por prioridade + Leite Integral pré-selecionado |

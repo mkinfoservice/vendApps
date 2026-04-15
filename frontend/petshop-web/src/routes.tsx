@@ -29,6 +29,7 @@ import RoutePlanner from "./pages/admin/RoutePlanner";
 import Financeiro from "./pages/admin/Financeiro";
 import StoreTeam from "./pages/admin/StoreTeam";
 import PrintQueue from "./pages/admin/PrintQueue";
+import MobilePrintAgentPage from "./pages/admin/MobilePrintAgentPage";
 import AtendimentoHub from "./pages/admin/AtendimentoHub";
 import PhoneOrderBuilder from "./pages/admin/PhoneOrderBuilder";
 import CustomersList from "./pages/admin/CustomersList";
@@ -133,6 +134,7 @@ export function AppRoutes() {
         <Route path="/app/agenda" element={<AppPage featureKey="agenda"><AgendaPage /></AppPage>} />
         <Route path="/app/comissoes" element={<AppPage roles={["admin","gerente"]} featureKey="commissions"><CommissionsPage /></AppPage>} />
         <Route path="/app/impressao" element={<AppPage><PrintQueue /></AppPage>} />
+        <Route path="/app/impressao/mobile" element={<AppPage><MobilePrintAgentPage /></AppPage>} />
 
         {/* ── /app — Comercial ────────────────────────────────────────── */}
         <Route path="/app/produtos" element={<AppPage><ProductsList /></AppPage>} />

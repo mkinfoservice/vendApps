@@ -5,6 +5,11 @@ import { getToken, decodeTokenPayload } from "@/features/admin/auth/auth";
 import { fetchPendingPrintJobs, markPrinted } from "./api";
 import type { PrintOrderPayload, PendingJobDto } from "./types";
 import { PrintReceipt } from "./PrintReceipt";
+import {
+  isMobileAgent,
+  mobilePrint,
+  registerBrowserPrintFn,
+} from "./mobilePrint";
 
 export type { PrintOrderPayload };
 
@@ -21,7 +26,7 @@ export function setPrintStation(on: boolean) {
   else localStorage.removeItem(PRINT_STATION_KEY);
 }
 
-function printPayload(payload: PrintOrderPayload, jobId: string) {
+function printViaBrowser(payload: PrintOrderPayload, jobId: string) {
   const wrapper = document.createElement("div");
   wrapper.className = "receipt-print-wrapper";
   document.body.appendChild(wrapper);
@@ -39,6 +44,22 @@ function printPayload(payload: PrintOrderPayload, jobId: string) {
       markPrinted(jobId).catch(() => {/* best effort */});
     }, 500);
   });
+}
+
+// Registra o fallback de browser para o módulo de impressão mobile
+registerBrowserPrintFn(printViaBrowser);
+
+function printPayload(payload: PrintOrderPayload, jobId: string) {
+  // Modo mobile agent (tablet): Bluetooth ou AirPrint via mobilePrint
+  if (isMobileAgent()) {
+    mobilePrint(payload, jobId).catch((err) =>
+      console.error("[MobileAgent] Erro na impressão:", err),
+    );
+    return;
+  }
+
+  // Modo estação de impressão desktop: window.print()
+  printViaBrowser(payload, jobId);
 }
 
 /**

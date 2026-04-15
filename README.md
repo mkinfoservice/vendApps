@@ -69,9 +69,11 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 ### Impressão Automática
 - Comanda impressa assim que o pedido chega — do iFood, da mesa, do site ou do balcão
 - Comunicação em tempo real via WebSocket (SignalR) — sem delay, sem polling
-- Agente de impressão leve instalado localmente, conectado ao hub na nuvem
+- **PrintAgent (Windows):** worker service leve instalado localmente, conectado ao hub na nuvem; imprime silenciosamente sem dialog; suporta impressoras USB, serial, rede e Bluetooth (pareada com o PC)
+- **Agente Mobile (Android/iPad):** tablet vira estação de impressão sem instalar nada — modo Bluetooth (Web Bluetooth API, Chrome Android, totalmente silencioso) ou modo AirPrint/Navegador (compatível com iPad via dialog nativo do iOS)
 - Suporte a múltiplas impressoras por empresa
 - Pedido avança para **Em preparo** automaticamente ao ser impresso
+- Configurações do agente mobile persistem no dispositivo — atendente pode trocar de turno sem reconfigurar
 
 ### Integração iFood
 - Webhook recebe eventos do iFood e responde em menos de 1 segundo
@@ -156,6 +158,54 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 - App do entregador com atualizações de status por parada
 - Navegação integrada com Google Maps e Waze
 - Rastreamento em tempo real no painel admin
+
+### App do Entregador
+
+PWA mobile-first dedicado ao entregador — sem instalação, acessível pelo navegador do celular.
+
+**Autenticação**
+- Login por telefone + PIN (sem senha longa para facilitar o uso no campo)
+- JWT com role `deliverer`, vinculado à empresa pelo `CompanyId`
+- Sessão persistida no `localStorage`; redirecionamento automático ao abrir o app
+
+**Tela Inicial — Minhas Rotas**
+- Lista todas as rotas ativas atribuídas ao entregador
+- Exibe status da rota (Pendente / Em andamento / Concluída), número de paradas e endereço geral
+- Atualização automática a cada **30 segundos** via polling (sem WebSocket)
+- Botão "Iniciar Rota" muda o status de `Pendente` → `Em andamento`
+
+**Tela de Detalhe da Rota — Navegação Stop-by-Stop**
+- Atualização automática a cada **15 segundos**
+- Exibe a **próxima parada** em destaque (`NextStopCard`) com nome do cliente, endereço e número do pedido
+- Lista todas as paradas com status individual (Pendente / Próxima / Entregue / Falhou / Ignorada)
+- Barra de progresso com contagem de paradas concluídas
+
+**Navegação Integrada**
+- Dois botões por parada: **Waze** e **Google Maps** — abrem o app nativo com destino preenchido
+  - Waze: `waze://?ll={lat},{lon}&navigate=yes`
+  - Google Maps: `https://www.google.com/maps/dir/?api=1&destination={lat},{lon}`
+- Para rotas com múltiplas paradas, o endpoint `/deliverer/routes/{routeId}/navigation/next` retorna URL com waypoints encadeados
+- Coordenadas geocodificadas via OpenRouteService (ORS) com fallback Nominatim
+
+**Transições de Status por Parada**
+- Cada parada começa como `Pendente` → backend avança automaticamente a primeira para `Proxima`
+- O entregador registra o desfecho de cada parada:
+  - **Entregue** — pedido entregue com sucesso
+  - **Falhou** — tentativa sem sucesso (abre `ReasonModal` para registrar motivo)
+  - **Ignorada** — parada pulada (também requer motivo)
+- Ao confirmar, o backend (`RouteStopTransitionService`) avança automaticamente a próxima parada para `Proxima`
+- Quando todas as paradas são finalizadas, a rota muda automaticamente para `Concluída`
+
+**Integração com Pedidos**
+- Cada parada está vinculada a um `Order`; ao marcar **Entregue**, o pedido muda para status `ENTREGUE`
+- Ao marcar **Falhou/Ignorada**, o pedido volta para `PRONTO_PARA_ENTREGA`
+- Transição de status dispara notificação WhatsApp automática ao cliente (quando configurado)
+- QR Code por parada disponível para confirmação presencial de entrega
+
+**Rastreamento no Painel Admin**
+- Gestores acompanham todas as rotas em tempo real no painel administrativo
+- Visão por entregador com mapa de paradas e status atualizado
+- Histórico de tentativas e motivos de falha por parada
 
 ### Painel Master Admin
 - Visão consolidada de todas as empresas da plataforma

@@ -27,6 +27,7 @@ import {
   HandCoins,
   Plug,
   Calculator,
+  Smartphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -188,6 +189,18 @@ export const APP_MODULES: AppModule[] = [
     route: "/app/impressao",
     group: "OPERACAO",
     roles: null,
+    isActive: true,
+  },
+  {
+    id: "agente-impressao-mobile",
+    label: "Agente Mobile",
+    description: "Configurar tablet Android ou iPad para imprimir via Bluetooth ou AirPrint",
+    icon: Smartphone,
+    iconColor: "#A07230",
+    iconBg: "rgba(160,114,48,0.14)",
+    route: "/app/impressao/mobile",
+    group: "OPERACAO",
+    roles: null,   // atendente, gerente, admin — qualquer perfil pode configurar o tablet
     isActive: true,
   },
 

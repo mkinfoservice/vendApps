@@ -1,10 +1,10 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePrintStatus } from "@/features/admin/print/PrintContext";
 import { fetchPrintJobs, markPrintedById, reprintOrder } from "@/features/admin/print/api";
 import type { PrintJobDto } from "@/features/admin/print/types";
-import { Printer, CheckCircle2, Clock, RefreshCw, ExternalLink } from "lucide-react";
+import { Printer, CheckCircle2, Clock, RefreshCw, ExternalLink, Smartphone } from "lucide-react";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", {
@@ -190,6 +190,29 @@ export default function PrintQueue() {
             </div>
           )}
         </div>
+
+        {/* ── Card Agente Mobile ───────────────────────────────────────── */}
+        <Link
+          to="/app/impressao/mobile"
+          className="flex items-center gap-4 rounded-2xl border p-5 mb-6 transition-colors hover:border-brand/50 hover:bg-brand/5 group"
+          style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+            style={{ backgroundColor: "rgba(124,92,248,0.10)" }}
+          >
+            <Smartphone size={20} style={{ color: "var(--brand)" }} />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-sm" style={{ color: "var(--text)" }}>
+              Agente de Impressão Mobile
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Configure um tablet (Android ou iPad) para imprimir automaticamente via Bluetooth ou AirPrint
+            </p>
+          </div>
+          <ExternalLink size={14} className="shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: "var(--brand)" }} />
+        </Link>
 
         {/* ── Header da fila ───────────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-4">
