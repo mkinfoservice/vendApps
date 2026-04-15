@@ -9,6 +9,7 @@ import { useCategories, useProducts, useStoreFront } from "@/features/catalog/qu
 import type { Product } from "@/features/catalog/api";
 import { useCart } from "@/features/cart/cart";
 import { ToastProvider, useToast } from "@/components/Toast";
+import { ProductQuickViewModal } from "@/features/catalog/ProductQuickViewModal";
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -45,22 +46,17 @@ function inferCategoryDescription(name: string | null): string {
   return "Itens desta categoria";
 }
 
-function ModernProductCard({ product }: { product: Product }) {
+function ModernProductCard({ product, onRequestOpen }: { product: Product; onRequestOpen: (id: string) => void }) {
   const cart = useCart();
-  const navigate = useNavigate();
   const { showToast } = useToast();
   const options = hasOptions(product);
   const qty = qtyForBaseProduct(cart.items as any, product.id);
   const isBestSeller = Boolean((product as any).isBestSeller);
   const promotionPriceCents = (product as any).promotionPriceCents as number | null | undefined;
 
-  function openDetails() {
-    navigate(`/produto/${product.id}`);
-  }
-
   function quickAdd() {
     if (options) {
-      openDetails();
+      onRequestOpen(product.id);
       return;
     }
     cart.add(product as any);
@@ -210,6 +206,7 @@ function ModernPublicCatalogContent() {
   const [categorySlug, setCategorySlug] = useState("");
   const [search, setSearch] = useState("");
   const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
   const navigate = useNavigate();
   const cart = useCart();
 
@@ -332,7 +329,7 @@ function ModernPublicCatalogContent() {
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
-              {products.map((p) => <ModernProductCard key={p.id} product={p} />)}
+              {products.map((p) => <ModernProductCard key={p.id} product={p} onRequestOpen={setQuickViewId} />)}
             </div>
           )}
         </main>
@@ -343,6 +340,13 @@ function ModernPublicCatalogContent() {
           </div>
         </aside>
       </div>
+
+      {quickViewId && (
+        <ProductQuickViewModal
+          productId={quickViewId}
+          onClose={() => setQuickViewId(null)}
+        />
+      )}
 
       <div className={`fixed inset-0 z-50 items-end bg-black/45 p-3 lg:hidden ${mobileCartOpen ? "flex" : "hidden"}`}>
         <div className="w-full rounded-3xl bg-white p-3">

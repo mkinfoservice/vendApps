@@ -1,4 +1,4 @@
-﻿# vendApps â€” Plataforma de GestÃ£o Comercial Multi-tenant
+# vendApps â€” Plataforma de GestÃ£o Comercial Multi-tenant
 
 > **SaaS completo para negÃ³cios que vendem.** Do catÃ¡logo online ao PDV, do iFood ao WhatsApp, da comanda Ã  nota fiscal â€” tudo em um lugar, acessÃ­vel de qualquer dispositivo, sem instalaÃ§Ã£o.
 
@@ -34,11 +34,12 @@ A equipe acessa pelo celular ou computador. O cliente faz o pedido pelo link, pe
 
 ---
 
-## Atualizacao Recente (abril 2026)
+## Atualização Recente (abril 2026)
 
-- Catalogo publico e catalogo de mesa no modo moderno agora usam o mesmo grid visual do PDV (cards compactos, badge de Top/adicionais, categorias em painel 2 colunas no desktop e chips `min-w-[150px]` no mobile).
+- Catálogo online: ao selecionar produto com adicionais ou variantes, agora abre o modal `ProductQuickViewModal` (igual ao PDV), em vez de navegar para página em tela cheia.
+- Catálogo público e catálogo de mesa no modo moderno agora usam o mesmo grid visual do PDV (cards compactos, badge de Top/adicionais, categorias em painel 2 colunas no desktop e chips `min-w-[150px]` no mobile).
 - Responsividade otimizada para celular e tablet no modo moderno, reduzindo rolagem vertical excessiva.
-- Mantidos os fluxos existentes de finalizacao (checkout delivery e fluxo de mesa) e isolamento por tenant via feature flag `modern_catalog_experience`.
+- Mantidos os fluxos existentes de finalização (checkout delivery e fluxo de mesa) e isolamento por tenant via feature flag `modern_catalog_experience`.
 
 ---
 

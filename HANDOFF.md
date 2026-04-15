@@ -1,4 +1,4 @@
-﻿# vendApps â€” Handoff TÃ©cnico
+# vendApps â€” Handoff TÃ©cnico
 
 > Documento de onboarding para IA ou desenvolvedor. Reflete o estado atual do repositÃ³rio (abril 2026).
 
@@ -30,14 +30,17 @@
 
 ---
 
-## 2.1 Atualizacao Recente (abril 2026)
+## 2.1 Atualização Recente (abril 2026)
 
-- Grid do catalogo moderno (publico e mesa) alinhado ao padrao do PDV:
+- **fix: catálogo online — modal em vez de tela cheia**: `ModernPublicCatalog` agora abre `ProductQuickViewModal` ao clicar em produto com adicionais/variantes (mesmo comportamento do PDV), substituindo o `navigate('/produto/${id}')` que expandia a tela inteira.
+  - Arquivos alterados: `features/catalog/ModernPublicCatalog.tsx`
+  - Componente reutilizado: `features/catalog/ProductQuickViewModal.tsx`
+- Grid do catálogo moderno (público e mesa) alinhado ao padrão do PDV:
   - cards compactos com imagem quadrada, badge de Top e badge de adicionais;
   - grade responsiva densa (`3/4/5/4/5/6` colunas por breakpoint);
   - categorias em painel 2 colunas no desktop e chips `min-w-[150px]` no mobile.
 - Fluxo funcional preservado:
-  - produto com adicionais/variantes abre personalizacao;
+  - produto com adicionais/variantes abre personalização via modal;
   - produto simples adiciona rapidamente ao carrinho.
 - Controle por tenant mantido via feature flag `modern_catalog_experience` (isolamento por `CompanyId`).
 
