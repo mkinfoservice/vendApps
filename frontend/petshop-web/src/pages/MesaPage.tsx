@@ -12,6 +12,7 @@ import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
 
 // ── Catalog helpers com slug explícito ────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5082";
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function fetchTableInfo(tableId: string): Promise<{ slug: string; number: number; name: string | null; capacity: number }> {
   const r = await fetch(`${API_URL}/public/tables/${tableId}`);
@@ -830,7 +831,8 @@ function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone
       const res = await CreateOrder({
         name, phone: phone || "00000000000", cep: "", address: "",
         items: items.map(i => {
-          const [productId, variantId] = i.product.id.split("__");
+          const [productId, secondPart] = i.product.id.split("__");
+          const variantId = secondPart && GUID_RE.test(secondPart) ? secondPart : undefined;
           return { productId, qty: i.qty, ...(variantId ? { variantId } : {}) };
         }),
         paymentMethodStr: "PAY_AT_COUNTER", tableId,
