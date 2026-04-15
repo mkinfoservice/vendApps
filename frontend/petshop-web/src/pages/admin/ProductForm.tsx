@@ -133,13 +133,11 @@ export default function ProductForm() {
   // Carrega insumos vinculados e lista de insumos disponíveis (modo edição)
   useEffect(() => {
     if (isNew || !id) return;
-    adminFetch(`/admin/products/${id}/supply-links`)
-      .then((r) => r.json())
-      .then((data: SupplyLink[]) => setSupplyLinks(data))
+    adminFetch<SupplyLink[]>(`/admin/products/${id}/supply-links`)
+      .then(setSupplyLinks)
       .catch(() => {});
-    adminFetch("/admin/supplies?active=true")
-      .then((r) => r.json())
-      .then((data: SupplyOption[]) => setSupplyOptions(data))
+    adminFetch<SupplyOption[]>("/admin/supplies?active=true")
+      .then(setSupplyOptions)
       .catch(() => {});
   }, [isNew, id]);
 
@@ -192,22 +190,15 @@ export default function ProductForm() {
     if (isNaN(qty) || qty <= 0) return;
     setSavingLink(true);
     try {
-      const res = await adminFetch(`/admin/products/${id}/supply-links`, {
+      const link = await adminFetch<SupplyLink>(`/admin/products/${id}/supply-links`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ supplyId: newLinkSupplyId, quantityPerUnit: qty }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert((err as { title?: string })?.title ?? "Erro ao vincular insumo.");
-        return;
-      }
-      const link: SupplyLink = await res.json();
       setSupplyLinks((prev) => [...prev, link]);
       setNewLinkSupplyId("");
       setNewLinkQty("1");
-    } catch {
-      alert("Erro ao vincular insumo.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Erro ao vincular insumo.");
     } finally {
       setSavingLink(false);
     }
