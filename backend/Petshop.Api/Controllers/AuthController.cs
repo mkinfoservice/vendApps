@@ -18,12 +18,18 @@ public class AuthController : ControllerBase
     private readonly IConfiguration _config;
     private readonly AppDbContext _db;
     private readonly TenantResolverService _tenantResolver;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthController(IConfiguration config, AppDbContext db, TenantResolverService tenantResolver)
+    public AuthController(
+        IConfiguration config,
+        AppDbContext db,
+        TenantResolverService tenantResolver,
+        IWebHostEnvironment env)
     {
         _config = config;
         _db = db;
         _tenantResolver = tenantResolver;
+        _env = env;
     }
 
     [HttpPost("login")]
@@ -36,18 +42,32 @@ public class AuthController : ControllerBase
         var staticUser = jwt["AdminUser"];
         var staticPass = jwt["AdminPassword"];
 
+        // Fallback seguro para DEV/local quando Jwt:AdminUser/AdminPassword nÃ£o estiverem configurados.
+        // Em produÃ§Ã£o, nÃ£o aplica fallback.
+        if (_env.IsDevelopment())
+        {
+            staticUser ??= "admin";
+            staticPass ??= "admin123";
+        }
+        var requestUsername = (req.Username ?? "").Trim();
+
         // Slug do subdomínio atual — adicionado ao JWT como claim auxiliar (boundSlug)
         var boundSlug = _tenantResolver.ExtractSlug(Request.Host.Host);
 
         // 1. Credenciais estáticas (compatibilidade total com comportamento anterior)
-        if (req.Username == staticUser && req.Password == staticPass)
+        if (
+            !string.IsNullOrWhiteSpace(staticUser) &&
+            !string.IsNullOrWhiteSpace(staticPass) &&
+            string.Equals(requestUsername, staticUser.Trim(), StringComparison.OrdinalIgnoreCase) &&
+            req.Password == staticPass
+        )
         {
             var companyId = jwt["CompanyId"] ?? Petshop.Api.Data.DbSeeder.DevCompanyId.ToString();
 
             var claims = new List<Claim>
             {
-                new(JwtRegisteredClaimNames.Sub, req.Username),
-                new(ClaimTypes.Name, req.Username),
+                new(JwtRegisteredClaimNames.Sub, requestUsername),
+                new(ClaimTypes.Name, requestUsername),
                 new(ClaimTypes.Role, "admin"),
                 new("role", "admin"),
                 new("companyId", companyId),
@@ -60,7 +80,7 @@ public class AuthController : ControllerBase
 
         // 2. AdminUsers criados pelo Wizard (BCrypt)
         var adminUser = await _db.AdminUsers
-            .FirstOrDefaultAsync(u => u.Username == req.Username.Trim() && u.IsActive, ct);
+            .FirstOrDefaultAsync(u => u.Username == requestUsername && u.IsActive, ct);
 
         if (adminUser is null || !BCrypt.Net.BCrypt.Verify(req.Password, adminUser.PasswordHash))
             return Unauthorized("Credenciais inválidas.");

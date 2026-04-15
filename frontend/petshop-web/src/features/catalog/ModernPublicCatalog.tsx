@@ -86,8 +86,14 @@ function ModernProductCard({ product }: { product: Product }) {
           {formatBRL(product.priceCents)}
         </p>
 
+        {qty > 0 && (
+          <p className="mt-1 text-[11px] font-semibold opacity-65">
+            {qty} no carrinho
+          </p>
+        )}
+
         {!options && qty > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
+          <div className="mt-2 hidden items-center gap-1.5 md:flex">
             <button
               type="button"
               onClick={dec}

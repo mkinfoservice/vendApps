@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ShoppingCart, Search, X, AlertTriangle, LayoutGrid, Coffee, Snowflake, Sandwich, CupSoda, ShoppingBag, type LucideIcon } from "lucide-react";
-import { resolveTenantFromHost, fetchTenantInfo } from "@/utils/tenant";
+import { resolveTenantFromHost, fetchTenantInfoBySlug } from "@/utils/tenant";
 import { useCategories, useProducts, useStoreFront } from "./features/catalog/queries";
 import { useCart } from "./features/cart/cart";
 import { CartSheet } from "@/features/cart/CartSheet";
@@ -43,6 +43,7 @@ function ProductSkeleton() {
 
 // Slug resolvido ao nível de módulo (mesma lógica de catalog/api.ts)
 const _tenantSlug = resolveTenantFromHost();
+const _fallbackTenantSlug = (import.meta.env.VITE_COMPANY_SLUG ?? "").trim().toLowerCase();
 
 export default function App() {
   const [categorySlug, setCategorySlug] = useState<string>("");
@@ -66,10 +67,11 @@ export default function App() {
   }, [brandColor]);
 
   // Verifica status do tenant (só em subdomínio válido)
+  const effectiveTenantSlug = _tenantSlug ?? (_fallbackTenantSlug || null);
   const tenantQuery = useQuery({
-    queryKey: ["tenant"],
-    queryFn: fetchTenantInfo,
-    enabled: !!_tenantSlug,
+    queryKey: ["tenant", effectiveTenantSlug],
+    queryFn: () => fetchTenantInfoBySlug(effectiveTenantSlug!),
+    enabled: !!effectiveTenantSlug,
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -120,7 +122,7 @@ export default function App() {
     (tenantQuery.data?.features?.["modern_catalog_experience"] ?? false) === true;
 
   // Empresa suspensa → tela de aviso (não renderiza loja)
-  if (_tenantSlug && tenantQuery.isError && (tenantQuery.error as { status?: number })?.status === 403) {
+  if (effectiveTenantSlug && tenantQuery.isError && (tenantQuery.error as { status?: number })?.status === 403) {
     return (
       <div className="min-h-dvh font-sans flex items-center justify-center px-6" style={{ background: "var(--bg)" }}>
         <div className="text-center max-w-xs">

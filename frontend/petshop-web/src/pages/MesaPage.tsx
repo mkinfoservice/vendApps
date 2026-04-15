@@ -776,8 +776,14 @@ function MesaModernProductCard({ product, qty, primaryColor, onOpen, onInc, onDe
           {fmtBRL(product.priceCents)}
         </p>
 
+        {qty > 0 && (
+          <p className="mt-1 text-[11px] font-semibold opacity-65" style={{ color: GC.brown }}>
+            {qty} no carrinho
+          </p>
+        )}
+
         {!hasOptions && qty > 0 && (
-          <div className="mt-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <div className="mt-2 hidden items-center gap-1.5 md:flex" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               onClick={onDec}

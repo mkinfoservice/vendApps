@@ -68,3 +68,24 @@ export async function fetchTenantInfo(): Promise<TenantInfo> {
   }
   return r.json();
 }
+
+export async function fetchTenantInfoBySlug(slug: string): Promise<TenantInfo> {
+  const normalized = (slug ?? "").trim().toLowerCase();
+  if (!normalized) {
+    const err = new Error("Slug do tenant ausente") as Error & { status: number };
+    err.status = 400;
+    throw err;
+  }
+  const r = await fetch(
+    `${API_URL}/public/tenant/resolve?slug=${encodeURIComponent(normalized)}`
+  );
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    const err = new Error(
+      (body as { error?: string }).error ?? "Tenant nÃ£o encontrado"
+    ) as Error & { status: number };
+    err.status = r.status;
+    throw err;
+  }
+  return r.json();
+}
