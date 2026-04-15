@@ -11,6 +11,47 @@ import { buildEscPosReceipt, type PaperWidth } from "./escpos";
 import { markPrinted } from "./api";
 import type { PrintOrderPayload } from "./types";
 
+// ── Minimal Web Bluetooth type declarations ───────────────────────────────────
+// A lib DOM padrão não inclui esses tipos; declaramos apenas o subconjunto usado.
+
+interface BtCharacteristicProperties {
+  write: boolean;
+  writeWithoutResponse: boolean;
+}
+
+interface BtCharacteristic {
+  properties: BtCharacteristicProperties;
+  writeValue(value: BufferSource): Promise<void>;
+  writeValueWithoutResponse(value: BufferSource): Promise<void>;
+}
+
+interface BtService {
+  getCharacteristics(): Promise<BtCharacteristic[]>;
+}
+
+interface BtGattServer {
+  connected: boolean;
+  connect(): Promise<BtGattServer>;
+  disconnect(): void;
+  getPrimaryService(uuid: string): Promise<BtService>;
+  getPrimaryServices(): Promise<BtService[]>;
+}
+
+interface BtDevice {
+  name?: string;
+  gatt?: BtGattServer;
+}
+
+interface BtRequestDeviceOptions {
+  acceptAllDevices?: boolean;
+  filters?: Array<{ services?: string[] }>;
+  optionalServices?: string[];
+}
+
+interface BtApi {
+  requestDevice(options: BtRequestDeviceOptions): Promise<BtDevice>;
+}
+
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
 export const MOBILE_AGENT_KEY  = "vendapps_mobile_agent";
@@ -61,8 +102,8 @@ const KNOWN_PRINTER_SERVICES = [
 ];
 
 // Referência ao dispositivo BLE pareado nesta sessão
-let bleDevice: BluetoothDevice | null = null;
-let bleCharacteristic: BluetoothRemoteGATTCharacteristic | null = null;
+let bleDevice: BtDevice | null = null;
+let bleCharacteristic: BtCharacteristic | null = null;
 
 /**
  * Verifica se a Web Bluetooth API está disponível neste navegador.
@@ -89,7 +130,8 @@ export async function connectBluetoothPrinter(): Promise<string> {
   bleCharacteristic = null;
 
   // Solicita dispositivo ao usuário (obrigatório por segurança do navegador)
-  const device = await (navigator as Navigator & { bluetooth: Bluetooth }).bluetooth.requestDevice({
+  const bt = (navigator as Navigator & { bluetooth: BtApi }).bluetooth;
+  const device = await bt.requestDevice({
     acceptAllDevices: true,
     optionalServices: KNOWN_PRINTER_SERVICES,
   });
@@ -97,7 +139,7 @@ export async function connectBluetoothPrinter(): Promise<string> {
   const server = await device.gatt!.connect();
 
   // Tenta cada serviço conhecido até encontrar uma característica gravável
-  let foundChar: BluetoothRemoteGATTCharacteristic | null = null;
+  let foundChar: BtCharacteristic | null = null;
 
   for (const serviceUUID of KNOWN_PRINTER_SERVICES) {
     try {
