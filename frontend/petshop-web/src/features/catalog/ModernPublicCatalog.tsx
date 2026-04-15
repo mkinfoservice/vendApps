@@ -1,6 +1,10 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, ShoppingCart, Plus, Minus, Trash2 } from "lucide-react";
+import {
+  Search, X, ShoppingCart, Plus, Minus, Trash2,
+  LayoutGrid, Coffee, Snowflake, Sandwich, CupSoda, ShoppingBag,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useCategories, useProducts, useStoreFront } from "@/features/catalog/queries";
 import type { Product } from "@/features/catalog/api";
 import { useCart } from "@/features/cart/cart";
@@ -21,19 +25,40 @@ function qtyForBaseProduct(items: Array<{ product: Product; qty: number }>, base
   }, 0);
 }
 
+function inferCategoryIcon(name: string | null): LucideIcon {
+  if (!name) return LayoutGrid;
+  const n = name.toLocaleLowerCase();
+  if (n.includes("quente") || n.includes("cafe") || n.includes("caf") || n.includes("espresso") || n.includes("capuccino")) return Coffee;
+  if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap") || n.includes("cold")) return Snowflake;
+  if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche") || n.includes("toast")) return Sandwich;
+  if (n.includes("bebida") || n.includes("suco") || n.includes("shake")) return CupSoda;
+  return ShoppingBag;
+}
+
+function inferCategoryDescription(name: string | null): string {
+  if (!name) return "Ver todos os itens";
+  const n = name.toLocaleLowerCase();
+  if (n.includes("quente") || n.includes("cafe") || n.includes("caf")) return "Cafes e bebidas quentes";
+  if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap")) return "Refrescantes e gelados";
+  if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche")) return "Lanches e salgados";
+  if (n.includes("doce") || n.includes("torta") || n.includes("brownie")) return "Sobremesas e doces";
+  return "Itens desta categoria";
+}
+
 function ModernProductCard({ product }: { product: Product }) {
   const cart = useCart();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const options = hasOptions(product);
   const qty = qtyForBaseProduct(cart.items as any, product.id);
+  const isBestSeller = Boolean((product as any).isBestSeller);
+  const promotionPriceCents = (product as any).promotionPriceCents as number | null | undefined;
 
   function openDetails() {
     navigate(`/produto/${product.id}`);
   }
 
-  function quickAdd(e: React.MouseEvent) {
-    e.stopPropagation();
+  function quickAdd() {
     if (options) {
       openDetails();
       return;
@@ -55,71 +80,74 @@ function ModernProductCard({ product }: { product: Product }) {
   return (
     <button
       type="button"
-      onClick={openDetails}
-      className="w-full rounded-3xl border p-2.5 text-left transition hover:shadow-md active:scale-[0.99]"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      onClick={quickAdd}
+      className="relative flex flex-col items-center gap-1 rounded-2xl p-2 text-left transition active:scale-95 hover:shadow-md"
+      style={{
+        background: "#fff",
+        border: `1.5px solid ${isBestSeller ? `${"var(--brand)"}55` : "rgba(107,79,58,0.1)"}`,
+      }}
     >
-      <div className="relative">
-        <div className="aspect-square overflow-hidden rounded-2xl" style={{ background: "var(--surface-2)" }}>
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-3xl opacity-30">☕</div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={quickAdd}
-          className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-white shadow"
-          style={{ background: "#5a3824" }}
-          aria-label={options ? "Personalizar produto" : "Adicionar produto"}
+      {isBestSeller && (
+        <span
+          className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none"
+          style={{ background: "var(--brand)" }}
         >
-          <Plus size={13} />
-        </button>
-      </div>
-
-      <div className="pt-2">
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold" style={{ color: "var(--text)" }}>
-          {product.name}
-        </p>
-        <p className="mt-1 text-sm font-black tabular-nums" style={{ color: "var(--brand)" }}>
-          {formatBRL(product.priceCents)}
-        </p>
-
-        {qty > 0 && (
-          <p className="mt-1 text-[11px] font-semibold opacity-65">
-            {qty} no carrinho
-          </p>
-        )}
-
-        {!options && qty > 0 && (
-          <div className="mt-2 hidden items-center gap-1.5 md:flex">
-            <button
-              type="button"
-              onClick={dec}
-              className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{ background: "var(--surface-2)" }}
-              aria-label="Diminuir"
-            >
-              {qty === 1 ? <Trash2 size={12} className="text-red-400" /> : <Minus size={12} />}
-            </button>
-            <span className="w-5 text-center text-sm font-black tabular-nums">{qty}</span>
-            <button
-              type="button"
-              onClick={inc}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-white"
-              style={{ background: "var(--brand)" }}
-              aria-label="Aumentar"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
+          Top
+        </span>
+      )}
+      {options && (
+        <span
+          className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none"
+          style={{ background: "#6B4F3A" }}
+        >
+          +
+        </span>
+      )}
+      <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center" style={{ background: "var(--surface-2)" }}>
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <span className="text-[9px] font-bold opacity-40">SEM IMAGEM</span>
         )}
       </div>
+      <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: "var(--text)" }}>
+        {product.name}
+      </span>
+      {promotionPriceCents != null ? (
+        <span className="flex flex-col items-center leading-tight">
+          <span className="text-[9px] line-through opacity-50">{formatBRL(product.priceCents)}</span>
+          <span className="text-[11px] font-black text-emerald-600">{formatBRL(promotionPriceCents)}</span>
+        </span>
+      ) : (
+        <span className="text-[11px] font-black" style={{ color: "var(--brand)" }}>{formatBRL(product.priceCents)}</span>
+      )}
+      {qty > 0 && <span className="text-[10px] opacity-60">{qty} no carrinho</span>}
+      {!options && qty > 0 && (
+        <div className="mt-1 hidden items-center gap-1.5 md:flex" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={dec}
+            className="flex h-7 w-7 items-center justify-center rounded-full"
+            style={{ background: "var(--surface-2)" }}
+            aria-label="Diminuir"
+          >
+            {qty === 1 ? <Trash2 size={12} className="text-red-400" /> : <Minus size={12} />}
+          </button>
+          <span className="w-5 text-center text-sm font-black tabular-nums">{qty}</span>
+          <button
+            type="button"
+            onClick={inc}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-white"
+            style={{ background: "var(--brand)" }}
+            aria-label="Aumentar"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+      )}
     </button>
   );
 }
-
 function CartPanel({ onCheckout }: { onCheckout: () => void }) {
   const cart = useCart();
   const hasItems = cart.items.length > 0;
@@ -191,7 +219,16 @@ function ModernPublicCatalogContent() {
   const brand = storefront?.storeName || "Catálogo";
   const brandColor = storefront?.primaryColor || "#C8953A";
 
-  const categoryItems = useMemo(() => [{ id: "all", slug: "", name: "Todos" }, ...categories], [categories]);
+  const categoryItems = useMemo(
+    () => [{ id: "all", slug: "", name: "Todos" }, ...categories].map((cat) => ({
+      id: cat.id,
+      slug: cat.slug,
+      name: cat.name,
+      icon: inferCategoryIcon(cat.name),
+      description: inferCategoryDescription(cat.name),
+    })),
+    [categories],
+  );
 
   return (
     <div className="min-h-dvh" style={{ background: "#F7F3EC", ["--brand" as string]: brandColor }}>
@@ -219,7 +256,7 @@ function ModernPublicCatalogContent() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar produto..."
+              placeholder="Buscar por nome, c\u00f3digo ou c\u00f3digo de barras"
               className="flex-1 bg-transparent text-sm outline-none"
             />
             {search && (
@@ -233,20 +270,28 @@ function ModernPublicCatalogContent() {
 
       <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-[220px_minmax(0,1fr)_320px]">
         <aside className="hidden lg:block">
-          <div className="sticky top-24 space-y-2 rounded-3xl border p-3" style={{ background: "#EFEAE0", borderColor: "#e8dfd3" }}>
-            {categoriesLoading && <div className="h-8 rounded-xl bg-white/60" />}
+          <div className="sticky top-24 rounded-3xl border p-2 h-full overflow-y-auto grid grid-cols-2 gap-1.5 content-start" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
+            {categoriesLoading && <div className="h-16 rounded-2xl bg-[#F5EDE0] animate-pulse col-span-2" />}
             {!categoriesLoading &&
               categoryItems.map((c) => {
                 const active = categorySlug === c.slug;
+                const Icon = c.icon;
                 return (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setCategorySlug(c.slug)}
-                    className="w-full rounded-2xl px-3 py-2 text-left text-sm font-bold transition"
-                    style={active ? { background: "#C8953A", color: "#fff" } : { background: "#F7F3EC", color: "#3D2A1C" }}
+                    className="w-full rounded-2xl px-1.5 py-2.5 transition-all"
+                    style={active
+                      ? { background: "var(--brand)", color: "#fff", boxShadow: "0 10px 24px color-mix(in srgb, var(--brand) 28%, transparent)" }
+                      : { background: "#F5EDE0", color: "#1C1209", border: "1px solid rgba(107,79,58,0.1)" }}
                   >
-                    {c.name}
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="w-7 h-7 rounded-xl grid place-items-center" style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(200,149,58,0.18)", color: "var(--brand)" }}>
+                        <Icon size={15} />
+                      </span>
+                      <span className="text-[10px] font-extrabold leading-tight text-center line-clamp-2 w-full px-0.5">{c.name}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -254,27 +299,31 @@ function ModernPublicCatalogContent() {
         </aside>
 
         <main className="min-w-0">
-          <div className="mb-3 flex gap-2 overflow-x-auto lg:hidden">
+          <div className="mb-3 flex gap-2 overflow-x-auto lg:hidden scrollbar-none" style={{ scrollbarWidth: "none" }}>
             {categoryItems.map((c) => {
               const active = categorySlug === c.slug;
+              const Icon = c.icon;
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => setCategorySlug(c.slug)}
-                  className="shrink-0 rounded-2xl px-4 py-2 text-xs font-bold"
-                  style={active ? { background: "#1C1209", color: "#fff" } : { background: "#EEE8DD", color: "#5f4a39" }}
+                  className="shrink-0 min-w-[150px] rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold"
+                  style={active
+                    ? { background: "var(--brand)", color: "#fff", boxShadow: "0 4px 12px color-mix(in srgb, var(--brand) 28%, transparent)" }
+                    : { background: "#fff", color: "#6B4F3A", border: "1px solid rgba(107,79,58,0.12)" }}
                 >
-                  {c.name}
+                  <Icon size={15} />
+                  <span className="text-left whitespace-normal break-words leading-tight">{c.name}</span>
                 </button>
               );
             })}
           </div>
 
           {productsLoading ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
               {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="aspect-square animate-pulse rounded-3xl" style={{ background: "#ece4d8" }} />
+                <div key={i} className="aspect-square animate-pulse rounded-2xl" style={{ background: "#ece4d8" }} />
               ))}
             </div>
           ) : products.length === 0 ? (
@@ -282,7 +331,7 @@ function ModernPublicCatalogContent() {
               Nenhum produto encontrado.
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
               {products.map((p) => <ModernProductCard key={p.id} product={p} />)}
             </div>
           )}
@@ -320,3 +369,5 @@ export function ModernPublicCatalog() {
     </ToastProvider>
   );
 }
+
+

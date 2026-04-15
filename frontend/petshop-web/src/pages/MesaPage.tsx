@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ShoppingCart, Plus, Minus, Trash2, Search, X,
-  CheckCircle2, Star, ChevronRight,
+  CheckCircle2, Star, ChevronRight, LayoutGrid, Coffee, Snowflake, Sandwich, CupSoda, ShoppingBag,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { Category, Product, ProductAddon, ProductVariant, StoreFrontConfig } from "@/features/catalog/api";
 import { CreateOrder, identifyCustomer } from "@/features/orders/api";
 import { ProductAddonStepper } from "@/features/catalog/ProductAddonStepper";
@@ -52,16 +53,14 @@ const GC = {
   caramel: "#C8953A",
 };
 
-const CAT_ICONS: [string, string][] = [
-  ["bebidas geladas", "🧊"], ["bebidas quentes", "☕"], ["frappes", "🧋"],
-  ["donuts", "🍩"], ["tortas", "🥧"], ["waffles doces", "🧇"],
-  ["waffles salgados", "🧇"], ["salgados especiais", "⭐"], ["salgados", "🥐"],
-  ["doces", "🍰"], ["go toast", "🍞"], ["sanduíches", "🥪"],
-];
-function catIcon(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [k, v] of CAT_ICONS) if (lower.includes(k)) return v;
-  return "🍽️";
+function inferCategoryIcon(name: string | null): LucideIcon {
+  if (!name) return LayoutGrid;
+  const n = name.toLocaleLowerCase();
+  if (n.includes("quente") || n.includes("cafe") || n.includes("caf") || n.includes("espresso") || n.includes("capuccino")) return Coffee;
+  if (n.includes("gelad") || n.includes("ice") || n.includes("frappe") || n.includes("frap") || n.includes("cold")) return Snowflake;
+  if (n.includes("salgado") || n.includes("sanduiche") || n.includes("lanche") || n.includes("toast")) return Sandwich;
+  if (n.includes("bebida") || n.includes("suco") || n.includes("shake")) return CupSoda;
+  return ShoppingBag;
 }
 function maskPhone(v: string) {
   const d = v.replace(/\D/g, "").slice(0, 11);
@@ -736,81 +735,81 @@ function MesaModernProductCard({ product, qty, primaryColor, onOpen, onInc, onDe
   onOpen: () => void; onInc: () => void; onDec: () => void;
 }) {
   const color = primaryColor || GC.caramel;
-  const hasOptions = product.variants.length > 0 || product.addons.length > 0;
+  const hasOptions = product.variants.length > 0 || product.addons.length > 0 || (product.addonGroups?.length ?? 0) > 0;
+  const isBestSeller = Boolean((product as any).isBestSeller);
+  const promotionPriceCents = (product as any).promotionPriceCents as number | null | undefined;
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="w-full rounded-3xl border p-2.5 text-left transition hover:shadow-md active:scale-[0.99]"
-      style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}
+      className="relative flex flex-col items-center gap-1 p-2 rounded-2xl transition active:scale-95 text-left hover:shadow-md"
+      style={{
+        background: "#fff",
+        border: `1.5px solid ${isBestSeller ? `${color}55` : "rgba(107,79,58,0.1)"}`,
+      }}
     >
-      <div className="relative">
-        <div className="aspect-square overflow-hidden rounded-2xl" style={{ background: GC.cream }}>
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-3xl opacity-30">☕</div>
-          )}
-        </div>
+      {isBestSeller && (
+        <span className="absolute top-1 left-1 text-[8px] font-bold text-white rounded-full px-1.5 py-px leading-none" style={{ background: color }}>
+          Top
+        </span>
+      )}
+      {hasOptions && (
+        <span className="absolute top-1 right-1 text-[8px] font-bold text-white rounded-full px-1 py-px leading-none" style={{ background: GC.brown }}>
+          +
+        </span>
+      )}
 
-        {qty === 0 ? (
-          <div
-            className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full text-white shadow"
-            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
-          >
-            <Plus size={13} />
-          </div>
+      <div className="w-full aspect-square rounded-xl overflow-hidden flex items-center justify-center" style={{ background: GC.cream }}>
+        {product.imageUrl ? (
+          <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className="absolute -right-1 -top-1 flex min-w-6 items-center justify-center rounded-full px-1.5 text-[11px] font-black text-white" style={{ background: color }}>
-            {qty}
-          </div>
+          <span className="text-[9px] font-bold" style={{ color: GC.brown, opacity: 0.35 }}>SEM IMAGEM</span>
         )}
       </div>
 
-      <div className="pt-2">
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold" style={{ color: GC.dark }}>
-          {product.name}
-        </p>
-        <p className="mt-1 text-sm font-black tabular-nums" style={{ color }}>
-          {fmtBRL(product.priceCents)}
-        </p>
+      <span className="text-[11px] font-medium leading-tight text-center line-clamp-2 w-full" style={{ color: GC.dark }}>
+        {product.name}
+      </span>
+      {promotionPriceCents != null ? (
+        <span className="flex flex-col items-center leading-tight">
+          <span className="text-[9px] line-through opacity-50" style={{ color: GC.brown }}>{fmtBRL(product.priceCents)}</span>
+          <span className="text-[11px] font-black text-emerald-600">{fmtBRL(promotionPriceCents)}</span>
+        </span>
+      ) : (
+        <span className="text-[11px] font-black" style={{ color }}>{fmtBRL(product.priceCents)}</span>
+      )}
 
-        {qty > 0 && (
-          <p className="mt-1 text-[11px] font-semibold opacity-65" style={{ color: GC.brown }}>
-            {qty} no carrinho
-          </p>
-        )}
+      {qty > 0 && <span className="text-[10px] opacity-60" style={{ color: GC.brown }}>{qty} no carrinho</span>}
 
-        {!hasOptions && qty > 0 && (
-          <div className="mt-2 hidden items-center gap-1.5 md:flex" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={onDec}
-              className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{ background: GC.cream, color: GC.brown }}
-              aria-label="Diminuir"
-            >
-              {qty === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
-            </button>
-            <span className="w-5 text-center text-sm font-black">{qty}</span>
-            <button
-              type="button"
-              onClick={onInc}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-white"
-              style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
-              aria-label="Aumentar"
-            >
-              <Plus size={12} />
-            </button>
-          </div>
-        )}
-      </div>
+      {!hasOptions && qty > 0 && (
+        <div className="mt-1 hidden items-center gap-1.5 md:flex" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={onDec}
+            className="flex h-7 w-7 items-center justify-center rounded-full"
+            style={{ background: GC.cream, color: GC.brown }}
+            aria-label="Diminuir"
+          >
+            {qty === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
+          </button>
+          <span className="w-5 text-center text-sm font-black">{qty}</span>
+          <button
+            type="button"
+            onClick={onInc}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-white"
+            style={{ background: `linear-gradient(135deg, ${GC.dark}, #3D2314)` }}
+            aria-label="Aumentar"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+      )}
     </button>
   );
 }
 
-// ── Cart Sheet ─────────────────────────────────────────────────────────────────
+// -- Cart Sheet -----------------------------------------------------------------
 function CartSheet({ items, totalCents, tableId, tableLabel, guests, name, phone, cpf, customerId, primaryColor,
   onInc, onDec, onRemove, onClose, onSuccess }: {
   items: CartItem[]; totalCents: number; tableId: string;
@@ -1051,6 +1050,15 @@ export default function MesaPage() {
   const tableCapacity = tableInfo?.capacity ?? 4;
   const safeGuests = Math.min(Math.max(guests, 1), Math.max(tableCapacity, 1));
   const modernCatalogEnabled = (tenantInfo?.features?.["modern_catalog_experience"] ?? false) === true;
+  const categoryItems = useMemo(
+    () => [{ id: "all", slug: "", name: "Todos" } as Category, ...(categories as Category[])].map((cat) => ({
+      id: cat.id,
+      slug: cat.slug,
+      name: cat.name,
+      icon: inferCategoryIcon(cat.name),
+    })),
+    [categories],
+  );
 
   function handleNameNext(n: string, g: number) { setName(n); setGuests(g); setStep("register"); }
   function handleRegister(p: string, c: string, cid: string, pts: number, isNew: boolean) {
@@ -1164,7 +1172,7 @@ export default function MesaPage() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar produto…"
+              placeholder="Buscar por nome, c�digo ou c�digo de barras"
               className="flex-1 bg-transparent text-sm focus:outline-none"
               style={{ color: GC.dark }}
             />
@@ -1180,43 +1188,20 @@ export default function MesaPage() {
         {categories.length > 0 && (
           <div className={`overflow-x-auto pb-3 ${modernCatalogEnabled ? "lg:hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
             <div className="flex gap-2 px-4" style={{ width: "max-content" }}>
-              <button
-                onClick={() => setCatSlug("")}
-                className="shrink-0 flex items-center gap-1.5 px-4 h-11 rounded-2xl text-[12px] font-bold transition-all duration-200"
-                style={!catSlug ? {
-                  background: `linear-gradient(135deg, ${GC.dark} 0%, #3D2314 100%)`,
-                  color: "#fff",
-                  boxShadow: "0 4px 16px rgba(28,18,9,0.28)",
-                  transform: "scale(1.02)",
-                } : {
-                  background: GC.cream,
-                  color: GC.brown,
-                  border: `1.5px solid rgba(200,149,58,0.18)`,
-                }}
-              >
-                <span style={{ fontSize: 16 }}>🍽️</span>
-                Todos
-              </button>
-              {(categories as Category[]).map(c => {
+              {categoryItems.map((c) => {
                 const active = catSlug === c.slug;
+                const Icon = c.icon;
                 return (
                   <button
                     key={c.id}
                     onClick={() => setCatSlug(c.slug)}
-                    className="shrink-0 flex items-center gap-1.5 px-4 h-11 rounded-2xl text-[12px] font-bold transition-all duration-200"
-                    style={active ? {
-                      background: `linear-gradient(135deg, ${GC.dark} 0%, #3D2314 100%)`,
-                      color: "#fff",
-                      boxShadow: "0 4px 16px rgba(28,18,9,0.28)",
-                      transform: "scale(1.02)",
-                    } : {
-                      background: GC.cream,
-                      color: GC.brown,
-                      border: `1.5px solid rgba(200,149,58,0.18)`,
-                    }}
+                    className="shrink-0 min-w-[150px] rounded-2xl px-3 py-2 flex items-center gap-2 text-xs font-bold"
+                    style={active
+                      ? { background: GC.caramel, color: "#fff", boxShadow: `0 4px 12px ${GC.caramel}44` }
+                      : { background: "#fff", color: GC.brown, border: "1px solid rgba(107,79,58,0.12)" }}
                   >
-                    <span style={{ fontSize: 16 }}>{catIcon(c.name)}</span>
-                    {c.name}
+                    <Icon size={15} />
+                    <span className="text-left whitespace-normal break-words leading-tight">{c.name}</span>
                   </button>
                 );
               })}
@@ -1229,26 +1214,26 @@ export default function MesaPage() {
       <div className={`${modernCatalogEnabled ? "max-w-6xl lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-4" : "max-w-2xl"} mx-auto px-4 py-5 pb-36`}>
         {modernCatalogEnabled && categories.length > 0 && (
           <aside className="hidden lg:block">
-            <div className="sticky top-24 space-y-2 rounded-3xl border p-3" style={{ background: GC.cream, borderColor: "rgba(107,79,58,0.12)" }}>
-              <button
-                type="button"
-                onClick={() => setCatSlug("")}
-                className="w-full rounded-2xl px-3 py-2 text-left text-sm font-bold transition"
-                style={!catSlug ? { background: GC.dark, color: "#fff" } : { background: "#fff", color: GC.brown }}
-              >
-                🍽️ Todos
-              </button>
-              {(categories as Category[]).map((c) => {
+            <div className="sticky top-24 rounded-3xl p-2 border h-full overflow-y-auto grid grid-cols-2 gap-1.5 content-start" style={{ background: "#fff", borderColor: "rgba(107,79,58,0.12)" }}>
+              {categoryItems.map((c) => {
                 const active = catSlug === c.slug;
+                const Icon = c.icon;
                 return (
                   <button
                     key={c.id}
                     type="button"
                     onClick={() => setCatSlug(c.slug)}
-                    className="w-full rounded-2xl px-3 py-2 text-left text-sm font-bold transition"
-                    style={active ? { background: GC.dark, color: "#fff" } : { background: "#fff", color: GC.brown }}
+                    className="w-full rounded-2xl px-1.5 py-2.5 transition-all"
+                    style={active
+                      ? { background: GC.caramel, color: "#fff", boxShadow: `0 10px 24px ${GC.caramel}44` }
+                      : { background: GC.cream, color: GC.dark, border: "1px solid rgba(107,79,58,0.1)" }}
                   >
-                    {c.name}
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="w-7 h-7 rounded-xl grid place-items-center" style={active ? { background: "rgba(255,255,255,0.18)" } : { background: "rgba(200,149,58,0.18)", color: GC.caramel }}>
+                        <Icon size={15} />
+                      </span>
+                      <span className="text-[10px] font-extrabold leading-tight text-center line-clamp-2 w-full px-0.5">{c.name}</span>
+                    </span>
                   </button>
                 );
               })}
@@ -1258,9 +1243,9 @@ export default function MesaPage() {
 
         <div className="min-w-0">
         {productsLoading || !slug ? (
-          <div className={`grid gap-3 ${modernCatalogEnabled ? "grid-cols-2 md:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3"}`}>
+          <div className={`grid gap-2 ${modernCatalogEnabled ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6" : "grid-cols-2 sm:grid-cols-3"}`}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-3xl animate-pulse" style={{ aspectRatio: "4/3", background: GC.cream }} />
+              <div key={i} className="aspect-square rounded-2xl animate-pulse" style={{ background: GC.cream }} />
             ))}
           </div>
         ) : (products as Product[]).length === 0 ? (
@@ -1270,9 +1255,9 @@ export default function MesaPage() {
             <p className="text-sm font-medium" style={{ color: GC.brown }}>Nenhum produto encontrado</p>
           </div>
         ) : modernCatalogEnabled ? (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
             {(products as Product[]).map((p) => {
-              const hasOptions = p.variants.length > 0 || p.addons.length > 0;
+              const hasOptions = p.variants.length > 0 || p.addons.length > 0 || (p.addonGroups?.length ?? 0) > 0;
               const qty = cart.items
                 .filter((i) => i.product.id === p.id || i.product.id.startsWith(`${p.id}__`))
                 .reduce((acc, i) => acc + i.qty, 0);
@@ -1388,3 +1373,8 @@ export default function MesaPage() {
     </div>
   );
 }
+
+
+
+
+
